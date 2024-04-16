@@ -1,42 +1,73 @@
 org 0x7c00
 
-; clear_text_mode = 0x00
-; text_mode = 0x10
-; vga_mode = 0x13
-; set_cursor_pos = 0x02
-; write_char = 0x0a
-
 ; Clear the screen
 mov ah, 0x00   ; Function: Set video mode
 mov al, 0x03   ; Mode 03: 80x25 text mode
 int 0x10       ; BIOS video interrupt
 
-; Move cursor to the middle of the screen
-mov ah, 0x02   ; Function to set cursor position
-mov bh, 0x00   ; Page number
-mov dh, 12     ; Row number (0-based, so 12 is the 13th row)
-mov dl, 38     ; Column number (0-based, so 39 is the 40th column)
-int 0x10       ; BIOS video interrupt
+; Initialize ES register for video segment
+mov ax, 0xB800
+mov es, ax
 
-; Display 'P'
-mov ah, 0x0E   ; Teletype output function of the BIOS interrupt 10h
-mov al, 'P'
-int 0x10       ; BIOS interrupt
+; Set page number to zero
+mov bh, 0
 
-; Display '1'
-mov al, '1'
-int 0x10       ; BIOS interrupt
+; Set the character and attribute for filling
+mov al, ' '         ; Character to fill the screen with (space)
+mov bl, 1Eh         ; Attribute (blue background, yellow foreground)
 
-; Display 'X'
-mov al, 'X'
-int 0x10       ; BIOS interrupt
+mov dh, 0           ; Initial row
+mov dl, 0           ; Initial column
 
-; move blinking cursor below
-mov ah, 0x02   ; Function to set cursor position
-mov bh, 0x00   ; Page number
-mov dh, 18     ; Row number (0-based, so 12 is the 13th row)
-mov dl, 39     ; Column number (0-based, so 39 is the 40th column)
-int 0x10       ; BIOS video interrupt
+fill_screen:
+    ; Set cursor position for each new line
+    mov ah, 02h     ; Function to set cursor position
+    int 10h         ; BIOS video interrupt
+
+    ; Write characters across the line
+    mov ah, 09h     ; Function to write character and attribute
+    mov cx, 80      ; Number of characters to write (full row)
+    int 10h         ; BIOS video interrupt
+
+    ; Move to the next line
+    inc dh          ; Increment row number
+    cmp dh, 25      ; Compare with total rows (standard text mode)
+    jl fill_screen  ; Loop back if less than 25
+
+; Define the string and its end label for looping
+mov si, welcome_msg  ; Point SI to the start of the string
+mov ah, 02h
+mov dh, 12           ; Initial row
+mov dl, 20           ; Initial column
+int 10h
+
+print_string:
+    lodsb            ; Load the next byte from DS:SI into AL, SI++
+    or al, al        ; Check if the character is zero (end of string)
+    jz done          ; If zero, we're done
+    mov ah, 0x09     ; Function 09h - Write Character and Attribute
+    mov bh, 0x00     ; Page number
+    mov bl, 0x1E     ; Attribute (blue background, yellow foreground)
+    mov cx, 0x01     ; Write each character once
+    int 0x10         ; Call BIOS video interrupt
+    
+    ; Move the cursor right
+    mov ah, 0x03     ; Read current cursor position
+    int 0x10         ; BX = page, DX = cursor position (DH = row, DL = column)
+    inc dl           ; Increment column
+    cmp dl, 80       ; Check if we reached the end of the row
+    jne update_cursor
+    xor dl, dl       ; Reset column to 0 for new line
+    inc dh           ; Move to the next row
+
+update_cursor:
+    mov ah, 0x02     ; Function to set cursor position
+    int 0x10         ; Update cursor position with new values in DH (row) and DL (column)
+
+    jmp print_string ; Loop back to print the next character
+
+
+done:
 
 ; Wait for any key press
 mov ah, 0x00
@@ -55,26 +86,32 @@ start:
     mov ax, 0x0013  ; VGA
     int 0x10
 
+    ; background colors
+    mov al, 0x66
+    mov cx, 320*180
+    xor di,di
+    rep stosb
 
-    ; top-bottom frame lines
-    mov al, 3
+    mov al, 0x76
+    mov cx, 320*180
+    add cx, 320*20
+    xor di,di
+    rep stosb
 
-    mov di, 0x0
-    mov cx, 320
-    repe stosb
-
-    mov di, 320*199
-    mov cx, 320
-    repe stosb
+    mov al, 0x02
+    mov cx, 320*180
+    add cx, 320
+    xor di,di
+    rep stosb
 
 demoloop:
 
     draw:
 
-    ; clear screen
-    mov di, 320
-    mov cx, 320*198  
-    mov al, 0
+    ; clear screen - TODO: clear only behind player
+    mov al, 0x66
+    mov cx, 320*180
+    xor di,di
     rep stosb
 
     ; Assume sprite_x and sprite_y contain the coordinates where the sprite should be drawn
@@ -150,10 +187,10 @@ demoloop:
         je move_left
         cmp ah, 0x4D       ; Compare with scan code for right arrow
         je move_right
-        cmp ah, 0x48   ; Up Arrow scan code
-        je move_up
-        cmp ah, 0x50   ; Down Arrow scan code
-        je move_down
+        ; cmp ah, 0x48   ; Up Arrow scan code
+        ; je move_up
+        ; cmp ah, 0x50   ; Down Arrow scan code
+        ; je move_down
         jmp check_key_press
 
     move_left:
@@ -166,61 +203,68 @@ demoloop:
         mov word [mirror_direction], 0
         jmp draw
 
-    move_up:
-        dec word [sprite_y]
-        jmp draw
+    ; move_up:
+    ;     dec word [sprite_y]
+    ;     jmp draw
 
-    move_down:
-        inc word [sprite_y]
-        jmp draw
+    ; move_down:
+    ;     inc word [sprite_y]
+    ;     jmp draw
 
 jmp demoloop
 
 ; END DEMO
 
 .data:
-sprite_x dw 150
-sprite_y dw 180
+welcome_msg db 'Welcome to the P1X boot sector game', 0
+sprite_x dw 50
+sprite_y dw 172
 current_frame dw 0
 mirror_direction dw 0
 
 sprite_data:
-    ; Frame 1
-    db 0x00, 0x00, 0x00, 0x00
-    db 0x00, 0x2A, 0x2B, 0x00
-    db 0x2A, 0x5A, 0x0F, 0x00
-    db 0x00, 0x42, 0x00, 0x00
-    db 0x00, 0x34, 0x35, 0x00
-    db 0x00, 0x34, 0x35, 0x00
-    db 0x00, 0x36, 0x36, 0x00
-    db 0x36, 0x00, 0x37, 0x00
-    ; Frame 2
-    db 0x00, 0x2A, 0x2B, 0x00
-    db 0x2A, 0x5A, 0x0F, 0x00
-    db 0x00, 0x42, 0x00, 0x00
-    db 0x00, 0x34, 0x35, 0x00
-    db 0x00, 0x34, 0x35, 0x00
-    db 0x00, 0x36, 0x36, 0x00
-    db 0x00, 0x36, 0x37, 0x37
-    db 0x00, 0x36, 0x00, 0x00
-     ; Frame 3
-    db 0x00, 0x2A, 0x2B, 0x00
-    db 0x2A, 0x5A, 0x0F, 0x00
-    db 0x00, 0x42, 0x00, 0x00
-    db 0x00, 0x34, 0x35, 0x00
-    db 0x00, 0x34, 0x35, 0x00
-    db 0x00, 0x36, 0x36, 0x00
-    db 0x00, 0x36, 0x37, 0x00
-    db 0x00, 0x36, 0x00, 0x37
-    ; Frame 4
-    db 0x00, 0x00, 0x00, 0x00
-    db 0x2A, 0x2A, 0x2B, 0x00
-    db 0x00, 0x5A, 0x0F, 0x00
-    db 0x00, 0x42, 0x00, 0x00
-    db 0x00, 0x34, 0x35, 0x00
-    db 0x00, 0x34, 0x35, 0x00
-    db 0x00, 0x36, 0x36, 0x00
-    db 0x00, 0x36, 0x37, 0x00
+    ; Dude - Frame 1
+    db 0x66, 0x66, 0x66, 0x66
+    db 0x66, 0x2A, 0x2B, 0x66
+    db 0x2A, 0x5A, 0x0F, 0x66
+    db 0x66, 0x42, 0x66, 0x66
+    db 0x66, 0x34, 0x35, 0x66
+    db 0x66, 0x34, 0x35, 0x66
+    db 0x66, 0x36, 0x36, 0x66
+    db 0x36, 0x66, 0x37, 0x66
+    ; Dude - Frame 2
+    db 0x66, 0x2A, 0x2B, 0x66
+    db 0x2A, 0x5A, 0x0F, 0x66
+    db 0x66, 0x42, 0x66, 0x66
+    db 0x66, 0x34, 0x35, 0x66
+    db 0x66, 0x34, 0x35, 0x66
+    db 0x66, 0x36, 0x36, 0x66
+    db 0x66, 0x36, 0x37, 0x37
+    db 0x66, 0x36, 0x66, 0x66
+    ; Dude - Frame 3
+    db 0x66, 0x2A, 0x2B, 0x66
+    db 0x2A, 0x5A, 0x0F, 0x66
+    db 0x66, 0x42, 0x66, 0x66
+    db 0x66, 0x34, 0x35, 0x66
+    db 0x66, 0x34, 0x35, 0x66
+    db 0x66, 0x36, 0x36, 0x66
+    db 0x66, 0x36, 0x37, 0x66
+    db 0x66, 0x36, 0x66, 0x37
+    ; Dude - Frame 4
+    db 0x66, 0x66, 0x66, 0x66
+    db 0x2A, 0x2A, 0x2B, 0x66
+    db 0x66, 0x5A, 0x0F, 0x66
+    db 0x66, 0x42, 0x66, 0x66
+    db 0x66, 0x34, 0x35, 0x66
+    db 0x66, 0x34, 0x35, 0x66
+    db 0x66, 0x36, 0x36, 0x66
+    db 0x66, 0x36, 0x37, 0x66
+    ; Coin tile
+    db 0x66, 0x66, 0x2c, 0x66
+    db 0x66, 0x2c, 0x0f, 0x2b
+    db 0x66, 0x2c, 0x0f, 0x2b
+    db 0x66, 0x66, 0x2b, 0x66  
+
 ; make boodsector
 times 510 - ($ - $$) db 0  ; Pad remaining bytes to make 510 bytes
 dw 0xAA55                  ; Boot signature at the end of 512 bytes
