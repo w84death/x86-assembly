@@ -1,81 +1,7 @@
 org 0x7c00
 
-; Clear the screen
-mov ah, 0x00   ; Function: Set video mode
-mov al, 0x03   ; Mode 03: 80x25 text mode
-int 0x10       ; BIOS video interrupt
-
-; Initialize ES register for video segment
-mov ax, 0xB800
-mov es, ax
-
-; Set page number to zero
-mov bh, 0
-
-; Set the character and attribute for filling
-mov al, ' '         ; Character to fill the screen with (space)
-mov bl, 1Eh         ; Attribute (blue background, yellow foreground)
-
-mov dh, 0           ; Initial row
-mov dl, 0           ; Initial column
-
-fill_screen:
-    ; Set cursor position for each new line
-    mov ah, 02h     ; Function to set cursor position
-    int 10h         ; BIOS video interrupt
-
-    ; Write characters across the line
-    mov ah, 09h     ; Function to write character and attribute
-    mov cx, 80      ; Number of characters to write (full row)
-    int 10h         ; BIOS video interrupt
-
-    ; Move to the next line
-    inc dh          ; Increment row number
-    cmp dh, 25      ; Compare with total rows (standard text mode)
-    jl fill_screen  ; Loop back if less than 25
-
-; Define the string and its end label for looping
-mov si, welcome_msg  ; Point SI to the start of the string
-mov ah, 02h
-mov dh, 12           ; Initial row
-mov dl, 20           ; Initial column
-int 10h
-
-print_string:
-    lodsb            ; Load the next byte from DS:SI into AL, SI++
-    or al, al        ; Check if the character is zero (end of string)
-    jz done          ; If zero, we're done
-    mov ah, 0x09     ; Function 09h - Write Character and Attribute
-    mov bh, 0x00     ; Page number
-    mov bl, 0x1E     ; Attribute (blue background, yellow foreground)
-    mov cx, 0x01     ; Write each character once
-    int 0x10         ; Call BIOS video interrupt
-    
-    ; Move the cursor right
-    mov ah, 0x03     ; Read current cursor position
-    int 0x10         ; BX = page, DX = cursor position (DH = row, DL = column)
-    inc dl           ; Increment column
-    cmp dl, 80       ; Check if we reached the end of the row
-    jne update_cursor
-    xor dl, dl       ; Reset column to 0 for new line
-    inc dh           ; Move to the next row
-
-update_cursor:
-    mov ah, 0x02     ; Function to set cursor position
-    int 0x10         ; Update cursor position with new values in DH (row) and DL (column)
-
-    jmp print_string ; Loop back to print the next character
-
-
-done:
-
-; Wait for any key press
-mov ah, 0x00
-int 0x16       ; BIOS keyboard interrupt
 
 ; DEMO
-
-
 
 start:
     mov ax, 0x00
@@ -87,25 +13,32 @@ start:
     int 0x10
 
     ; background colors
-    mov al, 0x66
+
+    mov al, 0x66 ; sky
     mov cx, 320*180
     xor di,di
     rep stosb
 
-    mov al, 0x76
-    mov cx, 320*180
-    add cx, 320*20
-    xor di,di
+    mov bx, 180    ; y position
+    mov ax, 320    ; screen width
+    mul bx         ; ax = 320 * 100
+    mov di, ax     ; destination index in video memory
+    mov cx, 320    ; number of pixels in one line
+    
+    mov al, 0xa   ; grass
     rep stosb
 
-    mov al, 0x02
-    mov cx, 320*180
-    add cx, 320
-    xor di,di
+    add di, 320
+    mov al, 0x78    ; grass shadow
     rep stosb
+
+    mov al, 0x76    ; ground
+    mov cx, 320*20
+    rep stosb
+
 
 demoloop:
-
+    jmp draw_player
     draw:
 
     ; clear screen - TODO: clear only behind player
@@ -114,10 +47,9 @@ demoloop:
     xor di,di
     rep stosb
 
-    ; Assume sprite_x and sprite_y contain the coordinates where the sprite should be drawn
-    ; ES must be set to the video segment, which is 0xA000 for mode 13h
-    ; mov ax, 0xA000
-    ; mov es, ax
+
+    ; Draw Player
+    draw_player:
 
     mov bx, [current_frame]  ; Load current frame number
 
@@ -174,6 +106,27 @@ demoloop:
         mov word [current_frame], 0
     skip_reset:
 
+
+    ; Draw COIN
+    mov ax, 32*4             ; Calculate frame offset (each frame is 32 bytes in the sprite data)
+    mov si, sprite_data
+    add si, ax             ; SI points to the start of the current frame data
+
+    ; Calculate the starting address in video memory
+    mov ax, 320            ; Screen width
+    mul word [coin_y]    ; y-coordinate
+    add ax, [coin_x]     ; Add x-coordinate
+    mov di, ax             ; Store in DI for ES:DI addressing
+    mov cx, 4              ; 4 rows
+    draw_coin_row:
+        push cx
+        mov cx, 4           ; 4 pixels per row
+        rep movsb           ; Move sprite row to video memory
+        pop cx
+        add di, 316         ; Move DI to the start of the next line (320 - 4)
+        loop draw_coin_row
+
+
     check_key_press:
         ; Check if a key has been pressed
         mov ah, 0x01
@@ -216,11 +169,12 @@ jmp demoloop
 ; END DEMO
 
 .data:
-welcome_msg db 'Welcome to the P1X boot sector game', 0
 sprite_x dw 50
 sprite_y dw 172
 current_frame dw 0
 mirror_direction dw 0
+coin_x dw 200
+coin_y dw 174
 
 sprite_data:
     ; Dude - Frame 1
