@@ -25,10 +25,6 @@ start:
     mov al, 0xa   ; grass
     rep stosb
 
-    mov al, 0x78    ; grass shadow
-    add di, 320     ; next line
-    rep stosb
-
     mov al, 0x76    ; ground
     mov cx, 320*20
     rep stosb
@@ -99,14 +95,14 @@ draw_player:
 
     finish_draw:
         inc word [current_frame]
-        cmp word [current_frame], 4
+        cmp word [current_frame], 3
         jl skip_reset
         mov word [current_frame], 0
     skip_reset:
     ret
 
 draw_coin:
-    mov ax, 32*4             ; Calculate frame offset (data is after 4th frame)
+    mov ax, 32*3             ; Calculate frame offset (data is after 4th frame)
     mov si, sprite_data
     add si, ax             ; SI points to the start of the current frame data
 
@@ -114,13 +110,13 @@ draw_coin:
     mul word [coin_y]      ; y-coordinate
     add ax, [coin_x]       ; Add x-coordinate
     mov di, ax             ; Store in DI for ES:DI addressing
-    mov cx, 4              ; 4 rows
+    mov cx, 4              ; 3 rows
     draw_coin_row:
         push cx
-        mov cx, 4           ; 4 pixels per row
+        mov cx, 3           ; 4 pixels per row
         rep movsb           ; Move sprite row to video memory
         pop cx
-        add di, 316         ; Move DI to the start of the next line (320 - 4)
+        add di, 317         ; Move DI to the start of the next line (320 - 4)
         loop draw_coin_row
     ret
 
@@ -148,7 +144,7 @@ draw_next_coin:
     jle no_overlap                      ; No overlap if player_x + width <= coin_x
 
     mov ax, [coin_x]
-    add ax, 4                           ; ax = coin_x + coin_width
+    add ax, 3                           ; ax = coin_x + coin_width
     cmp ax, [player_x]
     jle no_overlap                      ; No overlap if coin_x + width <= player_x
 
@@ -182,11 +178,7 @@ handle_keyboard:
         je move_left
         cmp ah, 0x4D       ; Compare with scan code for right arrow
         je move_right
-        ; cmp ah, 0x48   ; Up Arrow scan code
-        ; je move_up
-        ; cmp ah, 0x50   ; Down Arrow scan code
-        ; je move_down
-        jmp handle_keyboard
+        jmp handle_keyboard ; Unknown button, loop back
 
     move_left:
         dec word [player_x]
@@ -205,9 +197,9 @@ current_frame dw 0
 mirror_direction dw 0
 coin_x dw 0
 coin_y dw 0
-coin_positions dw 10, 30, 70, 90, 120, 20
-coin_collected db 0, 0, 0, 0, 0, 0
-num_coins dw 5
+coin_positions dw 10, 30, 70, 90, 120, 140, 200, 210, 240
+coin_collected dw 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+num_coins dw 7
 
 sprite_data:
     ; Dude - Frame 1
@@ -228,15 +220,6 @@ sprite_data:
     db 0x66, 0x36, 0x36, 0x66
     db 0x66, 0x36, 0x37, 0x37
     db 0x66, 0x36, 0x66, 0x66
-    ; Dude - Frame 3
-    db 0x66, 0x2A, 0x2B, 0x66
-    db 0x2A, 0x5A, 0x0F, 0x66
-    db 0x66, 0x42, 0x66, 0x66
-    db 0x66, 0x34, 0x35, 0x66
-    db 0x66, 0x34, 0x35, 0x66
-    db 0x66, 0x36, 0x36, 0x66
-    db 0x66, 0x36, 0x37, 0x66
-    db 0x66, 0x36, 0x66, 0x37
     ; Dude - Frame 4
     db 0x66, 0x66, 0x66, 0x66
     db 0x2A, 0x2A, 0x2B, 0x66
@@ -247,10 +230,10 @@ sprite_data:
     db 0x66, 0x36, 0x36, 0x66
     db 0x66, 0x36, 0x37, 0x66
     ; Coin tile
-    db 0x66, 0x66, 0x2c, 0x66
-    db 0x66, 0x2c, 0x0f, 0x2b
-    db 0x66, 0x2c, 0x0f, 0x2b
-    db 0x66, 0x66, 0x2b, 0x66  
+    db 0x66, 0x2c, 0x66
+    db 0x2c, 0x0f, 0x2b
+    db 0x2c, 0x0f, 0x2b
+    db 0x66, 0x2b, 0x66  
 
 ; make boodsector
 times 510 - ($ - $$) db 0  ; Pad remaining bytes to make 510 bytes
