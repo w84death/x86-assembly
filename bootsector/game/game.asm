@@ -15,8 +15,12 @@ start:
     call draw_level
 
 game_loop:
-    call erease_player
-    
+    ;call erease_player
+    ;call wait_for_vertical_retrace
+    call draw_sky
+    call draw_level
+
+
     mov word ax, [player_pos]      ; Add x-coordinate
     add ax, 320*9
     cmp byte [mirror_direction], 0  ; Check direction
@@ -29,36 +33,43 @@ game_loop:
     mov di, ax              ; Store in DI for ES:DI addressing
     
     mov ah, es:[di]         ; Check if platform
-    cmp ah, SKY_COLOR
-    jne run
+    cmp ah, PLATFORM_COLOR
+    je run
     add word [player_pos], 320  ; Fall 1px down
-    jmp fall
+    jmp continue_run
 
     run:
         call handle_keyboard
         
-        ; mov ax, [player_pos]    ; Load the player's buffer position into AX
-        ; mov dx, 320             ; Load the screen width into DX
-        ; div dx                  ; Divide AX by DX: result in AX (quotient), remainder in DX
-        ; cmp dx, 0
-        ;je swap_direction
-        ;cmp dx, 316               ; Compare the remainder with right boundry
-        ;je swap_direction
-
+        ; Collision check
+        mov ax, [player_pos]    ; Load the player's buffer position into AX
+        mov cx, 320             ; Screen width into CX
+        xor dx, dx              ; Clear DX to prevent errors in division
+        div cx                  ; AX now contains quotient, DX contains remainder (player's x-coordinate)
+        
+        ; Check if the player's x-coordinate (DX) is at or beyond the left or right boundary
+        cmp dx, 0               ; Check if at the left boundary
+        je  swap_direction      ; Jump if exactly at the left edge
+        cmp dx, 315             ; Check if at or beyond the right boundary (319 for a 320px wide screen)
+        je  swap_direction     ; Jump if at or beyond the right edge
+        
+    check_run_dir:
         cmp byte [mirror_direction], 0
         je run_right
     run_left:
         dec word [player_pos]
-        jmp fall
+        jmp continue_run
     run_right:
         inc word [player_pos]
-        jmp fall
-    ; swap_direction:
-    ;     xor byte [mirror_direction], 1  ; swap direction
-    fall:
+        jmp continue_run
+    swap_direction:
+        xor byte [mirror_direction], 1  ; swap direction
+        jmp check_run_dir
+    continue_run:
         
     call draw_player
     call delay
+    
    
 jmp game_loop
 
@@ -66,29 +77,29 @@ jmp game_loop
 
 delay:
     mov al, 0
-    mov cx, 1
-    mov dx, DELAY_MS
+    mov cx, 0
+    mov dx, 12800
     mov ah, 86h
     int 15h
     ret
 
-
 draw_sky:
-    xor di,di
-    mov al, SKY_COLOR
-    mov cx, 320*170
-    rep stosb
+    ; xor di,di
+    ; mov al, SKY_COLOR
+    ; mov cx, 320*170
+    ; rep stosb
 
     ; mov al, GROUND_COLOR
     ; mov cx, 320*30
     ; rep stosb
 
-    mov cx, 6
+    xor di,di           ; Reset buffer pos to 0
+    mov cx, 5           ; Gradient levels
     draw_gradient:
-    mov bx, GROUND_COLOR    ; Sky starting color
+    mov bx, SKY_COLOR    ; Sky starting color
     next_color:
         push cx                  ; Save outer loop counter
-        mov cx, 5
+        mov cx, 40               ; Band size
         mov dx, 320
         mov al, bl
     draw_grad_line:
@@ -223,10 +234,10 @@ mirror_direction db 0
 SKY_COLOR equ 102
 GROUND_COLOR equ 187
 PLATFORM_COLOR equ 70
-DELAY_MS equ 1600
+DELAY_MS equ 160
 
 sprite_data:
-    ; Dude - Frame 1
+    ; Dude - Frame 1 / 32b
     db SKY_COLOR, SKY_COLOR, SKY_COLOR, SKY_COLOR
     db SKY_COLOR, 0x2A, 0x2B, SKY_COLOR
     db 0x2A, 0x5A, 0x0F, SKY_COLOR
@@ -235,7 +246,7 @@ sprite_data:
     db SKY_COLOR, 0x35, 0x34, SKY_COLOR
     db SKY_COLOR, 0x36, 0x36, SKY_COLOR
     db 0x36, SKY_COLOR, 0x37, SKY_COLOR
-    ; Dude - Frame 2
+    ; Dude - Frame 2 / 32b
     db SKY_COLOR, SKY_COLOR, SKY_COLOR, SKY_COLOR
     db SKY_COLOR, 0x2A, 0x2B, SKY_COLOR
     db 0x2A, 0x5A, 0x0F, SKY_COLOR
@@ -244,7 +255,7 @@ sprite_data:
     db SKY_COLOR, 0x34, 0x35, SKY_COLOR
     db SKY_COLOR, 0x36, 0x36, SKY_COLOR
     db SKY_COLOR, 0x36, 0x37, SKY_COLOR
-    ; Dude - Frame 3
+    ; Dude - Frame 3 / 32b
     db SKY_COLOR, 0x2A, 0x2B, SKY_COLOR
     db 0x2A, 0x5A, 0x0F, SKY_COLOR
     db SKY_COLOR, 0x42, SKY_COLOR, SKY_COLOR
@@ -263,10 +274,10 @@ level_data: ;Structure: color, position in buffer, length of the platform
     dw 320*120,75
     dw 320*140+100,120
     dw 320*27+120,60
-    dw 320*120+120, 10
-    dw 320*120+120, 10
-    dw 320*120+120, 10
-    dw 320*120+120, 10
+    dw 320*60+300, 10
+    dw 320*130+200, 100
+    dw 320*140+200, 20
+    dw 320*160+240, 20
     db 0 ; End marker
 
 ; make boodsector

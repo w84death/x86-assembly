@@ -19,7 +19,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Run the resulting .bin file using QEMU
-qemu-system-x86_64 -drive format=raw,file="${filename}.bin"
+qemu-system-i386 -drive format=raw,file="${filename}.bin"
 
 # Check if QEMU exited successfully
 if [ $? -ne 0 ]; then
