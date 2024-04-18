@@ -1,6 +1,8 @@
 [bits 16]
 [org 0x7c00]
 
+BUFFER equ 0x1000
+
 start:
     mov ax, 0x0000    ; Init segments
     mov ds, ax
@@ -8,9 +10,14 @@ start:
     mov es, ax
     mov ax, 13h     ; Init VGA 
     int 10h
+    mov ax, BUFFER
+    mov es, ax
 
+reset:
+    mov word [player_pos], 320*6+160
+ 
 game_loop:
-   
+
     draw_sky:
         xor di,di           ; Reset buffer pos to 0
         mov cx, 10           ; Gradient levels
@@ -62,7 +69,7 @@ game_loop:
         jmp .read_segment   ; Process next segment
     done:
     
-    col_check:
+    collision_check:
         mov bx, SPRITE_HEIGHT
         sub bx, 1
         add ax, 320                   ; check 6px below sprite top pos
@@ -98,11 +105,11 @@ game_loop:
         xor dx, dx              ; Clear DX to prevent errors in division
         div cx                  ; AX now contains quotient, DX contains remainder (player's x-coordinate)
     
-        cmp dx, 0               ; Check if at the left boundary
+        cmp dx, 2               ; Check if at the left boundary
         je  .swap_direction      ; Jump if exactly at the left edge
         cmp dx, 319 - SPRITE_WIDTH            ; Check if at or beyond the right boundary (319 for a 320px wide screen)
         je  .swap_direction     ; Jump if at or beyond the right edge
-        
+       
         .check_run_dir:
             cmp byte [mirror_direction], 0
             je .run_right
@@ -116,6 +123,7 @@ game_loop:
             xor byte [mirror_direction], 1  ; swap direction
             jmp .check_run_dir
         .continue_run:
+        
 
     draw_player:
         mov bx, [current_frame]  ; Load current frame number
@@ -186,6 +194,21 @@ game_loop:
         mov byte [current_frame], 0
         .skip_reset:
 
+    vga_blit:
+        push es
+        push ds
+        mov ax, 0xA000
+        mov bx,BUFFER
+        mov es,ax
+        mov ds,bx
+        mov cx,320*200/2
+        cld
+        xor si,si               ;ds:si = bufferSegment:0 = address of buffer
+        xor di,di               ;es:di = VIDEO_MEMORY_SEGMENT:0 = address of video memory
+        rep movsw
+        pop ds
+        pop es
+
     delay_timer:
         mov ax, [046Ch]
         inc ax
@@ -196,7 +219,7 @@ game_loop:
 jmp game_loop
 
 .data:
-player_pos dw 320*6+160
+player_pos dw ?
 current_frame dw 0
 mirror_direction db 0
 SKY_COLOR equ 82
@@ -229,7 +252,7 @@ sprite_data:
     db 0,55,55,0
     db 0,33,32,0
 
-level_data: ;Structure: color, position in buffer, length of the platform
+level_data: ;Structure: position in buffer, length of the platform // 40b
     dw 320*168, 320
     dw 320*10+10,50 
     dw 320*50+140,75
