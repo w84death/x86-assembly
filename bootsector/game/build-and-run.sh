@@ -26,3 +26,8 @@ if [ $? -ne 0 ]; then
     echo "QEMU execution failed."
     exit 1
 fi
+
+
+# To make a floppy just use this:
+# dd if=game.bin of=floppy.img bs=512 count=1 conv=notrunc
+# then burn the floppy (im using Windows PC for that...)
