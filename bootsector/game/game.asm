@@ -11,31 +11,30 @@ start:
     int 10h
 
     ; Init game
-    call draw_sky
-    call draw_level
+    ; call draw_sky
+    ; call draw_level
 
 game_loop:
     ;call erease_player
-    ;call wait_for_vertical_retrace
+
     call draw_sky
     call draw_level
 
-
     mov word ax, [player_pos]      ; Add x-coordinate
-    add ax, 320*9
+    add ax, 320*6
     cmp byte [mirror_direction], 0  ; Check direction
     jne shift_col_check
-    dec ax                  
+    add ax, 2                 
     jmp after_shift                  
     shift_col_check:
-    add ax, 5
+    add ax, 2
     after_shift:
     mov di, ax              ; Store in DI for ES:DI addressing
     
     mov ah, es:[di]         ; Check if platform
     cmp ah, PLATFORM_COLOR
     je run
-    add word [player_pos], 320  ; Fall 1px down
+    add word [player_pos], 320*2  ; Fall 1px down
     jmp continue_run
 
     run:
@@ -46,8 +45,7 @@ game_loop:
         mov cx, 320             ; Screen width into CX
         xor dx, dx              ; Clear DX to prevent errors in division
         div cx                  ; AX now contains quotient, DX contains remainder (player's x-coordinate)
-        
-        ; Check if the player's x-coordinate (DX) is at or beyond the left or right boundary
+    
         cmp dx, 0               ; Check if at the left boundary
         je  swap_direction      ; Jump if exactly at the left edge
         cmp dx, 315             ; Check if at or beyond the right boundary (319 for a 320px wide screen)
@@ -73,12 +71,10 @@ game_loop:
    
 jmp game_loop
 
-
-
 delay:
     mov al, 0
     mov cx, 0
-    mov dx, 12800
+    mov dx, DELAY_TIME
     mov ah, 86h
     int 15h
     ret
@@ -94,12 +90,12 @@ draw_sky:
     ; rep stosb
 
     xor di,di           ; Reset buffer pos to 0
-    mov cx, 5           ; Gradient levels
+    mov cx, 10           ; Gradient levels
     draw_gradient:
     mov bx, SKY_COLOR    ; Sky starting color
     next_color:
         push cx                  ; Save outer loop counter
-        mov cx, 40               ; Band size
+        mov cx, 20               ; Band size
         mov dx, 320
         mov al, bl
     draw_grad_line:
@@ -113,28 +109,10 @@ draw_sky:
         loop next_color
     ret 
 
-erease_player:
-    mov word ax, [player_pos]     ; Add x-coordinate
-    mov di, ax             ; Store in DI for ES:DI addressing
-    
-    mov cx, 8           ; Erease height 
-    cmp byte [mirror_direction], 0
-    je erease_line
-    add di, 2
-    erease_line:
-        push cx             ; Save loop counter
-        mov cx, 4           ; Erease width
-        mov al, SKY_COLOR   ; Erease color
-        rep stosb           ; Draw line
-        add di, 316         ; 320-width
-        pop cx          ; Restore loop counter
-        loop erease_line
-    ret
-
 draw_player:
     mov bx, [current_frame]  ; Load current frame number
 
-    mov ax, 32             ; Frame offset
+    mov ax, 28             ; Frame offset
     mul bx                 ; AX = 32 * current frame number
     mov si, sprite_data
     add si, ax             ; SI points to the start of the current frame data
@@ -147,13 +125,13 @@ draw_player:
     cmp byte [mirror_direction], 0
     je draw_normal
 
-    ; Draw mirrored sprite
-    mov cx, 8          ; 8 rows
-    add di, 4           ; shift sprite to the right
+  ; Draw mirrored sprite
+    mov cx, SPRITE_HEIGHT
+    add di, SPRITE_WIDTH      ; shift sprite to the right
     draw_mirrored_row:
         push cx
-        mov cx, 4           ; 4 pixels per row
-        lea bx, [si+3]      ; Start from the end of the row in sprite data
+        mov cx, SPRITE_WIDTH           ; 4 pixels per row
+        lea bx, [si+SPRITE_WIDTH-1]      ; Start from the end of the row in sprite data
         push di             ; Save DI before drawing each row
         mirror_pixel_loop:
             lodsb           ; Load byte from SI into AL, decrementing SI
@@ -168,13 +146,13 @@ draw_player:
 
     draw_normal:
     ; Draw the sprite frame normally
-    mov cx, 8              ; 8 rows
+    mov cx, SPRITE_HEIGHT
     draw_sprite_row:
         push cx
-        mov cx, 4           ; 4 pixels per row
+        mov cx, SPRITE_WIDTH
         rep movsb           ; Move sprite row to video memory
         pop cx
-        add di, 316         ; Move DI to the start of the next line (320 - 4)
+        add di, 320 - SPRITE_WIDTH         ; Move DI to the start of the next line
         loop draw_sprite_row
 
     finish_draw:
@@ -228,43 +206,40 @@ done:
 
 .data:
 
-player_pos dw 320*8+160
+player_pos dw 320*6+160
 current_frame dw 0
 mirror_direction db 0
-SKY_COLOR equ 102
+SKY_COLOR equ 82
 GROUND_COLOR equ 187
 PLATFORM_COLOR equ 70
-DELAY_MS equ 160
-
+DELAY_TIME equ 25600
+SPRITE_WIDTH equ 4
+SPRITE_HEIGHT equ 7
 sprite_data:
-    ; Dude - Frame 1 / 32b
-    db SKY_COLOR, SKY_COLOR, SKY_COLOR, SKY_COLOR
-    db SKY_COLOR, 0x2A, 0x2B, SKY_COLOR
-    db 0x2A, 0x5A, 0x0F, SKY_COLOR
-    db SKY_COLOR, 0x42, SKY_COLOR, SKY_COLOR
-    db SKY_COLOR, 0x34, 0x35, SKY_COLOR
-    db SKY_COLOR, 0x35, 0x34, SKY_COLOR
-    db SKY_COLOR, 0x36, 0x36, SKY_COLOR
-    db 0x36, SKY_COLOR, 0x37, SKY_COLOR
-    ; Dude - Frame 2 / 32b
-    db SKY_COLOR, SKY_COLOR, SKY_COLOR, SKY_COLOR
-    db SKY_COLOR, 0x2A, 0x2B, SKY_COLOR
-    db 0x2A, 0x5A, 0x0F, SKY_COLOR
-    db SKY_COLOR, 0x42, SKY_COLOR, SKY_COLOR
-    db SKY_COLOR, 0x34, 0x35, SKY_COLOR
-    db SKY_COLOR, 0x34, 0x35, SKY_COLOR
-    db SKY_COLOR, 0x36, 0x36, SKY_COLOR
-    db SKY_COLOR, 0x36, 0x37, SKY_COLOR
-    ; Dude - Frame 3 / 32b
-    db SKY_COLOR, 0x2A, 0x2B, SKY_COLOR
-    db 0x2A, 0x5A, 0x0F, SKY_COLOR
-    db SKY_COLOR, 0x42, SKY_COLOR, SKY_COLOR
-    db SKY_COLOR, 0x34, 0x35, SKY_COLOR
-    db 0x34, 0x35, 0x35, SKY_COLOR
-    db SKY_COLOR, 0x36, 0x36, SKY_COLOR
-    db SKY_COLOR, 0x36, 0x37, 0x37
-    db SKY_COLOR, 0x36, SKY_COLOR, SKY_COLOR
-    ; Level building sprites
+    ; Girl - Frame 1 / 28b
+    db 0, 0, 0, 0
+    db 0, 42, 42, 0
+    db 42, 90, 15, 0
+    db 0, 88, 0, 0
+    db 0, 59, 83, 0
+    db 0, 59, 34, 0
+    db 33,0,32,0
+    ; Girl - Frame 2 / 28b
+    db 0, 42, 42, 0
+    db 42, 90, 15, 0
+    db 0, 88, 0, 0
+    db 0, 59, 83, 0
+    db 0, 59, 34, 0
+    db 0,55,55,33
+    db 0,32,0,0
+    ; Girl - Frame 3 / 28b
+    db 42, 42, 42, 0
+    db 0, 90, 15, 0
+    db 0, 88, 0, 0
+    db 0, 59, 83, 0
+    db 0, 59, 34, 0
+    db 0,55,55,0
+    db 0,33,32,0
 
 
 level_data: ;Structure: color, position in buffer, length of the platform
@@ -273,7 +248,7 @@ level_data: ;Structure: color, position in buffer, length of the platform
     dw 320*50+140,75
     dw 320*120,75
     dw 320*140+100,120
-    dw 320*27+120,60
+    dw 320*26+120,60
     dw 320*60+300, 10
     dw 320*130+200, 100
     dw 320*140+200, 20
