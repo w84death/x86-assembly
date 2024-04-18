@@ -15,7 +15,16 @@ start:
 
 restart_game:
     mov word [player_pos], 320*6+160
- 
+
+    ; mov ax, [CS:TIMER]
+    ; and ax, 100
+
+    ; cmp ax, 20
+    ; jle game_loop
+
+    ; mov word [platform_size], ax
+    ; add word [platform_shift], ax
+
 game_loop:
 
     draw_sky:
@@ -84,7 +93,7 @@ game_loop:
         add ax, 2                 
         jmp .after_shift                  
         .shift_col_check:
-        sub ax, 2
+        add ax, 2
         .after_shift:
         mov di, ax              ; Store in DI for ES:DI addressing
         mov ah, es:[di]         ; Check if platform
@@ -93,19 +102,7 @@ game_loop:
         add word [player_pos], 320*2  ; Fall 1px down
         jmp run.continue_run
 
-    run:
-        .handle_keyboard:
-            mov ah, 0x01            ; Check if a key has been pressed
-            int 0x16
-            jz .no_kb                ; Jump if no key is in the keyboard buffer
-            mov ah, 0x00            ; Get the key press
-            int 0x16
-            cmp ah, 0x01            ; Check if the scan code is for the [Esc] key
-            je  restart_game
-
-            xor byte [mirror_direction], 1  ; swap direction
-        .no_kb:
-        
+    run:       
         mov ax, [player_pos]    ; Load the player's buffer position into AX
         mov cx, 320             ; Screen width into CX
         xor dx, dx              ; Clear DX to prevent errors in division
@@ -130,12 +127,23 @@ game_loop:
             jmp .check_run_dir
         .continue_run:
         
+    .handle_keyboard:
+        mov ah, 0x01            ; Check if a key has been pressed
+        int 0x16
+        jz .no_kb                ; Jump if no key is in the keyboard buffer
+        mov ah, 0x00            ; Get the key press
+        int 0x16
+        cmp ah, 0x01            ; Check if the scan code is for the [Esc] key
+        je  restart_game
+
+        xor byte [mirror_direction], 1  ; swap direction
+    .no_kb:
 
     draw_player:
         mov bx, [current_frame]  ; Load current frame number
 
         mov ax, 28             ; Frame offset
-        mul bx                 ; AX = 32 * current frame number
+        mul bx                 ; AX = 28 * current frame number
         mov si, sprite_data
         add si, ax             ; SI points to the start of the current frame data
 
@@ -146,11 +154,11 @@ game_loop:
     ; Check mirror direction
         cmp byte [mirror_direction], 0
         je draw_normal
-
+        add di, 4
         mov cx, SPRITE_HEIGHT
         draw_mirrored:
             push cx
-            lea bx, [si+SPRITE_WIDTH-1]
+            ; lea bx, [si+SPRITE_WIDTH-1]
             mov cx, SPRITE_WIDTH
             push di             ; Save DI before drawing each row
             .draw_pixel:
@@ -200,16 +208,15 @@ game_loop:
         mov byte [current_frame], 0
         .skip_reset:
 
-
     vga_blit:
         push es
         push ds
-        mov ax, 0xA000
-        mov bx, BUFFER
+        mov ax, 0xA000  ; VGA memory
+        mov bx, BUFFER  ; Buffer memory
         mov es, ax
         mov ds, bx
-        mov cx, 320*200/2
-        cld
+        mov cx, 32000   ; Half of the buffer
+        ; cld
         xor si, si
         xor di, di
         rep movsw
@@ -217,23 +224,26 @@ game_loop:
         pop es
 
     delay_timer:
-        mov ax, [046Ch]
+        mov ax, [TIMER]
         inc ax
         .wait:
-            cmp [046Ch], ax
+            cmp [TIMER], ax
             jl .wait
 
 jmp game_loop
 
 .data:
-player_pos dw ?
+player_pos dw 0
 current_frame dw 0
 mirror_direction db 0
+platform_size dw 200
+platform_shift dw 0
 SKY_COLOR equ 82
 PLATFORM_COLOR equ 70
 SPRITE_WIDTH equ 4
 SPRITE_HEIGHT equ 7
-DEATH_ROW equ 190
+DEATH_ROW equ 194
+TIMER equ 046Ch
 
 sprite_data:
     ; Girl - Frame 1 / 28b
