@@ -10,13 +10,7 @@ start:
     mov ax, 13h     ; Init VGA 
     int 10h
 
-    ; Init game
-    ; call draw_sky
-    ; call draw_level
-
 game_loop:
-    ;call erease_player
-
     call draw_sky
     call draw_level
 
@@ -65,10 +59,10 @@ game_loop:
         jmp check_run_dir
     continue_run:
         
+    
     call draw_player
     call delay
-    
-   
+
 jmp game_loop
 
 delay:
@@ -80,15 +74,6 @@ delay:
     ret
 
 draw_sky:
-    ; xor di,di
-    ; mov al, SKY_COLOR
-    ; mov cx, 320*170
-    ; rep stosb
-
-    ; mov al, GROUND_COLOR
-    ; mov cx, 320*30
-    ; rep stosb
-
     xor di,di           ; Reset buffer pos to 0
     mov cx, 10           ; Gradient levels
     draw_gradient:
@@ -125,35 +110,51 @@ draw_player:
     cmp byte [mirror_direction], 0
     je draw_normal
 
-  ; Draw mirrored sprite
     mov cx, SPRITE_HEIGHT
-    add di, SPRITE_WIDTH      ; shift sprite to the right
-    draw_mirrored_row:
+    draw_sprite_row_mirrored:
         push cx
-        mov cx, SPRITE_WIDTH           ; 4 pixels per row
-        lea bx, [si+SPRITE_WIDTH-1]      ; Start from the end of the row in sprite data
+        lea bx, [si+SPRITE_WIDTH-1]
+        mov cx, SPRITE_WIDTH
         push di             ; Save DI before drawing each row
-        mirror_pixel_loop:
-            lodsb           ; Load byte from SI into AL, decrementing SI
-            stosb           ; Store byte from AL into DI, incrementing DI
-            add di, -2      ; Move DI back two places (to correct the forward increment from stosb)
-        loop mirror_pixel_loop
+        draw_sprite_pixel_mirrored:
+            push cx
+            lodsb
+            test al, al
+            jz skip_pixel_mirrored
+            stosb
+            jmp continue_pixel_mirrored
+            skip_pixel_mirrored:
+                inc di 
+            continue_pixel_mirrored:
+                add di, -2
+            pop cx
+        loop draw_sprite_pixel_mirrored
         pop di              ; Restore DI from the saved value before drawing each row
-        add di, 320         ; Move DI to the start of the next line
+        add di, 320        ; Move DI to the start of the next line
         pop cx
-        loop draw_mirrored_row
+        loop draw_sprite_row_mirrored
         jmp finish_draw
 
     draw_normal:
-    ; Draw the sprite frame normally
     mov cx, SPRITE_HEIGHT
     draw_sprite_row:
         push cx
         mov cx, SPRITE_WIDTH
-        rep movsb           ; Move sprite row to video memory
-        pop cx
-        add di, 320 - SPRITE_WIDTH         ; Move DI to the start of the next line
-        loop draw_sprite_row
+        draw_sprite_pixel:
+            push cx
+            lodsb
+            test al, al
+            jz skip_pixel
+            stosb
+            jmp continue_pixel
+            skip_pixel:
+                inc di
+            continue_pixel:
+            pop cx
+            loop draw_sprite_pixel
+         pop cx
+         add di, 320 - SPRITE_WIDTH         ; Move DI to the start of the next line
+         loop draw_sprite_row
 
     finish_draw:
         inc byte [current_frame]
@@ -176,6 +177,7 @@ no_kb:
 draw_level:
     lea si, [level_data] ; Point SI to the start of level data
 read_segment:
+    
     lodsw               ; Load pos
     test ax, ax
     jz done             ; If 0, end of data
@@ -201,8 +203,6 @@ read_segment:
         sub di, ax      ; Move line down
         pop cx          ; Restore loop counter
         loop draw_platform
-        
-
     jmp read_segment   ; Process next segment
 done:
     ret                 ; Return from draw_level
