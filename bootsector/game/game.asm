@@ -198,13 +198,13 @@ game_loop:
         push es
         push ds
         mov ax, 0xA000
-        mov bx,BUFFER
-        mov es,ax
-        mov ds,bx
-        mov cx,320*200/2
+        mov bx, BUFFER
+        mov es, ax
+        mov ds, bx
+        mov cx, 320*200/2
         cld
-        xor si,si               ;ds:si = bufferSegment:0 = address of buffer
-        xor di,di               ;es:di = VIDEO_MEMORY_SEGMENT:0 = address of video memory
+        xor si, si
+        xor di, di
         rep movsw
         pop ds
         pop es
