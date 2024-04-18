@@ -183,21 +183,25 @@ read_segment:
     lodsw               ; Load the length into AX
     mov bh, PLATFORM_COLOR
     
-    mov cx, 4           ; Platform height  
+    mov cx, 10           ; Platform height  
     draw_platform:
         push cx         ; Save loop counter
         push ax         ; Save length
+        cmp ax, 2
+        jle skip_draw_line
         mov cx, ax     
         mov al, bh
         add bh, 50
         rep stosb       ; Draw line
-        
-        pop ax        
-        add di, 320
-        sub di, ax      ; Move line down
 
+        skip_draw_line:
+        pop ax  
+        add di, 319       
+        sub ax, 2
+        sub di, ax      ; Move line down
         pop cx          ; Restore loop counter
         loop draw_platform
+        
 
     jmp read_segment   ; Process next segment
 done:
@@ -250,9 +254,9 @@ level_data: ;Structure: color, position in buffer, length of the platform
     dw 320*140+100,120
     dw 320*26+120,60
     dw 320*60+300, 10
-    dw 320*130+200, 100
+    dw 320*130+190, 60
     dw 320*140+200, 20
-    dw 320*160+240, 20
+    dw 320*154+240, 20
     db 0 ; End marker
 
 ; make boodsector
