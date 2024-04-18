@@ -13,7 +13,7 @@ start:
     mov ax, BUFFER
     mov es, ax
 
-reset:
+restart_game:
     mov word [player_pos], 320*6+160
  
 game_loop:
@@ -76,6 +76,9 @@ game_loop:
         mul bx
         add word ax, [player_pos]      ; Add x-coordinate
 
+        cmp ax, 320*DEATH_ROW
+        ja  restart_game 
+
         cmp byte [mirror_direction], 0  ; Check direction
         jne .shift_col_check
         add ax, 2                 
@@ -97,6 +100,9 @@ game_loop:
             jz .no_kb                ; Jump if no key is in the keyboard buffer
             mov ah, 0x00            ; Get the key press
             int 0x16
+            cmp ah, 0x01            ; Check if the scan code is for the [Esc] key
+            je  restart_game
+
             xor byte [mirror_direction], 1  ; swap direction
         .no_kb:
         
@@ -104,7 +110,7 @@ game_loop:
         mov cx, 320             ; Screen width into CX
         xor dx, dx              ; Clear DX to prevent errors in division
         div cx                  ; AX now contains quotient, DX contains remainder (player's x-coordinate)
-    
+
         cmp dx, 2               ; Check if at the left boundary
         je  .swap_direction      ; Jump if exactly at the left edge
         cmp dx, 319 - SPRITE_WIDTH            ; Check if at or beyond the right boundary (319 for a 320px wide screen)
@@ -194,6 +200,7 @@ game_loop:
         mov byte [current_frame], 0
         .skip_reset:
 
+
     vga_blit:
         push es
         push ds
@@ -226,6 +233,8 @@ SKY_COLOR equ 82
 PLATFORM_COLOR equ 70
 SPRITE_WIDTH equ 4
 SPRITE_HEIGHT equ 7
+DEATH_ROW equ 190
+
 sprite_data:
     ; Girl - Frame 1 / 28b
     db 0, 0, 0, 0, 0, 
@@ -253,7 +262,7 @@ sprite_data:
     db 0,33,32,0
 
 level_data: ;Structure: position in buffer, length of the platform // 40b
-    dw 320*168, 320
+    dw 320*168+60, 200
     dw 320*10+10,50 
     dw 320*50+140,75
     dw 320*120,75
