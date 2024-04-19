@@ -134,7 +134,7 @@ game_loop:
 
         cmp byte [mirror_direction], 0  ; Check direction
         jne .shift_col_check
-        sub ax, SPRITE_SIZE/2                 
+        sub ax, SPRITE_SIZE/2             
         jmp .after_shift                  
         .shift_col_check:
         add ax, SPRITE_SIZE/2
@@ -142,13 +142,12 @@ game_loop:
         mov di, ax              ; Store in DI for ES:DI addressing
         mov ah, es:[di]         ; Check if platform
         cmp ah, PLATFORM_COLOR
-        jna run
+        je restart_game
         cmp ah, EXIT_COLOR
-        ja next_level
+        je next_level
         
         add word [player_pos], 320  ; Fall 1px down
-        
-        jmp run.continue_run
+
     run:
         .check_run_dir:
             cmp byte [mirror_direction], 0
@@ -172,7 +171,6 @@ game_loop:
         je  next_level
 
         xor byte [mirror_direction], 1  ; swap direction
-        sub word [player_pos], 320*2
     .no_kb:
 
     draw_player:
@@ -209,7 +207,7 @@ game_loop:
             mov ax, -2
             cmp byte [mirror_direction], 0  ; Check direction
             jne .shifted
-            mov ax, 5
+            mov ax, SPRITE_SIZE/2
             .shifted:
             add di, ax  ; Move position left/right
             mov cx, 4
@@ -248,8 +246,8 @@ exit dw 0
 anim dw 0
 PLAYER_COLOR equ 53
 SKY_COLOR equ 82
-PLATFORM_COLOR equ 71
-EXIT_COLOR equ 101
+PLATFORM_COLOR equ 101
+EXIT_COLOR equ 71
 SPRITE_SIZE equ 12
 DEATH_ROW equ 198
 TIMER equ 046Ch
@@ -257,11 +255,11 @@ PLAYER_START equ 320*6+150
 LEVEL_SIZE equ 12
 
 level_data: ; 12b
-    db 202, 6
-    db 23, 3
-    db 83, 8
-    db 136, 6
-    db 166, 3
+    db 203, 6
+    db 57, 2
+    db 84, 2
+    db 121, 2
+    db 149, 2
     db 0, 0 ; End marker
 level_2: ; 20b
     db 201, 4
