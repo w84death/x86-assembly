@@ -254,29 +254,26 @@ SPRITE_SIZE equ 12
 DEATH_ROW equ 198
 TIMER equ 046Ch
 PLAYER_START equ 320*6+150
-LEVEL_SIZE equ 14
+LEVEL_SIZE equ 12
 
-level_data: ; 20b
+level_data: ; 12b
     db 202, 6
     db 23, 3
     db 83, 8
     db 136, 6
     db 166, 3
     db 0, 0 ; End marker
-    db 0, 0
 level_2: ; 20b
     db 201, 4
     db 23, 2
     db 54, 4
     db 82, 4
-    db 91, 2
     db 134,5
     db 0, 0 ; End marker
 level_3:
     db 200, 2
     db 39, 3
     db 133, 2
-    db 0, 0
     db 0, 0
     db 0, 0
     db 0, 0 ; End marker
