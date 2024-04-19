@@ -94,7 +94,7 @@ game_loop:
             jle .skip_draw_line
             mov cx, ax     
             mov al, bh
-            add bh, 50
+            add bh, 24
             rep stosb       ; Draw line
 
             .skip_draw_line:
@@ -232,8 +232,8 @@ current_level dw 0
 exit dw 0
 PLAYER_COLOR equ 53
 SKY_COLOR equ 82
-PLATFORM_COLOR equ 70
-EXIT_COLOR equ 90
+PLATFORM_COLOR equ 71
+EXIT_COLOR equ 100
 SPRITE_SIZE equ 12
 DEATH_ROW equ 194
 TIMER equ 046Ch
@@ -262,9 +262,9 @@ level_2: ; 20b
     db 169,3
     db 0, 0 ; End marker
 level_3:
-    db 19, 9
-    db 0, 0
-    db 0, 0
+    db 201, 1
+    db 73, 3
+    db 133, 2
     db 0, 0
     db 0, 0
     db 0, 0
