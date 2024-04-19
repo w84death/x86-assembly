@@ -19,11 +19,6 @@ restart_game:
     ; mov ax, [CS:TIMER]
     ; and ax, 100
 
-    ; cmp ax, 20
-    ; jle game_loop
-
-    ; mov word [platform_size], ax
-    ; add word [platform_shift], ax
 
 game_loop:
 
@@ -252,8 +247,6 @@ jmp game_loop
 player_pos dw 0
 current_frame dw 0
 mirror_direction db 0
-platform_size dw 200
-platform_shift dw 0
 SKY_COLOR equ 82
 PLATFORM_COLOR equ 70
 SPRITE_WIDTH equ 4
@@ -261,7 +254,7 @@ SPRITE_HEIGHT equ 7
 DEATH_ROW equ 194
 TIMER equ 046Ch
 
-sprite_data:
+sprite_data: ;84b
     ; Girl - Frame 1 / 28b
     db 0, 0, 0, 0, 0, 
     db 42, 42, 0
@@ -287,7 +280,7 @@ sprite_data:
     db 0,55,55,0
     db 0,33,32,0
 
-level_data:
+level_data: ; 14b
     db 23, 2
     db 54, 4
     db 82, 4
@@ -295,7 +288,8 @@ level_data:
     db 123, 3
     db 132, 2
     db 135,3
-    ; db 161, 0xb
+    db 177,0xb
+    db 199,9
     db 0, 0 ; End marker
 
 ; make boodsector
