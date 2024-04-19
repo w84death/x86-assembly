@@ -104,8 +104,8 @@ game_loop:
 
             .skip_draw_line:
             pop ax  
-            add di, 318       
-            sub ax, 4
+            add di, 319       
+            sub ax, 2
             sub di, ax      ; Move line down
             pop cx          ; Restore loop counter
             loop .draw_platform
@@ -249,7 +249,7 @@ anim dw 0
 PLAYER_COLOR equ 53
 SKY_COLOR equ 82
 PLATFORM_COLOR equ 71
-EXIT_COLOR equ 98
+EXIT_COLOR equ 176
 SPRITE_SIZE equ 12
 DEATH_ROW equ 198
 TIMER equ 046Ch
