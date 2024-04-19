@@ -60,7 +60,14 @@ game_loop:
         mov si, level_data
         add si, ax              ; Move to correct level
     
-    mov byte [exit], 0
+        mov bh, EXIT_COLOR      ; Draw exit platform
+        mov ax, 320*180
+        add ax, [anim]
+        add di, ax
+        mov cx, 5
+        mov ax, 100
+        jmp .draw_platform
+
     .read_segment:
         lodsb               ; Load pos
         test ax, ax
@@ -79,47 +86,25 @@ game_loop:
         lodsb
         movzx ax, al
         imul ax, 20             ; width of platform
-
         mov bh, PLATFORM_COLOR
-        push ax
-            mov ax, [exit]
-            cmp ax, 0
-            jne  .normal_platform
-            mov bh, EXIT_COLOR
-            mov ax, [anim]
-            add di, ax
-            .normal_platform:
-        pop ax
-        
-        mov cx, 8           ; Platform height  
+        mov cx, 5           ; Platform height  
         .draw_platform:
             push cx         ; Save loop counter
             push ax         ; Save length
-            cmp ax, 2
-            jle .skip_draw_line
             mov cx, ax     
             mov al, bh
-            add bh, 24
+            add bh, 1
             rep stosb       ; Draw line
-
-            .skip_draw_line:
             pop ax  
             add di, 319       
             sub ax, 2
             sub di, ax      ; Move line down
             pop cx          ; Restore loop counter
             loop .draw_platform
-
-        inc byte [exit]
-
         jmp .read_segment   ; Process next segment
     done:
-    
-    ; mov bx, [anim]
-    ; cmp bx, 320*12          ; Exit drifted too much
-    ; jl next_frame
-    ; mov word [anim], 0
-    ; next_frame:
+
+    inc word [anim]
     inc word [anim]
 
     collision_check:
@@ -201,18 +186,20 @@ game_loop:
             sub di, ax      ; Move line down 
             pop cx          ; Restore loop counter
             loop .draw_row
-        .drawDir:
-            mov ax, 320*7
-            sub di, ax      ; Move up 4 lines
-            mov ax, -2
-            cmp byte [mirror_direction], 0  ; Check direction
-            jne .shifted
-            mov ax, SPRITE_SIZE/2
-            .shifted:
-            add di, ax  ; Move position left/right
-            mov cx, 4
-            mov al, 128
-            rep stosb 
+        ; .drawDir:
+        ;     mov ax, 320*7
+        ;     sub di, ax      ; Move up 4 lines
+        ;     mov ax, -2
+        ;     cmp byte [mirror_direction], 0  ; Check direction
+        ;     jne .shifted
+        ;     mov ax, SPRITE_SIZE/2
+        ;     .shifted:
+        ;     add di, ax  ; Move position left/right
+        ;     mov cx, 4
+        ;     mov al, 128
+        ;     rep stosb
+        
+
 
     vga_blit:
         push es
@@ -246,37 +233,33 @@ exit dw 0
 anim dw 0
 PLAYER_COLOR equ 53
 SKY_COLOR equ 82
-PLATFORM_COLOR equ 101
-EXIT_COLOR equ 71
+PLATFORM_COLOR equ 39
+EXIT_COLOR equ 53
 SPRITE_SIZE equ 12
 DEATH_ROW equ 198
 TIMER equ 046Ch
 PLAYER_START equ 320*6+150
-LEVEL_SIZE equ 12
+LEVEL_SIZE equ 10
 
 level_data: ; 12b
-    db 203, 6
     db 57, 2
     db 84, 2
     db 121, 2
     db 149, 2
     db 0, 0 ; End marker
 level_2: ; 20b
-    db 201, 4
     db 23, 2
     db 54, 4
     db 82, 4
     db 134,5
     db 0, 0 ; End marker
 level_3:
-    db 200, 2
     db 39, 3
     db 133, 2
     db 0, 0
     db 0, 0
     db 0, 0 ; End marker
 level_4:
-    db 204, 1
     db 39, 1
     db 86, 1
     db 137, 2
