@@ -59,9 +59,9 @@ game_loop:
         mov bx, ax            ; Store x*20 result in BX temporarily
 
         movzx ax, ah          ; Zero-extend AH to AX for multiplication (y value)
-        imul ax, 20           ; AX = y * 20
+        imul ax, 10           ; AX = y * 20
         imul ax, 320          ; AX = y * 20 * 320 (Y offset in a linear frame buffer)
-
+        add ax, 6400
         add ax, bx            ; AX = final offset in the framebuffer
         mov di, ax            ; Move calculated offset into DI
         lodsb
@@ -292,7 +292,11 @@ level_data:
     db 54, 4
     db 82, 4
     db 88, 4
-    db 0,0 ; End marker
+    db 123, 3
+    db 132, 2
+    db 135,3
+    ; db 161, 0xb
+    db 0, 0 ; End marker
 
 ; make boodsector
 times 510 - ($ - $$) db 0  ; Pad remaining bytes to make 510 bytes
