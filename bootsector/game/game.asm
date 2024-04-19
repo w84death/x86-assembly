@@ -50,11 +50,24 @@ game_loop:
     draw_level:
     lea si, [level_data] ; Point SI to the start of level data
     .read_segment:
-        lodsw               ; Load pos
+        lodsb               ; Load pos
         test ax, ax
         jz done             ; If 0, end of data
-        mov di, ax          ; DI now holds the start position
-        lodsw               ; Load the length into AX
+        
+        movzx ax, al          ; Zero-extend AL to AX for multiplication (x value)
+        imul ax, 20           ; AX = x * 20
+        mov bx, ax            ; Store x*20 result in BX temporarily
+
+        movzx ax, ah          ; Zero-extend AH to AX for multiplication (y value)
+        imul ax, 20           ; AX = y * 20
+        imul ax, 320          ; AX = y * 20 * 320 (Y offset in a linear frame buffer)
+
+        add ax, bx            ; AX = final offset in the framebuffer
+        mov di, ax            ; Move calculated offset into DI
+        lodsb
+        movzx ax, al
+        imul ax, 20             ; width of platform
+
         mov bh, PLATFORM_COLOR
         
         mov cx, 10           ; Platform height  
@@ -78,6 +91,7 @@ game_loop:
         jmp .read_segment   ; Process next segment
     done:
     
+    mov cx, 2
     collision_check:
         mov bx, SPRITE_HEIGHT
         sub bx, 1
@@ -99,7 +113,9 @@ game_loop:
         mov ah, es:[di]         ; Check if platform
         cmp ah, PLATFORM_COLOR
         je run
-        add word [player_pos], 320*2  ; Fall 1px down
+        add word [player_pos], 320  ; Fall 1px down
+        ; loop collision_check
+
         jmp run.continue_run
 
     run:       
@@ -271,17 +287,11 @@ sprite_data:
     db 0,55,55,0
     db 0,33,32,0
 
-level_data: ;Structure: position in buffer, length of the platform // 40b
-    dw 320*168+60, 200
-    dw 320*10+10,50 
-    dw 320*50+140,75
-    dw 320*120,75
-    dw 320*140+100,120
-    dw 320*26+120,60
-    dw 320*60+300, 10
-    dw 320*130+190, 60
-    dw 320*140+200, 20
-    dw 320*154+240, 20
+level_data:
+    db 23, 2
+    db 54, 4
+    db 82, 4
+    db 88, 4
     db 0,0 ; End marker
 
 ; make boodsector
