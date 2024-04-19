@@ -10,6 +10,7 @@ start:
     mov es, ax
     mov ax, 13h     ; Init VGA 
     int 10h
+    
     mov ax, BUFFER
     mov es, ax
 
@@ -17,6 +18,7 @@ restart_game:
     mov word [player_pos], PLAYER_START
     mov word [current_level], 0
     mov word [mirror_direction], 0
+    mov word [anim], 0
     jmp game_loop
 
 next_level:
@@ -27,6 +29,7 @@ next_level:
     .inc_level:
         add word [current_level], 1
     mov word [player_pos], PLAYER_START
+    mov word [anim], 0
 
 game_loop:
 
@@ -52,7 +55,7 @@ game_loop:
 
     draw_level:
         mov bx, [current_level]
-        mov ax, 20
+        mov ax, LEVEL_SIZE
         mul bx
         mov si, level_data
         add si, ax              ; Move to correct level
@@ -83,10 +86,12 @@ game_loop:
             cmp ax, 0
             jne  .normal_platform
             mov bh, EXIT_COLOR
+            mov ax, [anim]
+            add di, ax
             .normal_platform:
         pop ax
         
-        mov cx, 10           ; Platform height  
+        mov cx, 8           ; Platform height  
         .draw_platform:
             push cx         ; Save loop counter
             push ax         ; Save length
@@ -99,8 +104,8 @@ game_loop:
 
             .skip_draw_line:
             pop ax  
-            add di, 319       
-            sub ax, 2
+            add di, 318       
+            sub ax, 4
             sub di, ax      ; Move line down
             pop cx          ; Restore loop counter
             loop .draw_platform
@@ -110,6 +115,12 @@ game_loop:
         jmp .read_segment   ; Process next segment
     done:
     
+    ; mov bx, [anim]
+    ; cmp bx, 320*12          ; Exit drifted too much
+    ; jl next_frame
+    ; mov word [anim], 0
+    ; next_frame:
+    inc word [anim]
 
     collision_check:
         push cx
@@ -134,7 +145,10 @@ game_loop:
         jna run
         cmp ah, EXIT_COLOR
         ja next_level
+        
         add word [player_pos], 320  ; Fall 1px down
+        
+        jmp run.continue_run
     run:
         .check_run_dir:
             cmp byte [mirror_direction], 0
@@ -158,6 +172,7 @@ game_loop:
         je  next_level
 
         xor byte [mirror_direction], 1  ; swap direction
+        sub word [player_pos], 320*2
     .no_kb:
 
     draw_player:
@@ -230,59 +245,49 @@ player_pos dw 0
 mirror_direction db 0
 current_level dw 0
 exit dw 0
+anim dw 0
 PLAYER_COLOR equ 53
 SKY_COLOR equ 82
 PLATFORM_COLOR equ 71
-EXIT_COLOR equ 100
+EXIT_COLOR equ 98
 SPRITE_SIZE equ 12
-DEATH_ROW equ 194
+DEATH_ROW equ 198
 TIMER equ 046Ch
-PLAYER_START equ 320*6+160
+PLAYER_START equ 320*6+150
+LEVEL_SIZE equ 14
 
 level_data: ; 20b
-    db 184, 5
+    db 202, 6
     db 23, 3
-    db 83, 11
-    db 160, 7
-    db 137, 7
+    db 83, 8
+    db 136, 6
+    db 166, 3
     db 0, 0 ; End marker
     db 0, 0
-    db 0, 0
-    db 0, 0
-    db 0, 0
 level_2: ; 20b
-    db 203, 3
+    db 201, 4
     db 23, 2
     db 54, 4
     db 82, 4
-    db 88, 4
-    db 123, 3
-    db 135,3
-    db 162,4
-    db 169,3
+    db 91, 2
+    db 134,5
     db 0, 0 ; End marker
 level_3:
-    db 201, 1
-    db 73, 3
+    db 200, 2
+    db 39, 3
     db 133, 2
     db 0, 0
     db 0, 0
     db 0, 0
-    db 0,0
-    db 0,0
-    db 0,0
     db 0, 0 ; End marker
 level_4:
-    db 22, 4
-    db 0, 0
-    db 0, 0
-    db 0, 0
-    db 0, 0
-    db 0, 0
-    db 0,0
-    db 0,0
-    db 0,0
+    db 204, 1
+    db 39, 1
+    db 86, 1
+    db 137, 2
+    db 167, 2
     db 0, 0 ; End marker
+
 ; make boodsector
 times 510 - ($ - $$) db 0  ; Pad remaining bytes to make 510 bytes
 dw 0xAA55                  ; Boot signature at the end of 512 bytes
