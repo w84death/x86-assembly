@@ -12,7 +12,8 @@ SPRITE_SIZE equ 12
 DEATH_ROW equ 198
 TIMER equ 046Ch
 PLAYER_START equ 320*6+150
-LEVEL_SIZE equ 10
+LEVEL_SIZE equ 5
+EXIT_POSITION equ 320*180
 
 ; ======== GRAPHICS INITIALIZATION ========
 start:
@@ -41,7 +42,7 @@ next_level:
     jl .inc_level
         mov word [current_level], 0
     .inc_level:
-        add word [current_level], 1
+        inc word [current_level]
     mov word [player_pos], PLAYER_START
     mov word [anim], 0
 
@@ -76,7 +77,7 @@ game_loop:
         add si, ax              ; Move to correct level
     
         mov bh, EXIT_COLOR      ; Draw exit platform
-        mov ax, 320*180
+        mov ax, EXIT_POSITION
         add ax, [anim]
         add di, ax
         mov cx, 5
@@ -98,8 +99,8 @@ game_loop:
         add ax, 6400
         add ax, bx            ; AX = final offset in the framebuffer
         mov di, ax            ; Move calculated offset into DI
-        lodsb
-        movzx ax, al
+        mov ax, [current_level]
+        inc ax
         imul ax, 20             ; width of platform
         mov bh, PLATFORM_COLOR
         mov cx, 5           ; Platform height  
@@ -108,16 +109,17 @@ game_loop:
             push ax         ; Save length
             mov cx, ax     
             mov al, bh
-            add bh, 1
+            inc bh
             rep stosb       ; Draw line
             pop ax  
             add di, 319       
             sub ax, 2
-            sub di, ax      ; Move line down
+            sub di, ax
             pop cx          ; Restore loop counter
             loop .draw_platform
         jmp .read_segment   ; Process next segment
     done:
+
 
     inc word [anim]
     inc word [anim]
@@ -164,7 +166,7 @@ game_loop:
         mov di, ax             ; Store in DI for ES:DI addressing
 
         mov bh, PLAYER_COLOR
-        mov ax, 1
+        xor ax, ax
         mov cx, SPRITE_SIZE
         .draw_row:
             push cx         ; Save loop counter
@@ -172,7 +174,7 @@ game_loop:
             
             mov cx, ax     
             mov al, bh
-            add bh, 1
+            inc bh
             rep stosb
             pop ax
             cmp ax, SPRITE_SIZE/2
@@ -198,8 +200,6 @@ game_loop:
         int 0x16
         cmp ah, 0x01            ; Check if the scan code is for the [Esc] key
         je  restart_game
-        
-        ; TODO: REMOVE
         cmp ah, 0x1C            ; Check if the scan code is for the [Esc] key
         je  next_level
 
@@ -236,33 +236,32 @@ jmp game_loop
 player_pos dw 0
 mirror_direction db 0
 current_level dw 0
-exit dw 0
 anim dw 0
 
-level_data: ; 12b
-    db 57, 2
-    db 84, 2
-    db 121, 2
-    db 149, 2
-    db 0, 0 ; End marker
-level_2: ; 20b
-    db 23, 2
-    db 54, 4
-    db 82, 4
-    db 134,5
-    db 0, 0 ; End marker
+level_data: ; 5b
+    db 57
+    db 84
+    db 121
+    db 149
+    db 0
+level_2:
+    db 23
+    db 54
+    db 82
+    db 134
+    db 0
 level_3:
-    db 39, 3
-    db 133, 2
-    db 0, 0
-    db 0, 0
-    db 0, 0 ; End marker
+    db 39
+    db 133
+    db 0
+    db 0
+    db 0
 level_4:
-    db 39, 1
-    db 86, 1
-    db 137, 2
-    db 167, 2
-    db 0, 0 ; End marker
+    db 39
+    db 86
+    db 137
+    db 167
+    db 0
     
 ; make boodsector
 times 510 - ($ - $$) db 0  ; Pad remaining bytes to make 510 bytes
