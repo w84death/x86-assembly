@@ -10,7 +10,7 @@ This image size is exactly 512 bytes. Same as the limit of bootsector programs.
 - NASM
 
 ### Online Tools
-- https://copy.sh/v86/ - to run the game in browser (use [main.img](bootsector/floppies/main.img), [simple.img](bootsector/floppies/simple.img) or [girl-animated.img](bootsector/floppies/girl-animated.img) floppy images)
+- https://copy.sh/v86/ - to run the game in browser (use [game1.img](bootsector/floppies/game1.img), [simple.img](bootsector/floppies/simple.img) or [girl-animated.img](bootsector/floppies/girl-animated.img) floppy images)
 - https://hexed.it/ - to examine binary
 
 ### Build & Run
@@ -18,7 +18,9 @@ This image size is exactly 512 bytes. Same as the limit of bootsector programs.
 $ cd bootsector/
 $ ./build-and-run.sh game
 ```
-![Screenshot](bootsector/resources/game-main.png)
+![Screenshot](bootsector/resources/game1-level1.png)
+![Screenshot](bootsector/resources/game1-level2.png)
+![Screenshot](bootsector/resources/game1-level3.png)
 
 #### Game 1 Versions
 I saved few revisions on branches:
