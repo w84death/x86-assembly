@@ -9,9 +9,9 @@ TIMER equ 046Ch
 start:
     mov ax, 0x0000    ; Init segments
     mov ds, ax
-    mov ax, 0xA000
+    mov ax, 0xB800
     mov es, ax
-    mov ax, 13h     ; Init VGA 
+    mov ax, 0x0004    ; Set CGA mode 0x04 (320x200 in 4 colors)
     int 10h
     
     mov ax, BUFFER
@@ -27,22 +27,22 @@ game_loop:
     ; ======== TEST DRAW ========
 
     xor di,di           ; Reset buffer pos to 0
-    mov cx, 10           ; Gradient levels
+    mov cx, 4           ; Gradient levels
     .draw_gradient:
     mov bx, 0    ; Sky starting color
     .next_color:
-        push cx                  ; Save outer loop counter
-        mov cx, 20               ; Band size
-        mov dx, 320
-        mov al, bl
+        push cx
+        mov cx, 20        ; Adjust band size for lower resolution
+        mov dx, 80        ; 320 pixels / 4 pixels per byte = 80 bytes per line
+        mov al, bl  ; Set color for every group of pixels in a byte
     .draw_grad_line:
-        push cx                  ; Save inner loop counter
-        mov cx, dx               ; Set CX to 320 for rep stosb
+        push cx
+        mov cx, dx
         rep stosb
         pop cx
         loop .draw_grad_line
-        pop cx 
-        inc bx                    ; Next color
+        pop cx
+        inc bx
         loop .next_color
 
 
@@ -62,11 +62,11 @@ game_loop:
     blit:
         push es
         push ds
-        mov ax, 0xA000  ; VGA memory
+        mov ax, 0xB800  ; CGA memory
         mov bx, BUFFER  ; Buffer memory
         mov es, ax
         mov ds, bx
-        mov cx, 32000   ; Half of the buffer
+        mov cx, 16000    ; Adjust for 2 pixels per byte format
         xor si, si
         xor di, di
         rep movsw

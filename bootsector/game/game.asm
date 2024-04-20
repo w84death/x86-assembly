@@ -1,8 +1,20 @@
 [bits 16]
 [org 0x7c00]
 
+; ======== CONSTS ========
 BUFFER equ 0x1000
+TIMER equ 046Ch
+PLAYER_COLOR equ 53
+SKY_COLOR equ 82
+PLATFORM_COLOR equ 39
+EXIT_COLOR equ 53
+SPRITE_SIZE equ 12
+DEATH_ROW equ 198
+TIMER equ 046Ch
+PLAYER_START equ 320*6+150
+LEVEL_SIZE equ 10
 
+; ======== GRAPHICS INITIALIZATION ========
 start:
     mov ax, 0x0000    ; Init segments
     mov ds, ax
@@ -14,6 +26,7 @@ start:
     mov ax, BUFFER
     mov es, ax
 
+; ======== GAME RESTART ========
 restart_game:
     mov word [player_pos], PLAYER_START
     mov word [current_level], 0
@@ -21,6 +34,7 @@ restart_game:
     mov word [anim], 0
     jmp game_loop
 
+; ======== NEXT LEVEL ========
 next_level:
     mov word ax, [current_level]
     cmp ax, 3
@@ -31,9 +45,10 @@ next_level:
     mov word [player_pos], PLAYER_START
     mov word [anim], 0
 
+; ======== GAME LOOP  ========
 game_loop:
 
-    draw_sky:
+       draw_sky:
         xor di,di           ; Reset buffer pos to 0
         mov cx, 10           ; Gradient levels
         .draw_gradient:
@@ -107,7 +122,7 @@ game_loop:
     inc word [anim]
     inc word [anim]
 
-    collision_check:
+ collision_check:
         push cx
         mov bx, SPRITE_SIZE
         add ax, 320                   ; check below sprite top pos
@@ -143,20 +158,6 @@ game_loop:
         .run_right:
             inc word [player_pos]
         .continue_run:
-        
-    .handle_keyboard:
-        mov ah, 0x01            ; Check if a key has been pressed
-        int 0x16
-        jz .no_kb                ; Jump if no key is in the keyboard buffer
-        mov ah, 0x00            ; Get the key press
-        int 0x16
-        cmp ah, 0x01            ; Check if the scan code is for the [Esc] key
-        je  restart_game
-        cmp ah, 0x1C            ; Check if the scan code is for the [Esc] key
-        je  next_level
-
-        xor byte [mirror_direction], 1  ; swap direction
-    .no_kb:
 
     draw_player:
         mov word ax, [player_pos]     ; Add x-coordinate
@@ -186,22 +187,27 @@ game_loop:
             sub di, ax      ; Move line down 
             pop cx          ; Restore loop counter
             loop .draw_row
-        ; .drawDir:
-        ;     mov ax, 320*7
-        ;     sub di, ax      ; Move up 4 lines
-        ;     mov ax, -2
-        ;     cmp byte [mirror_direction], 0  ; Check direction
-        ;     jne .shifted
-        ;     mov ax, SPRITE_SIZE/2
-        ;     .shifted:
-        ;     add di, ax  ; Move position left/right
-        ;     mov cx, 4
-        ;     mov al, 128
-        ;     rep stosb
+
+    ; ======== KEYBOARD ========
+
+    .handle_keyboard:
+        mov ah, 0x01            ; Check if a key has been pressed
+        int 0x16
+        jz .no_kb               ; Jump if no key is in the keyboard buffer
+        mov ah, 0x00            ; Get the key press
+        int 0x16
+        cmp ah, 0x01            ; Check if the scan code is for the [Esc] key
+        je  restart_game
         
+        ; TODO: REMOVE
+        cmp ah, 0x1C            ; Check if the scan code is for the [Esc] key
+        je  next_level
 
+        xor byte [mirror_direction], 1  ; swap direction
+    .no_kb:
 
-    vga_blit:
+    ; ======== BLIT ========
+    blit:
         push es
         push ds
         mov ax, 0xA000  ; VGA memory
@@ -209,13 +215,13 @@ game_loop:
         mov es, ax
         mov ds, bx
         mov cx, 32000   ; Half of the buffer
-        ; cld
         xor si, si
         xor di, di
         rep movsw
         pop ds
         pop es
 
+    ; ======== DELAY ========
     delay_timer:
         mov ax, [TIMER]
         inc ax
@@ -225,21 +231,13 @@ game_loop:
 
 jmp game_loop
 
+; ======== DATA ========
 .data:
 player_pos dw 0
 mirror_direction db 0
 current_level dw 0
 exit dw 0
 anim dw 0
-PLAYER_COLOR equ 53
-SKY_COLOR equ 82
-PLATFORM_COLOR equ 39
-EXIT_COLOR equ 53
-SPRITE_SIZE equ 12
-DEATH_ROW equ 198
-TIMER equ 046Ch
-PLAYER_START equ 320*6+150
-LEVEL_SIZE equ 10
 
 level_data: ; 12b
     db 57, 2
@@ -265,7 +263,7 @@ level_4:
     db 137, 2
     db 167, 2
     db 0, 0 ; End marker
-
+    
 ; make boodsector
 times 510 - ($ - $$) db 0  ; Pad remaining bytes to make 510 bytes
 dw 0xAA55                  ; Boot signature at the end of 512 bytes
