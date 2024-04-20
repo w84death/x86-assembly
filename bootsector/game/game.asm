@@ -309,26 +309,26 @@ level_data: ; 5b
     db 85
     db 121
     db 149
-    db 0
+    db 0    ; End of level
 level_2:
     db 56
     db 106
     db 117
     db 184
-    db 0
+    db 0    ; End of level
 level_3:
     db 57
     db 101
     db 168
     db 195
-    db 0
+    db 0    ; End of level
 level_4:
     db 87    
     db 119
     db 129
     db 176
     db 198
-    db 203
+    db 203   ; Continue read positions from P1X 80,50,88...
 
 ; ======== BOOTSECTOR  ========
 
