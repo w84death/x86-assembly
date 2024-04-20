@@ -164,7 +164,7 @@ game_loop:
     draw_player:
         mov word ax, [player_pos]     ; Add x-coordinate
         mov di, ax             ; Store in DI for ES:DI addressing
-
+        push di
         mov bh, PLAYER_COLOR
         xor ax, ax
         mov cx, SPRITE_SIZE
@@ -189,6 +189,18 @@ game_loop:
             sub di, ax      ; Move line down 
             pop cx          ; Restore loop counter
             loop .draw_row
+
+            pop di
+            add di, 320*SPRITE_SIZE/2-1
+            mov al, 15
+            mov cx, 4
+            rep stosb
+            mov al, 0
+            inc cx
+            mov ax, [mirror_direction]
+            sub di, 2
+            sub di, ax
+            rep stosb
 
     ; ======== KEYBOARD ========
 

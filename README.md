@@ -1,6 +1,9 @@
 # x86 Assembly Programs
 
-## Bootsector (512B) / No Operating System Games
+## Bootsector (512b) / No Operating System Games
+![512 bytes image](bootsector/resources/512bytes.png)
+This image size is exactly 512 bytes. Same as the limit of bootsector programs.
+
 
 ### Prequisite for building
 - QEMU (x86_64)
@@ -15,7 +18,7 @@
 $ cd bootsector/
 $ ./build-and-run.sh game
 ```
-![Screenshot](bootsector/game/screenshot.png)
+![Screenshot](bootsector/resources/game1.png)
 
 #### Game 1 Versions
 I saved few revisions on branches:
