@@ -7,13 +7,16 @@ TIMER equ 046Ch
 PLAYER_COLOR equ 53
 SKY_COLOR equ 82
 PLATFORM_COLOR equ 39
-EXIT_COLOR equ 53
+BOAT_COLOR equ 53
+BOAT_POSITION equ 320*187+120
+BOAT_WIDTH equ 80
+BOAT_HEIGHT equ 3
 SPRITE_SIZE equ 12
 DEATH_ROW equ 198
 TIMER equ 046Ch
 PLAYER_START equ 320*6+150
 LEVEL_SIZE equ 5
-EXIT_POSITION equ 320*180
+PLATFORM_HEIGHT equ 6
 
 ; ======== GRAPHICS INITIALIZATION ========
 start:
@@ -32,7 +35,7 @@ restart_game:
     mov word [player_pos], PLAYER_START
     mov word [current_level], 0
     mov word [mirror_direction], 0
-    mov word [anim], 0
+    mov word [boat_anim], 0
     jmp game_loop
 
 ; ======== NEXT LEVEL ========
@@ -44,12 +47,13 @@ next_level:
     .inc_level:
         inc word [current_level]
     mov word [player_pos], PLAYER_START
-    mov word [anim], 0
+    mov word [boat_anim], 0
 
 ; ======== GAME LOOP  ========
 game_loop:
 
-       draw_sky:
+    ; ======== DRAW SKY ========
+    draw_sky:
         xor di,di           ; Reset buffer pos to 0
         mov cx, 10           ; Gradient levels
         .draw_gradient:
@@ -58,6 +62,7 @@ game_loop:
             push cx                  ; Save outer loop counter
             mov cx, 20               ; Band size
             mov dx, 320
+            add bl, 2
             mov al, bl
         .draw_grad_line:
             push cx                  ; Save inner loop counter
@@ -69,22 +74,39 @@ game_loop:
             dec bx
             loop .next_color
 
+    ; ======== DRAW OCEAN ========
+    draw_ocean:
+        sub di, 320*20
+        mov cx, 20
+        mov bl, 52
+        .draw_row:
+            push cx
+            mov cx, 320 
+            xor bl, 4
+            mov al, bl
+            mov dx, 320
+            rep stosb
+        pop cx
+        loop .draw_row
+
+    ; ======== DRAW LEVEL ========
     draw_level:
+        xor di, di
         mov bx, [current_level]
         mov ax, LEVEL_SIZE
         mul bx
         mov si, level_data
         add si, ax              ; Move to correct level
     
-        mov bh, EXIT_COLOR      ; Draw exit platform
-        mov ax, EXIT_POSITION
-        add ax, [anim]
+        mov bh, BOAT_COLOR      ; Draw boat platform
+        mov ax, BOAT_POSITION
+        add ax, [boat_anim]
         add di, ax
-        mov cx, 5
-        mov ax, 100
+        mov cx, BOAT_HEIGHT
+        mov ax, BOAT_WIDTH
         jmp .draw_platform
 
-    .read_segment:
+    .read_next_platform:
         lodsb               ; Load pos
         test ax, ax
         jz done             ; If 0, end of data
@@ -95,15 +117,15 @@ game_loop:
 
         movzx ax, ah          ; Zero-extend AH to AX for multiplication (y value)
         imul ax, 10           ; AX = y * 20
-        imul ax, 320          ; AX = y * 20 * 320 (Y offset in a linear frame buffer)
-        add ax, 6400
+        imul ax, 320          ; AX = y * 20 * 320
+        ; add ax, 6400
         add ax, bx            ; AX = final offset in the framebuffer
         mov di, ax            ; Move calculated offset into DI
         mov ax, [current_level]
         inc ax
         imul ax, 20             ; width of platform
         mov bh, PLATFORM_COLOR
-        mov cx, 5           ; Platform height  
+        mov cx, PLATFORM_HEIGHT           ; Platform height  
         .draw_platform:
             push cx         ; Save loop counter
             push ax         ; Save length
@@ -117,15 +139,30 @@ game_loop:
             sub di, ax
             pop cx          ; Restore loop counter
             loop .draw_platform
-        jmp .read_segment   ; Process next segment
+        jmp .read_next_platform   ; Process next segment
     done:
 
+; ======== ANIMATE BOAT ========
+    animate_boat:
+    cmp byte [boat_direction], 0
+    jnz .sail_left
+    .sail_right:
+        add word [boat_anim], 2
+        jmp .done
+    .sail_left:
+        sub word [boat_anim], 2
+    .done:
+    cmp byte [boat_anim], 80
+    jl .skip_reverse
+    xor byte [boat_direction], 1
+    mov byte [boat_anim], 0
+    
+    .skip_reverse
 
-    inc word [anim]
-    inc word [anim]
 
+; ======== COLLISION CHECKING ========
  collision_check:
-        push cx
+        
         mov bx, SPRITE_SIZE
         add ax, 320                   ; check below sprite top pos
         mul bx
@@ -145,11 +182,11 @@ game_loop:
         mov ah, es:[di]         ; Check if platform
         cmp ah, PLATFORM_COLOR
         je restart_game
-        cmp ah, EXIT_COLOR
+        cmp ah, BOAT_COLOR
         je next_level
         
         add word [player_pos], 320  ; Fall 1px down
-
+        
     run:
         .check_run_dir:
             cmp byte [mirror_direction], 0
@@ -161,11 +198,12 @@ game_loop:
             inc word [player_pos]
         .continue_run:
 
+    ; ======== DRAW PLAYER ========
     draw_player:
         mov word ax, [player_pos]     ; Add x-coordinate
         mov di, ax             ; Store in DI for ES:DI addressing
         push di
-        mov bh, PLAYER_COLOR
+        mov bh, 30
         xor ax, ax
         mov cx, SPRITE_SIZE
         .draw_row:
@@ -174,33 +212,34 @@ game_loop:
             
             mov cx, ax     
             mov al, bh
-            inc bh
             rep stosb
             pop ax
             cmp ax, SPRITE_SIZE/2
             jge .skip_enlarge
             add di, 321       
             add ax, 2
-            
             jmp .finish_row
             .skip_enlarge:
+            dec bh
             add di, 320
             .finish_row:
             sub di, ax      ; Move line down 
             pop cx          ; Restore loop counter
             loop .draw_row
 
-            pop di
-            add di, 320*SPRITE_SIZE/2-1
-            mov al, 15
-            mov cx, 4
-            rep stosb
-            mov al, 0
-            inc cx
-            mov ax, [mirror_direction]
-            sub di, 2
-            sub di, ax
-            rep stosb
+            ; .eyes:
+            ;     pop di
+            ;     add di, 320*SPRITE_SIZE/2-2
+            ;     mov al, 15
+            ;     push cx
+            ;     mov cx, 4
+            ;     rep stosb
+                ; xor di, 2
+                ; mov al, 15
+                ; inc cx
+                ; sub di, 3
+                ; mov cx, 2
+                ; rep stosb
 
     ; ======== KEYBOARD ========
 
@@ -208,14 +247,16 @@ game_loop:
         mov ah, 0x01            ; Check if a key has been pressed
         int 0x16
         jz .no_kb               ; Jump if no key is in the keyboard buffer
-        mov ah, 0x00            ; Get the key press
+        xor ax,ax            ; Get the key press
         int 0x16
         cmp ah, 0x01            ; Check if the scan code is for the [Esc] key
         je  restart_game
         cmp ah, 0x1C            ; Check if the scan code is for the [Esc] key
         je  next_level
 
+        sub word [player_pos], 320
         xor byte [mirror_direction], 1  ; swap direction
+
     .no_kb:
 
     ; ======== BLIT ========
@@ -248,7 +289,8 @@ jmp game_loop
 player_pos dw 0
 mirror_direction db 0
 current_level dw 0
-anim dw 0
+boat_anim dw 0
+boat_direction db 0
 
 ; ======== LEVELS ========
 level_data: ; 5b
