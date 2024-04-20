@@ -18,11 +18,14 @@ This image size is exactly 512 bytes. Same as the limit of bootsector programs.
 $ cd bootsector/
 $ ./build-and-run.sh game
 ```
-![Screenshot](bootsector/resources/game1.png)
+![Screenshot](bootsector/resources/game-main.png)
 
 #### Game 1 Versions
 I saved few revisions on branches:
-- master (current bleeding edge)
-- game-1-simple (simple platformer)
-- girl-animated-512b (with animated sprites)
-- coins (coins detection and collection)
+- master - current bleeding edge
+- simple - a simple platformer with 4 levels
+- girl-animated - 3 frame animated sprite and 1 level
+- coins - coins detection and collection
+
+![Screenshot](bootsector/resources/simple.png)
+![Screenshot](bootsector/resources/girl-animated.png)
