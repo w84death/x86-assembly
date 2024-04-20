@@ -18,9 +18,13 @@ This image size is exactly 512 bytes. Same as the limit of bootsector programs.
 $ cd bootsector/
 $ ./build-and-run.sh game
 ```
-![Screenshot](bootsector/resources/game1-level1.png)
-![Screenshot](bootsector/resources/game1-level2.png)
-![Screenshot](bootsector/resources/game1-level3.png)
+![Game 1 Level 1](bootsector/resources/game1-level1.png)
+![Game 1 Level 2](bootsector/resources/game1-level2.png)
+![Game 1 Level 3](bootsector/resources/game1-level3.png)
+![Game 1 Level 4](bootsector/resources/game1-level4.png)
+
+This is the whole game.
+![Game 1 Hexdump](bootsector/resources/game1-hexdump.png)
 
 #### Game 1 Versions
 I saved few revisions on branches:
