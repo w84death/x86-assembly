@@ -18,8 +18,12 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+dd if=${filename}/${filename}.bin of=floppy.img bs=512 count=1 conv=notrunc
+dd if=${filename}/${filename}.second.bin of=floppy.img bs=512 seek=1 count=1 conv=notrunc
+qemu-system-i386 -fda floppy.img
 # Run the resulting .bin file using QEMU
-qemu-system-i386 -drive format=raw,file="${filename}/${filename}.bin"
+# qemu-system-i386 -drive format=raw,file="${filename}/${filename}.bin"
+
 
 # Check if QEMU exited successfully
 if [ $? -ne 0 ]; then
