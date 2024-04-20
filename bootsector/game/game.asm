@@ -38,7 +38,7 @@ start:
 restart_game:
     mov word [player_pos], PLAYER_START
     mov word [current_level], 0
-    mov word [mirror_direction], 0
+    xor word [mirror_direction], 1
     mov word [boat_anim], 0
     mov byte [sky], SKY_COLOR
     jmp game_loop
@@ -323,12 +323,13 @@ level_3:
     db 195
     db 0
 level_4:
-    db 81
-    db 87
+    db 87    
+    db 119
+    db 129
     db 176
     db 198
     db 203
-    
+
 ; ======== BOOTSECTOR  ========
 
 times 506 - ($ - $$) db 0  ; Pad remaining bytes
