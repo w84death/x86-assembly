@@ -10,8 +10,8 @@ This image size is exactly 512 bytes. Same as the limit of bootsector programs.
 - NASM
 
 ### Online Tools
-- https://copy.sh/v86/ - to run the game in browser (use [main.img](bootsector/floppies/main.img) or [girl-animated.img](bootsector/floppies/girl-animated.img))
-- https://hexed.it/ - to examine code
+- https://copy.sh/v86/ - to run the game in browser (use [main.img](bootsector/floppies/main.img) or [girl-animated.img](bootsector/floppies/girl-animated.img) floppy images)
+- https://hexed.it/ - to examine binary
 
 ### Build & Run
 ```
