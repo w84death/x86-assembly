@@ -269,6 +269,3 @@ level_4:
 ; make boodsector
 times 510 - ($ - $$) db 0  ; Pad remaining bytes to make 510 bytes
 dw 0xAA55                  ; Boot signature at the end of 512 bytes
-
-; make floppy
-; times 1474560 - ($ - $$) db 0
