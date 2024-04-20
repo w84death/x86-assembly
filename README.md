@@ -1,7 +1,7 @@
 # x86 Assembly Programs
 
 ## Bootsector (512b) / No Operating System Games
-![512 bytes image](bootsector/resources/512bytes.png)
+![512 bytes image](bootsector/resources/512bytes.gif)
 This image size is exactly 512 bytes. Same as the limit of bootsector programs.
 
 
