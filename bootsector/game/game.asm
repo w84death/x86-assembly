@@ -238,6 +238,7 @@ mirror_direction db 0
 current_level dw 0
 anim dw 0
 
+; ======== LEVELS ========
 level_data: ; 5b
     db 57
     db 84
@@ -263,6 +264,7 @@ level_4:
     db 167
     db 0
     
-; make boodsector
-times 510 - ($ - $$) db 0  ; Pad remaining bytes to make 510 bytes
+; ======== BOOTSECTOR  ========
+times 506 - ($ - $$) db 0  ; Pad remaining bytes
+p1x db 'P1X', 0            ; P1X signature
 dw 0xAA55                  ; Boot signature at the end of 512 bytes
