@@ -10,7 +10,7 @@ fi
 filename=$1
 
 # Assemble the .asm file to .bin using NASM
-nasm -f bin "${filename}.asm" -o "${filename}.bin"
+nasm -f bin "${filename}/${filename}.asm" -o "${filename}/${filename}.bin"
 
 # Check if NASM succeeded
 if [ $? -ne 0 ]; then
@@ -19,7 +19,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Run the resulting .bin file using QEMU
-qemu-system-i386 -drive format=raw,file="${filename}.bin"
+qemu-system-i386 -drive format=raw,file="${filename}/${filename}.bin"
 
 # Check if QEMU exited successfully
 if [ $? -ne 0 ]; then
