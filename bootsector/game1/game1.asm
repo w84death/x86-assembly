@@ -1,3 +1,7 @@
+; GAME 1 - Unnamed/TBA
+; by Krzysztof Krystian Jankowski ^ P1X
+;
+
 [bits 16]
 [org 0x7c00]
 
