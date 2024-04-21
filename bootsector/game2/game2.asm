@@ -1,3 +1,7 @@
+; GAME 2 - Ganja Farmer in Boot Sector!
+; by Krzysztof Krystian Jankowski ^ P1X
+;
+
 [bits 16]
 [org 0x7c00]
 
@@ -55,7 +59,9 @@ game_loop:
     ; ======== DRAWING SPRITES ========
 
 
-mov word [sprite_pos], 320*100+160
+mov ax,word [sprite_pos]
+push ax                     ; Save initial sprite position
+
 mov bx, 0               ; Sprite id
 call draw_sprite
 
@@ -71,6 +77,8 @@ add word [sprite_pos], 10
 mov bx, 2              ; Sprite id
 call draw_sprite
 
+pop ax
+mov word [sprite_pos], ax   ; Load initial sprite position
 
 
 
@@ -96,7 +104,7 @@ call draw_sprite
         ; REMOVE ME
         ; cmp ah, 0x01            ; Check if the scan code is for the [Esc] key
         ; je  restart_game
-        ; cmp ah, 0x1C            ; Check if the scan code is for the [Esc] key
+        ; cmp ah, 0x1C            ; Check if the scan code is for the [Enter] key
         ; je  next_level
         ; /REMOVE ME
 
@@ -133,28 +141,18 @@ jmp game_loop
 ; ======== PROCEDURES ========
 
 draw_sprite:
-
-    ; mov ax, 4               ; Sprite offset (assuming 4 bytes per sprite)
-    ; mul bx                  ; AX = 4 * sprite number
-    ; mov si, sprites
-    ; add si, ax              ; SI points to the start of the sprite data
-
-    ; Calculate the starting address in video memory
     mov ax, [sprite_pos]    ; Load sprite position (assuming it's a byte offset)
     mov di, ax              ; Store in DI for ES:DI addressing
     mov cx, SPRITE_HEIGHT               ; Number of rows (each byte is a row in this example)
     mov byte [pixel_mask], 10000000b
 .draw_row:
     push cx                 ; Save CX (rows left)
-    
     mov ax, 4               ; Sprite offset (assuming 4 bytes per sprite)
     mul bx                  ; AX = 4 * sprite number
     mov si, sprites
     add si, ax              ; SI points to the start of the sprite data
-    
     mov cx, SPRITE_WIDTH              ; rows
     mov ah, 0               ; Clear AH to use it for bit testing
-    
 .read_pixel:
     lodsb                   ; Load byte into AL and increment SI
     and al, [pixel_mask]      ; Test the leftmost bit
@@ -178,12 +176,10 @@ ret
 .data:
 sprite_pos dw 320*100+160   ; Middle of the screen
 pixel_mask db 10000000b
+level_data dw 0xFF
 
 sprites:
-    db 11010100b    ; D4
-    db 00111111b    ; 7F
-    db 01001100b    ; 4C
-    db 00010000b    ; 10
+    db 0xD4, 0x7F, 0x4C, 0x10   ; Weed
 
     db 11111111b    ; FF
     db 11111111b    ; FF
