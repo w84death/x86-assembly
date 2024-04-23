@@ -13,7 +13,8 @@ SCREEN_WIDTH equ 320
 SCREEN_HEIGHT equ 200
 SPRITE_WIDTH equ 5
 SPRITE_HEIGHT equ 8
-
+BULLETS equ 0FA00h
+MAX_BULLETS equ 24
 COLOR_WEED equ 72
 COLOR_GROUND equ 42
 COLOR_GRASS equ 43
@@ -64,13 +65,11 @@ draw_bg:
     .draw_line:
                             ; Decide on start color
     mov bx, COLOR_SKY       ; Set color to sky
-    cmp cx, 75              ; Check vertical postion
-    jge .continue           ; Not yet, continue sky
-    mov bx, COLOR_GRASS     ; Else it's grass
-    ; cmp cx, 20              ; Check ground
-    ; jge .continue           ; Not yet, continue grass
-    ; mov bx, COLOR_GROUND    ; Else it's ground
-    .continue:
+    ; cmp cx, 75              ; Check vertical postion
+    ; jge .continue           ; Not yet, continue sky
+    ; mov bx, COLOR_GRASS     ; Else it's grass
+
+    ; .continue:
                             ; Gradient
     mov ax, cx              ; Copy line number to AX
     and ax, 0xFF            ; Clear all but 0xFF
@@ -151,29 +150,6 @@ draw_field:
     mov byte [sprite_color], COLOR_DUDE
     call draw_sprite
 
-
-    ; mov byte al, [player_pos]
-
-    ; draw_bus:
-    ; mov cx, 3               ; 3 sprites
-    ; mov bx, SPRITE_BUS    ; First sprite
-    ; xor ax, ax              ; Clear AX
-    ; draw_bus_sprite:
-    ;     push cx             ; Save loop counter
-    ;     push ax             ; Save shift
-    ;     mov word cx, 320*180+80
-    ;     add cl, [player_pos]
-    ;     add cx, 320*8-5
-    ;     mov word [sprite_pos], cx      ; Position
-    ;     add word [sprite_pos], ax           ; Add shift
-    ;     mov byte [sprite_color], COLOR_BUS  ; Color
-    ;     call draw_sprite                    ; Send colors to frame buffer
-    ;     inc bx              ; Change to next sprite
-    ;     pop ax              ; Get shift
-    ;     add ax, 5           ; Move 5px (for next sprite)
-    ;     pop cx              ; Load loop counter
-    ;     loop draw_bus_sprite
-
     xor ax,ax
     mov ax, [enemy_pos]
     push ax
@@ -210,8 +186,8 @@ draw_field:
     mov word [enemy_pos], ax
 
 xor ax,ax
-mov si, bullets
-mov cx, 6
+mov si, BULLETS
+mov cx, MAX_BULLETS
 draw_bullets:
 push cx
     lodsb
@@ -221,9 +197,8 @@ push cx
     mov di, ax
     add di, 80
     pop ax
-    cmp ax, 2
-    jle .skip
-
+    cmp al, 2
+    jl .skip
     ; reduse bullets life
     dec byte [si-1]
     dec byte [si-1]
@@ -236,16 +211,28 @@ push cx
     jmp .next
     .skip:
     
-    mov byte [si-1], 178
-    mov byte al, [player_pos]
-    mov byte [si], al
-    
     inc si
-    ; spawn new bullet
-    
+ 
     .next:
 pop cx
 loop draw_bullets
+
+mov si, BULLETS
+mov cx, MAX_BULLETS
+shoot_bullet:
+push cx
+    lodsb
+    cmp ax, 1
+    jg .done
+    xor ax, ax
+    mov byte al, 178
+    stosb
+    mov byte al, [player_pos]
+    stosb
+    .next:
+pop cx
+loop shoot_bullet
+.done:
 
     ; ======== KEYBOARD ========
 
@@ -345,14 +332,6 @@ level_data dw 1111111111111111b
 sprite_pos dw 0   ; Temporary sprite position
 enemy_pos dw 320*10
 
-; ======== BULLETS ========
-bullets:
-db 0,80
-db 5,80
-db 10,80
-db 80,80
-db 85,80
-db 90,80
 
 sprites:
 db 00101000b    ; Weed
@@ -384,22 +363,6 @@ db 00000000b
 db 00000000b
 db 00000000b
 db 00000000b
-
-; db 01111110b    ; Zjarobus
-; db 01011110b    
-; db 01011101b
-; db 01011101b
-; db 01111110b
-; db 01111110b    
-; db 01011110b    ; Middle
-; db 01011110b
-; db 01011110b
-; db 01111110b    
-; db 01001110b    ; Front
-; db 01001101b
-; db 00101101b
-; db 00011110b
-; db 00000110b
 
 db 00011100b    ; Heli
 db 10001000b
