@@ -185,7 +185,7 @@ game_loop:
         sub di, SPRITE_SIZE/2
         mov cx, SPRITE_SIZE
         .chk:
-            mov ah, es:[di]             ; Check if platform
+            mov ah, [es:di]             ; Check if platform
             cmp ah, PLATFORM_COLOR
             je restart_game
             cmp ah, BOAT_COLOR

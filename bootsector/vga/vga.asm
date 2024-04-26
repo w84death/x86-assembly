@@ -7,15 +7,13 @@ TIMER equ 046Ch
 
 ; ======== GRAPHICS INITIALIZATION ========
 start:
-    mov ax, 0x0000    ; Init segments
-    mov ds, ax
-    mov ax, 0xA000
-    mov es, ax
+    push 0x0000    ; Init segments
+    pop es
     mov ax, 13h     ; Init VGA 
     int 10h
     
-    mov ax, BUFFER
-    mov es, ax
+    push BUFFER
+    pop es
 
 ; ======== GAME RESTART ========
 restart_game:

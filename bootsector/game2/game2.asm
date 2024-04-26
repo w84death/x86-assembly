@@ -1,20 +1,29 @@
-; GAME 2 - Ganja Farmer in Boot Sector!
-; by Krzysztof Krystian Jankowski ^ P1X
-;
-
 [bits 16]
 [org 0x7c00]
+BUFFER equ 0x1000       ; 64000
+MEM_BASE equ 0x7e00
+LEVEL_DATA equ MEM_BASE   ; 2 
+PIXEL_MASK equ MEM_BASE+2   ; 2
+PLAYER_POS equ MEM_BASE+4   ; 2
+SPRITE_COLOR equ MEM_BASE+6 ; 2
+SPRITE_POS equ MEM_BASE+8  ; 2
+PLAYER_DIR equ MEM_BASE+10 ; 2
+
+BULLETS equ MEM_BASE+12      ; 64
+
 
 ; ======== SETTINGS ========
 
-BUFFER equ 0x1000
+
 TIMER equ 046Ch
 SCREEN_WIDTH equ 320
 SCREEN_HEIGHT equ 200
+
 SPRITE_WIDTH equ 5
 SPRITE_HEIGHT equ 8
-BULLETS equ 0FA00h
-MAX_BULLETS equ 24
+
+MAX_BULLETS equ 64
+
 COLOR_WEED equ 72
 COLOR_GROUND equ 42
 COLOR_GRASS equ 43
@@ -51,6 +60,10 @@ start:
     mov ax, BUFFER
     mov es, ax
 
+game_reset:
+mov word [LEVEL_DATA], 0xFFFF
+mov word [PIXEL_MASK], 0x8000
+mov word [PLAYER_POS], 320*180+160
 
 ; ======== GAME LOOP  ========
 
@@ -88,152 +101,117 @@ draw_bg:
     
 ; Draw weed field
 draw_field:
-    xor ax,ax
-    mov word [sprite_pos],  FIELD_POS
-    mov di, ax
-    mov si, level_data
-    lodsw       ; Load level data
-    mov dx,ax   ; Save in DX
-    mov word [pixel_mask], 1000000000000000b
+    mov word [SPRITE_POS], 320*160+80
+    mov word [PIXEL_MASK], 0x8000   ; 16 positions
     mov cx, 16  ; Level size
     .column:
         push cx
-            
+   
+        mov dx, [LEVEL_DATA]
         mov ax, dx                ; Load byte into AL and increment SI
-        and ax, [pixel_mask]      ; Test the leftmost bit
-        cmp ax, [pixel_mask]
-        jnz .dead_plant           ; 0 - plant alive, 1 - plant dead
-        mov bx, SPRITE_WEED
-        jmp .draw
+        and ax, [PIXEL_MASK]      ; Test the leftmost bit
+        cmp ax, [PIXEL_MASK]
+            jnz .dead_plant           ; 0 - plant alive, 1 - plant dead
+            mov bx, SPRITE_WEED
+            jmp .draw    
         .dead_plant:
-        mov bx, SPRITE_DEAD_WEED
+            mov bx, SPRITE_DEAD_WEED
         .draw:
-        add word [sprite_pos], 10
-        mov byte [sprite_color], COLOR_WEED
-        push dx     ; Save level data
+        mov byte [SPRITE_COLOR], COLOR_WEED
         call draw_sprite
-        pop dx      ; Load level data
-        shr word [pixel_mask], 1
+        add word [SPRITE_POS], 10
+        shr word [PIXEL_MASK], 1
+        
         pop cx
         loop .column
         
    
     move_player:
 
-    cmp byte [player_dir], 0
+    cmp byte [PLAYER_DIR], 0
     je .move_right
-        dec byte [player_pos]
-        dec byte [player_pos]
+        dec word [PLAYER_POS]
+        dec word [PLAYER_POS]
         ; add byte [player_pos], 4
     jmp .done
     .move_right:
-        inc byte [player_pos]
-        inc byte [player_pos]
+        inc byte [PLAYER_POS]
+        inc byte [PLAYER_POS]
         ; sub byte [player_pos], 4
     .done:
 
 
-    cmp byte [player_pos], 0x01
+    cmp byte [PLAYER_POS], 80
     jge .continue
-    cmp byte [player_pos], 0xA8
+    cmp byte [PLAYER_POS], 240
     jle .continue
     
-    xor byte [player_dir], 1
+    xor byte [PLAYER_DIR], 1
     
     .continue:
 
     draw_player:
-    mov ax, 320*180+80
-    add al, [player_pos]
-    mov word [sprite_pos], ax
+    mov ax, [PLAYER_POS]
+    mov word [SPRITE_POS], ax
     mov bx, SPRITE_DUDE
-    mov byte [sprite_color], COLOR_DUDE
+    mov byte [SPRITE_COLOR], COLOR_DUDE
     call draw_sprite
 
-    xor ax,ax
-    mov ax, [enemy_pos]
-    push ax
-
-    mov cx, 4
-    draw_enemy:
-        push cx
+    
+;     mov cx, 4
+;     draw_enemy:
+;         push cx
         
-        draw_heli:    
-        mov cx, 2               ; 2 sprites
-        mov bx, SPRITE_HELI     ; First sprite
-        xor ax, ax              ; Clear AX
-        draw_heli_sprite:
-            push cx             ; Save loop counter
-            push ax             ; Save shift
-            mov word cx, [enemy_pos]
-            mov word [sprite_pos], cx           ; Position
-            add word [sprite_pos], ax           ; Add shift
-            mov byte [sprite_color], COLOR_HELI ; Color
-            call draw_sprite                    ; Send colors to frame buffer
-            inc bx              ; Change to next sprite
-            pop ax              ; Get shift
-            add ax, 5           ; Move 5px (for next sprite)
-            pop cx              ; Load loop counter
-            loop draw_heli_sprite
+;         draw_heli:    
+;         mov cx, 2               ; 2 sprites
+;         mov bx, SPRITE_HELI     ; First sprite
+;         xor ax, ax              ; Clear AX
+;         draw_heli_sprite:
+;             push cx             ; Save loop counter
+;             push ax             ; Save shift
+;             mov word cx, 320*10
+;             mov word [SPRITE_POS], cx           ; Position
+;             add word [SPRITE_POS], ax           ; Add shift
+;             mov byte [SPRITE_COLOR], COLOR_HELI ; Color
+;             call draw_sprite                    ; Send colors to frame buffer
+;             inc bx              ; Change to next sprite
+;             pop ax              ; Get shift
+;             add ax, 5           ; Move 5px (for next sprite)
+;             pop cx              ; Load loop counter
+;             loop draw_heli_sprite
 
-        add byte [enemy_pos], 40
+;         pop cx
+;         loop draw_enemy
 
-        pop cx
-        loop draw_enemy
 
-    pop ax
-    inc ax
-    mov word [enemy_pos], ax
-
-xor ax,ax
 mov si, BULLETS
 mov cx, MAX_BULLETS
 draw_bullets:
 push cx
-    lodsb
-    push ax
-    mov bx, 320
-    imul ax,bx
+    lodsw 
+
+    cmp ax, 320
+    ja .next
+        mov ax, [PLAYER_POS]
+        mov word [si-2], ax
+        jmp .done
+    .next:
+
+    sub ax, 320
+    mov word [si-2], ax
+
+    push si
+    push di
+    mov si, BUFFER
     mov di, ax
-    add di, 80
-    pop ax
-    cmp al, 2
-    jl .skip
-    ; reduse bullets life
-    dec byte [si-1]
-    dec byte [si-1]
-    
-    lodsb 
-    add di, ax
-    
     xor ax,ax
     mov [es:di], ax         ; Write back to video memory
-    jmp .next
-    .skip:
+    pop di
+    pop si
     
-    inc si
- 
-    .next:
 pop cx
 loop draw_bullets
-
-mov si, BULLETS
-mov cx, MAX_BULLETS
-shoot_bullet:
-push cx
-    lodsb
-    cmp ax, 1
-    jg .done
-    xor ax, ax
-    mov byte al, 178
-    stosb
-    mov byte al, [player_pos]
-    stosb
-    .next:
-pop cx
-loop shoot_bullet
 .done:
-
     ; ======== KEYBOARD ========
 
     handle_keyboard:
@@ -246,13 +224,14 @@ loop shoot_bullet
         cmp ah, 0x4B    ; Left
         jne  .test_right
         ; shl word [player_slot], 1
-        mov byte [player_dir], 1
+        mov byte [PLAYER_DIR], 1
         .test_right:
         cmp ah, 0x4D    ; Right
         jne .no_move
         ; shr word [player_slot], 1
-        mov byte [player_dir], 0
+        mov byte [PLAYER_DIR], 0
         .no_move:
+
 
 
     ; ======== BLIT ========
@@ -285,16 +264,16 @@ jmp game_loop
 ; ======== PROCEDURES ========
 
 draw_sprite:
-    mov ax, [sprite_pos]    ; Load sprite position (assuming it's a byte offset)
+    mov ax, [SPRITE_POS]    ; Load sprite position (assuming it's a byte offset)
     mov di, ax              ; Store in DI for ES:DI addressing
     mov cx, SPRITE_HEIGHT               ; Number of rows (each byte is a row in this example)
-    mov byte [pixel_mask], 10000000b
+    mov byte [PIXEL_MASK], 0x80 ; 8 positions
    
 .draw_row:
     push cx                 ; Save CX (rows left)
     cmp cx, 5
     jge .last_color
-    dec byte [sprite_color]
+    dec byte [SPRITE_COLOR]
     .last_color:
     
     mov ax, SPRITE_WIDTH               ; Sprite offset (assuming 4 bytes per sprite)
@@ -305,33 +284,23 @@ draw_sprite:
     mov ah, 0               ; Clear AH to use it for bit testing
 .read_pixel:
     lodsb                   ; Load byte into AL and increment SI
-    and al, [pixel_mask]      ; Test the leftmost bit
-    cmp al, [pixel_mask]
+    and al, [PIXEL_MASK]      ; Test the leftmost bit
+    cmp al, [PIXEL_MASK]
     jnz .next_pixel          ; If the bit is 0, skip drawing
 .draw_pixel:
     xor ax,ax
-    mov byte al, [sprite_color]    ; Apply XOR with sprite color to AX
+    mov byte al, [SPRITE_COLOR]    ; Apply XOR with sprite color to AX
     mov [es:di], ax         ; Write back to video memory
 .next_pixel:
     inc di                  ; Move to next pixel in the row
     loop .read_pixel        ; Repeat for each bit in the byte
-    shr byte [pixel_mask], 1 ; Shift left to test the next bit
+    shr byte [PIXEL_MASK], 1 ; Shift left to test the next bit
     add di, 320 - SPRITE_WIDTH         ; Move DI to the start of the next line (assuming screen width is 320 pixels)
     pop cx                  ; Restore CX (rows left)
     loop .draw_row          ; Process next row
 ret
 
-; ======== DATA ========
-
-.data:
-player_pos db 0x50
-player_dir db 0
-sprite_color db 0 ; Temporary sprite color
-pixel_mask db 0,0 ; Mask for testing binary data
-level_data dw 1111111111111111b
-sprite_pos dw 0   ; Temporary sprite position
-enemy_pos dw 320*10
-
+; ======== SPRITES ========
 
 sprites:
 db 00101000b    ; Weed
@@ -377,6 +346,6 @@ db 10000000b
 
 ; ======== BOOTSECTOR  ========
 
-times 506 - ($ - $$) db 0  ; Pad remaining bytes
-p1x db 'P1X', 0            ; P1X signature 4b
-dw 0xAA55                  ; Boot signature at the end of 512 bytes
+times 507 - ($ - $$) db 0  ; Pad remaining bytes
+p1x db 'P1X'            ; P1X signature 4b
+dw 0xAA55
