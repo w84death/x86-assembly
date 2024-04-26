@@ -1,5 +1,7 @@
 [bits 16]
 [org 0x7c00]
+
+TIMER equ 046Ch
 BUFFER equ 0x1000       ; 64000
 MEM_BASE equ 0x7e00
 LEVEL_DATA equ MEM_BASE   ; 2 
@@ -8,14 +10,11 @@ PLAYER_POS equ MEM_BASE+4   ; 2
 SPRITE_COLOR equ MEM_BASE+6 ; 2
 SPRITE_POS equ MEM_BASE+8  ; 2
 PLAYER_DIR equ MEM_BASE+10 ; 2
-
 BULLETS equ MEM_BASE+12      ; 64
 
 
 ; ======== SETTINGS ========
 
-
-TIMER equ 046Ch
 SCREEN_WIDTH equ 320
 SCREEN_HEIGHT equ 200
 
@@ -158,30 +157,30 @@ draw_field:
     call draw_sprite
 
     
-;     mov cx, 4
-;     draw_enemy:
-;         push cx
+    mov cx, 4
+    draw_enemy:
+        push cx
         
-;         draw_heli:    
-;         mov cx, 2               ; 2 sprites
-;         mov bx, SPRITE_HELI     ; First sprite
-;         xor ax, ax              ; Clear AX
-;         draw_heli_sprite:
-;             push cx             ; Save loop counter
-;             push ax             ; Save shift
-;             mov word cx, 320*10
-;             mov word [SPRITE_POS], cx           ; Position
-;             add word [SPRITE_POS], ax           ; Add shift
-;             mov byte [SPRITE_COLOR], COLOR_HELI ; Color
-;             call draw_sprite                    ; Send colors to frame buffer
-;             inc bx              ; Change to next sprite
-;             pop ax              ; Get shift
-;             add ax, 5           ; Move 5px (for next sprite)
-;             pop cx              ; Load loop counter
-;             loop draw_heli_sprite
-
-;         pop cx
-;         loop draw_enemy
+        draw_heli:    
+        mov cx, 2               ; 2 sprites
+        mov bx, SPRITE_HELI     ; First sprite
+        xor ax, ax              ; Clear AX
+        draw_heli_sprite:
+            push cx             ; Save loop counter
+            push ax             ; Save shift
+            mov word cx, 320*10
+            mov word [SPRITE_POS], cx           ; Position
+            add word [SPRITE_POS], ax           ; Add shift
+            mov byte [SPRITE_COLOR], COLOR_HELI ; Color
+            call draw_sprite                    ; Send colors to frame buffer
+            inc bx              ; Change to next sprite
+            pop ax              ; Get shift
+            add ax, 5           ; Move 5px (for next sprite)
+            pop cx              ; Load loop counter
+            loop draw_heli_sprite
+    
+        pop cx
+        loop draw_enemy
 
 
 mov si, BULLETS

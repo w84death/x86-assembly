@@ -4,6 +4,14 @@
 
 [bits 16]
 [org 0x7c00]
+BUFFER equ 0x1000       ; 64000
+MEM_BASE equ 0x7e00
+MEM_SKY equ MEM_BASE   ; 2 
+MEM_MIRROR equ MEM_BASE+2   ; 32 
+MEM_PLAYER_POS equ MEM_BASE+4
+MEM_CURRENT_LEVEL equ MEM_BASE+6
+MEM_BOAT_ANIM equ MEM_BASE+8
+MEM_BOAT_DIR equ MEM_BASE+10
 
 ; ======== SETTINGS ========
 
@@ -27,10 +35,8 @@ LEVELS equ 4
 ; ======== GRAPHICS INITIALIZATION ========
 
 start:
-    mov ax, 0x0000    ; Init segments
-    mov ds, ax
-    mov ax, 0xA000
-    mov es, ax
+    push    0xA000
+	pop     es
     mov ax, 13h     ; Init VGA 
     int 10h
     
@@ -40,50 +46,50 @@ start:
 ; ======== GAME RESTART ========
 
 restart_game:
-    mov word [player_pos], PLAYER_START
-    mov word [current_level], 0
-    xor word [mirror_direction], 1
-    mov word [boat_anim], 0
-    mov byte [sky], SKY_COLOR
+    mov word [MEM_PLAYER_POS], PLAYER_START
+    mov word [MEM_CURRENT_LEVEL], 0
+    xor word [MEM_MIRROR], 1
+    mov word [MEM_BOAT_ANIM], 0
+    mov byte [MEM_SKY], SKY_COLOR
     jmp game_loop
 
 ; ======== NEXT LEVEL ========
 
 next_level:
-    inc word [current_level]
-    mov word ax, [current_level]
+    inc word [MEM_CURRENT_LEVEL]
+    mov word ax, [MEM_CURRENT_LEVEL]
     cmp ax, LEVELS
     je restart_game
-    mov word [player_pos], PLAYER_START
-    mov word [boat_anim], 0
-    add byte [sky], 64
+    mov word [MEM_PLAYER_POS], PLAYER_START
+    mov word [MEM_BOAT_ANIM], 0
+    add byte [MEM_SKY], 64
 
 ; ======== GAME LOOP  ========
 
 game_loop:
 
-    ; ======== DRAW SKY ========
+    ; ======== DRAW MEM_SKY ========
 
-    draw_sky:
-        xor di,di           ; Reset buffer pos to 0
-        mov cx, 10           ; Gradient levels
-        .draw_gradient:
-        mov bx, [sky]    ; Sky starting color
-        .next_color:
-            push cx                  ; Save outer loop counter
-            mov cx, 20               ; Band size
-            mov dx, 320
-            add bl, 2
-            mov al, bl
-        .draw_grad_line:
-            push cx                  ; Save inner loop counter
-            mov cx, dx               ; Set CX to 320 for rep stosb
-            rep stosb
-            pop cx
-            loop .draw_grad_line
-            pop cx 
-            dec bx
-            loop .next_color
+    draw_bg:
+    xor di, di              ; Reset DI
+    mov cx, 200   ; Repeat for full screen height
+    
+    .draw_line:
+                            ; Decide on start color
+    mov bx, [MEM_SKY]       ; Set color to MEM_SKY
+    mov ax, cx              ; Copy line number to AX
+    and ax, 0xFF            ; Clear all but 0xFF
+    shr ax, 4               ; Shift 4 times = div by 16 (200/16 = 12px band)
+    add bx, ax              ; Shift current color intex (BX)
+
+                            ; Drawing
+    push cx                 ; Save loop counter
+    mov al, bl              ; Set color (from BX)
+    mov cx, 320    ; Set length (full screen width line)
+    rep stosb               ; Send colors to frame buffer
+    pop cx                  ; Load loop counter
+    loop .draw_line
+
 
     ; ======== DRAW OCEAN ========
 
@@ -105,7 +111,7 @@ game_loop:
 
     draw_level:
         xor di, di
-        mov bx, [current_level]
+        mov bx, [MEM_CURRENT_LEVEL]
         mov ax, LEVEL_SIZE
         mul bx
         mov si, level_data
@@ -115,7 +121,7 @@ game_loop:
 
         mov bh, BOAT_COLOR      ; Draw boat platform
         mov ax, BOAT_POSITION
-        add ax, [boat_anim]
+        add ax, [MEM_BOAT_ANIM]
         add di, ax
         mov cx, BOAT_HEIGHT
         mov ax, BOAT_WIDTH
@@ -133,7 +139,7 @@ game_loop:
         imul ax, 320          
         add ax, bx              ; AX = final offset in the framebuffer
         mov di, ax              ; Move calculated offset into DI
-        mov ax, [current_level] ; Width of platform
+        mov ax, [MEM_CURRENT_LEVEL] ; Width of platform
         add ax, 2               ; Current level + 2
         imul ax, 20             ; Fit to grid
         mov bh, PLATFORM_COLOR
@@ -157,20 +163,20 @@ game_loop:
 ; ======== ANIMATE BOAT ========
 
     animate_boat:
-        cmp byte [boat_direction], 0
+        cmp byte [MEM_BOAT_DIR], 0
         jnz .sail_left
         .sail_right:
-            add word [boat_anim], 2
+            add word [MEM_BOAT_ANIM], 2
             jmp .done
         .sail_left:
-            sub word [boat_anim], 2
-            cmp word [boat_anim], -80
+            sub word [MEM_BOAT_ANIM], 2
+            cmp word [MEM_BOAT_ANIM], -80
             jz .reverse
         .done:
-        cmp byte [boat_anim], 80
+        cmp byte [MEM_BOAT_ANIM], 80
         jl collision_check
         .reverse:
-        xor byte [boat_direction], 1
+        xor byte [MEM_BOAT_DIR], 1
 
 ; ======== COLLISION CHECKING ========
 
@@ -178,14 +184,14 @@ game_loop:
         mov bx, SPRITE_SIZE
         add ax, 320                     ; Check below sprite top pos
         mul bx
-        add word ax, [player_pos]       ; Add x-coordinate
+        add word ax, [MEM_PLAYER_POS]       ; Add x-coordinate
         cmp ax, 320*DEATH_ROW           ; Check if drop to the ocean
         ja  restart_game 
         mov di, ax                      ; Store in DI for ES:DI addressing
         sub di, SPRITE_SIZE/2
         mov cx, SPRITE_SIZE
         .chk:
-            mov ah, [es:di]             ; Check if platform
+            mov ah, [es:di]
             cmp ah, PLATFORM_COLOR
             je restart_game
             cmp ah, BOAT_COLOR
@@ -193,22 +199,22 @@ game_loop:
             inc di
         loop .chk
         
-        add word [player_pos], 320      ; Fall 1px down
+        add word [MEM_PLAYER_POS], 320      ; Fall 1px down
         
     run:
         .check_run_dir:
-            cmp byte [mirror_direction], 0
+            cmp byte [MEM_MIRROR], 0
             je .run_right
         .run_left:
-            dec word [player_pos]
+            dec word [MEM_PLAYER_POS]
             jmp .continue_run
         .run_right:
-            inc word [player_pos]
+            inc word [MEM_PLAYER_POS]
         .continue_run:
 
     ; ======== DRAW PLAYER ========
     draw_player:
-        mov word ax, [player_pos]     ; Add x-coordinate
+        mov word ax, [MEM_PLAYER_POS]     ; Add x-coordinate
         mov di, ax             ; Store in DI for ES:DI addressing
         push di
         mov bh, PLAYER_COLOR
@@ -264,8 +270,8 @@ game_loop:
         ; je  next_level
         ; /REMOVE ME
 
-        sub word [player_pos], 320
-        xor byte [mirror_direction], 1  ; swap direction
+        sub word [MEM_PLAYER_POS], 320
+        xor byte [MEM_MIRROR], 1  ; swap direction
 
     .no_kb:
 
@@ -296,16 +302,6 @@ game_loop:
 
 jmp game_loop
 
-; ======== DATA ========
-
-.data:
-player_pos dw 0
-mirror_direction db 0
-current_level dw 0
-boat_anim dw 0
-boat_direction db 0
-sky db SKY_COLOR
-
 ; ======== LEVELS ========
 
 level_data: ; 5b
@@ -332,10 +328,9 @@ level_4:
     db 129
     db 176
     db 198
-    db 203   ; Continue read positions from P1X 80,50,88...
+    db 203      ; Continue read positions from P1X 80,50,88...
+    db 'P1X'    ; P1X signature 3b
 
 ; ======== BOOTSECTOR  ========
-
-times 506 - ($ - $$) db 0  ; Pad remaining bytes
-p1x db 'P1X', 0            ; P1X signature 4b
-dw 0xAA55                  ; Boot signature at the end of 512 bytes
+TIMES 510 - ($ - $$) DB 0 ; Fill empty space (512) - signatures (5b)
+DW 0xAA55 ; Bootsector 2b
