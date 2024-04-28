@@ -4,6 +4,10 @@
 
 [bits 16]
 [org 0x7c00]
+
+; ======== MEMORY POINTERS ========
+
+TIMER equ 046Ch
 BUFFER equ 0x1000       ; 64000
 MEM_BASE equ 0x7e00
 MEM_SKY equ MEM_BASE   ; 2 
@@ -12,12 +16,10 @@ MEM_PLAYER_POS equ MEM_BASE+4
 MEM_CURRENT_LEVEL equ MEM_BASE+6
 MEM_BOAT_ANIM equ MEM_BASE+8
 MEM_BOAT_DIR equ MEM_BASE+10
+MEM_LIFES equ MEM_BASE+12
 
 ; ======== SETTINGS ========
-
-BUFFER equ 0x1000
-TIMER equ 046Ch
-PLAYER_COLOR equ 34
+PLAYER_COLOR equ 31
 SKY_COLOR equ 82
 PLATFORM_COLOR equ 39
 BOAT_COLOR equ 53
@@ -47,10 +49,19 @@ start:
 
 restart_game:
     mov word [MEM_PLAYER_POS], PLAYER_START
+    cmp byte [MEM_LIFES], 0
+    jz .game_over
+
+    .restart_player:
+    dec byte [MEM_LIFES]
+    jmp game_loop
+
+    .game_over:
     mov word [MEM_CURRENT_LEVEL], 0
     xor word [MEM_MIRROR], 1
     mov word [MEM_BOAT_ANIM], 0
     mov byte [MEM_SKY], SKY_COLOR
+    mov byte [MEM_LIFES], 3
     jmp game_loop
 
 ; ======== NEXT LEVEL ========
@@ -59,7 +70,7 @@ next_level:
     inc word [MEM_CURRENT_LEVEL]
     mov word ax, [MEM_CURRENT_LEVEL]
     cmp ax, LEVELS
-    je restart_game
+    jz restart_game
     mov word [MEM_PLAYER_POS], PLAYER_START
     mov word [MEM_BOAT_ANIM], 0
     add byte [MEM_SKY], 64
@@ -81,7 +92,6 @@ game_loop:
     and ax, 0xFF            ; Clear all but 0xFF
     shr ax, 4               ; Shift 4 times = div by 16 (200/16 = 12px band)
     add bx, ax              ; Shift current color intex (BX)
-
                             ; Drawing
     push cx                 ; Save loop counter
     mov al, bl              ; Set color (from BX)
@@ -106,6 +116,22 @@ game_loop:
             rep stosb
         pop cx
         loop .draw_row
+
+
+; ======== DRAW LIFES ========
+
+    xor di, di
+    add di, 320+80
+    mov bx, 0
+    mov cx, [MEM_LIFES]
+    inc cx
+    draw_life:
+        push cx
+        mov al, 12
+        mov cx, 40    ; Set length (full screen width line)
+        rep stosb     ; Send colors to frame buffer
+        pop cx
+        loop draw_life
 
     ; ======== DRAW LEVEL ========
 
@@ -178,6 +204,8 @@ game_loop:
         .reverse:
         xor byte [MEM_BOAT_DIR], 1
 
+
+
 ; ======== COLLISION CHECKING ========
 
  collision_check:
@@ -240,19 +268,6 @@ game_loop:
             sub di, ax      ; Move line down 
             pop cx          ; Restore loop counter
             loop .draw_row
-
-            .eyes:
-                pop di
-                add di, 320*SPRITE_SIZE/2-2
-                xor al, al
-                push cx
-                mov cx, 4
-                rep stosb
-                xor di, 2
-                inc cx
-                sub di, 3
-                mov cx, 2
-                rep stosb
 
     ; ======== KEYBOARD ========
 

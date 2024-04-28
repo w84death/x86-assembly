@@ -1,11 +1,37 @@
+; GAME 2 - Ganja Farmer 512b
+; by Krzysztof Krystian Jankowski ^ P1X
+;
+
 [bits 16]
 [org 0x7c00]
 
+; ======== SETTINGS ========
+
+SCREEN_WIDTH equ 320
+SCREEN_HEIGHT equ 200
+SPRITE_WIDTH equ 5
+SPRITE_HEIGHT equ 8
+MAX_ENEMIES equ 16
+MAX_BULLETS equ 12
+BULLET_SPEED equ 4
+COOLDOWN_WEAPON_TIME equ 2
+COOLDOWN_ENEMY_TIME equ 128
+FIELD_POS equ 320*160+60
+SPRITE_DUDE equ 0
+SPRITE_HELI equ 1
+SPRITE_MARINE equ 2
+COLOR_SKY equ 77    ; Blue
+COLOR_WEED equ 192  ; Darkest green
+COLOR_GRASS equ 45  ; Light green
+COLOR_DUDE equ 16*9-12   ; Brownish
+COLOR_MIL equ 16*7+14     ; Dark green
+COLOR_HELI equ 32   ; White gradient
+
 ; ======== MEMORY MAP ========
 
+VGA equ 0xA000
 TIMER equ 0x046C                ; BIOS timer
-DOUBLE_BUFFER equ 0x1000        ; 64000 bytes
-MEM_BASE equ 0x7e00
+MEM_BASE equ 0x1000
 LIFE equ MEM_BASE               ; 1 bytes
 PIXEL_MASK equ MEM_BASE+2       ; 2 bytes
 PLAYER_POS equ MEM_BASE+4       ; 2 bytes
@@ -17,52 +43,31 @@ COOLDOWN_ENEMY equ MEM_BASE+14  ; 2 bytes
 ENEMIES equ MEM_BASE+16         ; 32 bytes
 BULLETS equ MEM_BASE+48         ; 64 bytes
 
-; ======== SETTINGS ========
-
-SCREEN_WIDTH equ 320
-SCREEN_HEIGHT equ 200
-SPRITE_WIDTH equ 5
-SPRITE_HEIGHT equ 8
-MAX_BULLETS equ 8
-BULLET_SPEED equ 4
-COOLDOWN_WEAPON_TIME equ 4
-COOLDOWN_ENEMY_TIME equ 128
-MAX_ENEMIES equ 16
-
-COLOR_WEED equ 192  ; Darkest green
-COLOR_GRASS equ 45  ; Light green gradient start
-COLOR_DUDE equ 36   ; 
-COLOR_MIL equ 3     ; Dark green
-COLOR_HELI equ 19   ; Almost black
-COLOR_SKY equ 77    ; Blue
-
-SPRITE_WEED equ 0
-SPRITE_DUDE equ 1
-SPRITE_HELI equ 2
-SPRITE_MARINE equ 3
-
-FIELD_POS equ 320*160+80
-
 ; ======== GRAPHICS INITIALIZATION ========
 
 start:
     xor ax,ax    ; Init segments
     mov ds, ax
-    mov ax, 0xA000
+    mov ax, VGA
     mov es, ax
     mov ax, 13h     ; Init VGA 
     int 10h
-    
-    mov ax, DOUBLE_BUFFER
-    mov es, ax
 
 ; ======== GAME RESET/INIT ========
 
 game_reset:
-mov byte [LIFE], 16
-mov word [PIXEL_MASK], 0x8000
-mov word [PLAYER_POS], 320*180+160
-mov word [COOLDOWN_ENEMY], COOLDOWN_ENEMY_TIME*4
+    xor ax, ax          ; Clear AX register (value 0x0)
+    mov si, MEM_BASE
+    mov cx, 64          ; Number of iterations (64 bytes)
+    write_loop:
+        mov word [si], ax       ; Write zero to the memory location
+        inc si                  ; Move to the next memory address
+        loop write_loop         ; Repeat until all 64 bytes are written
+
+    mov byte [LIFE], 16
+    mov word [PIXEL_MASK], 0x8000
+    mov word [PLAYER_POS], 320*180+160
+    mov word [COOLDOWN_ENEMY], COOLDOWN_ENEMY_TIME*4
 
 ; ======== GAME LOOP  ========
 
@@ -75,24 +80,31 @@ draw_bg:
     mov cx, SCREEN_WIDTH*125    ; Repeat 125 lines
     mov al, COLOR_SKY           ; Set color to sky
     rep stosb                   ; Push line to screen buffer
-    mov cx, SCREEN_WIDTH*75     ; Repeat 125 lines
-    mov al, COLOR_GRASS         ; Set color to ground
-    rep stosb                   ; Push line to screen buffer
+    mov cx, SCREEN_WIDTH*75    ; Repeat 125 lines
+    mov al, COLOR_GRASS           ; Set color to sky
+    rep stosb                   ; Push line to screen buffer 
 
 ; ======== DRAWING FIELD ========
     
 draw_field:
-    mov word [SPRITE_POS], 320*160+80
-    mov byte cl, [LIFE]  ; Level size
-    .column:
-        push cx
-        mov bx, SPRITE_WEED
+    mov word [SPRITE_POS], FIELD_POS
+    mov byte cl, 16                 ; Level size = columns
+    .next_column:
+        push cx                     ; Save counter
+        mov bx, SPRITE_DUDE-24      ; Get random data for weed sprite
+        xor bx, cx                  ; Shuffle data
         mov byte [SPRITE_COLOR], COLOR_WEED
+        cmp byte [LIFE], cl
+        jbe .skip
         call draw_sprite
-        add word [SPRITE_POS], 12   ; Move X by 10px
-        pop cx
-        loop .column
+        .skip:
+        add word [SPRITE_POS], 12   ; Move next sprite by 12px
+        pop cx                      ; Load counter
+        loop .next_column                ; Loop to next column
 
+    cmp byte [LIFE], 1              ; Check if lifes available
+    jb game_reset
+    
 ; ======== PLAYER LOGIC ========
 
 move_player:
@@ -106,9 +118,9 @@ move_player:
         inc byte [PLAYER_POS]
         inc byte [PLAYER_POS]
     .done_move:
-        cmp byte [PLAYER_POS], 80
+        cmp byte [PLAYER_POS], 70
         jge .finish
-        cmp byte [PLAYER_POS], 235  ; 240 - sprite width
+        cmp byte [PLAYER_POS], 245
         jle .finish
         xor byte [PLAYER_DIR], 1
     .finish:
@@ -134,7 +146,7 @@ draw_enemies:
         ja .spawn_enemy
         cmp ax,0
         jz .try_spawn
-        cmp ax, 320*30      ; Heli vs Marine y line
+        cmp ax, 320*32      ; Heli vs Marine y line
         mov bx, SPRITE_HELI
         ja .enemy_marine
         .enemy_heli:
@@ -150,7 +162,7 @@ draw_enemies:
             jmp .update_pos
         .enemy_marine:
             inc bx      ; Marine sprite (next)
-            mov cx, 320 ; Move down 1px
+            mov cx, 640 ; Move down 2px
             mov byte [SPRITE_COLOR], COLOR_MIL ; Color
         .update_pos:
             add ax, cx  ; Update pos
@@ -162,8 +174,6 @@ draw_enemies:
             pop si
             jmp .next
         .spawn_enemy:
-            cmp byte [LIFE], 0
-            jz game_reset
             cmp ax, 0xFFFF
             jz .try_spawn
             dec byte [LIFE]
@@ -210,18 +220,29 @@ draw_bullets:
         .update_pos:
             sub ax, 320*BULLET_SPEED       ; Moove by 3px up
             mov word [si-2], ax ; Update pos in memory
+            
         .check_collision:
-           
-
+            mov dx, ax          ; Save bullet pos
+            add dx, 320*8       ; Bottom of the sprite
+            pusha
+            mov si, ENEMIES
+            mov cx, MAX_ENEMIES
+            .enemy_check_loop:
+            lodsw               ; Read enemy
+            sub ax, dx          ; 
+            cmp ax, 8          ; Check hit
+            ja .next
+            mov word [si-2], 0 ; Kill enemy
+            .next:
+            loop .enemy_check_loop             
+            popa
         .draw:
-            push si
-            push di
-            mov si, DOUBLE_BUFFER
+            pusha
+            mov si, VGA
             mov di, ax  ; Position
             xor ax,ax   ; Color black
             mov word [es:di], ax  ; Write 2 pixels to video memory
-            pop di
-            pop si
+            popa
         .skip_bullet:
     pop cx
     loop .next_bullet
@@ -244,21 +265,6 @@ handle_keyboard:
     mov byte [PLAYER_DIR], 0
     .no_move:
 
-; ======== BLIT VGA ========
-
-blit:
-    push es
-    push ds
-    mov ax, 0xA000  ; VGA memory
-    mov bx, DOUBLE_BUFFER  ; Double buffer memory
-    mov es, ax
-    mov ds, bx
-    mov cx, 32000   ; Half of the BUFFER
-    xor si, si
-    xor di, di
-    rep movsw
-    pop ds
-    pop es
 
 ; ======== DELAY CYCLE ========
 
@@ -278,18 +284,17 @@ game_over:
 ; ======== PROCEDURES ========
 
 draw_sprite:
-    ;mov ax, [SPRITE_POS]    ; Load sprite position (assuming it's a byte offset)
     mov di, [SPRITE_POS]              ; Store in DI for ES:DI addressing
     mov cx, SPRITE_HEIGHT               ; Number of rows (each byte is a row in this example)
     mov byte [PIXEL_MASK], 0x80 ; 8 positions
    
     .draw_row:
         push cx                 ; Save CX (rows left)
-        mov ax, SPRITE_WIDTH               ; Sprite offset (assuming 4 bytes per sprite)
-        mul bx                  ; AX = 4 * sprite number
+        mov ax, SPRITE_WIDTH    
+        mul bx                  ; sprite width * sprite number
         mov si, sprites
         add si, ax              ; SI points to the start of the sprite data
-        mov cx, SPRITE_WIDTH              ; rows
+        mov cx, SPRITE_WIDTH       ; rows
         xor ah, ah               ; Clear AH to use it for bit testing
         .read_pixel:
             lodsb                   ; Load byte into AL and increment SI
@@ -307,6 +312,7 @@ draw_sprite:
             loop .read_pixel        ; Repeat for each bit in the byte
             shr byte [PIXEL_MASK], 1 ; Shift left to test the next bit
             add di, 320 - SPRITE_WIDTH*2         ; Move DI to the start of the next line (assuming screen width is 320 pixels)
+            dec byte [SPRITE_COLOR]
         pop cx                  ; Restore CX (rows left)
         loop .draw_row          ; Process next row
     ret
@@ -314,29 +320,23 @@ draw_sprite:
 ; ======== SPRITES ========
 
 sprites:
-db 00101000b    ; Weed
-db 11000100b
-db 00111111b
-db 01001000b
-db 01010000b
+db 01100000b    ; Dude
+db 00010011b 
+db 10111100b
+db 11111111b
+db 00001100b    
 
-db 00001000b    ; Dude
-db 11101111b
-db 11111100b
-db 11101111b
-db 00001000b
-
-db 01001000b
 db 01001000b    ; Heli
+db 01001000b    
 db 01011100b
 db 01011100b
 db 01011100b
 
-db 00110000b    ; Marine
-db 01001011b
+db 01110000b    ; Marine
+db 11001011b
 db 10011100b
-db 01001011b
-db 00110000b
+db 11001011b
+db 01110000b
 
 ; ======== BOOTSECTOR  ========
 

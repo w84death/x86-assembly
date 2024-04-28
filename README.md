@@ -11,13 +11,21 @@ This image size is exactly 512 bytes. Same as the limit of bootsector programs.
 ![Game 1 Level 3](bootsector/game1/game1-level3.png)
 ![Game 1 Level 4](bootsector/game1/game1-level4.png)
 
-### Download floppy image
+### This is the whole game.
+![Game 1 Hexdump](bootsector/game1/game1-hexdump.png)
+
+
+## Game 2
+
+![Game 2 Level 1](bootsector/game2/game2-screen1.png)
+![Game 2 Level 2](bootsector/game2/game2-screen2.png)
+
+
+## Download floppy image and run
 - Game 1 [floppy.img](bootsector/game1/floppy.img)
+- Game 2 [floppy.img](bootsector/game2/floppy.img)
 - Run in emulator (online) https://copy.sh/v86/ or boot on real hardware (x86)
 - Examine image in https://hexed.it/
-
-This is the whole game.
-![Game 1 Hexdump](bootsector/game1/game1-hexdump.png)
 
 
 ### Prequisite for building
