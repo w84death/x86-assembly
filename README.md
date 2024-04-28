@@ -14,7 +14,6 @@ This image size is exactly 512 bytes. Same as the limit of bootsector programs.
 ### This is the whole game.
 ![Game 1 Hexdump](bootsector/game1/game1-hexdump.png)
 
-
 ## Game 2 - Ganja Farmer 512b
 
 ![Game 2 Level 1](bootsector/game2/game2-screen1.png)
