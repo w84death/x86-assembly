@@ -4,7 +4,7 @@
 ![512 bytes image](bootsector/resources/512bytes.gif)
 This image size is exactly 512 bytes. Same as the limit of bootsector programs.
 
-## Game 1
+## Game 1 - Land Me
 
 ![Game 1 Level 1](bootsector/game1/game1-level1.png)
 ![Game 1 Level 2](bootsector/game1/game1-level2.png)
@@ -15,7 +15,7 @@ This image size is exactly 512 bytes. Same as the limit of bootsector programs.
 ![Game 1 Hexdump](bootsector/game1/game1-hexdump.png)
 
 
-## Game 2
+## Game 2 - Ganja Farmer 512b
 
 ![Game 2 Level 1](bootsector/game2/game2-screen1.png)
 ![Game 2 Level 2](bootsector/game2/game2-screen2.png)
@@ -37,13 +37,3 @@ This image size is exactly 512 bytes. Same as the limit of bootsector programs.
 $ cd bootsector/
 $ ./build-and-run.sh game1
 ```
-
-#### Game 1 Versions
-I saved few revisions on branches:
-- master - current bleeding edge
-- simple - a simple platformer with 4 levels
-- girl-animated - 3 frame animated sprite and 1 level
-- coins - coins detection and collection
-
-![Screenshot](bootsector/resources/simple.png)
-![Screenshot](bootsector/resources/girl-animated.png)
