@@ -5,20 +5,14 @@
 This image size is exactly 512 bytes. Same as the limit of bootsector programs.
 
 ## Game 1 - Land Me
+[Land Me Homepage](bootsector/game1/)
 
 ![Game 1 Level 1](bootsector/game1/game1-level1.png)
-![Game 1 Level 2](bootsector/game1/game1-level2.png)
-![Game 1 Level 3](bootsector/game1/game1-level3.png)
-![Game 1 Level 4](bootsector/game1/game1-level4.png)
-
-### This is the whole game.
-![Game 1 Hexdump](bootsector/game1/game1-hexdump.png)
 
 ## Game 2 - Ganja Farmer 512b
+[Ganja Farmer 512b Home Page](bootsector/game1/)
 
 ![Game 2 Level 1](bootsector/game2/game2-screen1.png)
-![Game 2 Level 2](bootsector/game2/game2-screen2.png)
-
 
 ## Download floppy image and run
 - Game 1 [floppy.img](bootsector/game1/floppy.img)
