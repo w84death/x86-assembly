@@ -15,7 +15,9 @@ LEVEL equ MEM_BASE+1    ; 1 byte
 SPRITE equ MEM_BASE+2   ; 2 bytes
 COLOR equ MEM_BASE+4    ; 1 bytes
 RND equ MEM_BASE+5      ; 2 bytes
-ENTITIES equ MEM_BASE+12    ; A lot
+ENTITIES_COUNT equ MEM_BASE+7 ; 2 bytes
+PLAYER equ MEM_BASE+9   ; 5 bytes
+ENTITIES equ MEM_BASE+14    ; A lot
 
 ; ======== SETTINGS ========
 
@@ -26,6 +28,9 @@ SPRITE_SIZE equ 8
 SPRITE_LINES equ 7
 MAX_ENEMIES equ 4
 MAX_FLOWERS equ 3
+MAX_ENEMIES_PER_LEVEL equ 4
+MAX_FLOWERS_PER_LEVEL equ 2
+COLLISION_THRESHOLD_SQUARED equ 32
 
 COLOR_BG equ 20
 COLOR_SPIDER equ 0
@@ -33,8 +38,8 @@ COLOR_FLOWER equ 13
 COLOR_FLY equ 77
 
 SPRITE_FLY equ 0
-SPRITE_SPIDER equ 7
-SPRITE_FLOWER equ 14
+SPRITE_SPIDER equ 14
+SPRITE_FLOWER equ 28
 
 FLY_START_POS equ 320*100+160
 
@@ -55,46 +60,47 @@ start:
 
 game_reset:
     mov byte [LIFE], 3                      ; Starting lifes
-    mov word [RND], 0xfaaf                  ; Seed for pseudo random numbers
+    mov word [RND], 0xf234                  ; Seed for pseudo random numbers
     .set_player_entitie:                    ; First controlable by player
-    mov byte [ENTITIES], SPRITE_FLY         ; Sprite ID (position in memory)
-    mov byte [ENTITIES+1], COLOR_FLY        ; Color
-    mov byte [ENTITIES+2], 0                ; Direction
-    mov word [ENTITIES+3], FLY_START_POS    ; Position
-
-; inc byte [LEVEL] 
+    mov byte [PLAYER], SPRITE_FLY         ; Sprite ID (position in memory)
+    mov byte [PLAYER+1], COLOR_FLY        ; Color
+    mov byte [PLAYER+2], 0                ; Direction
+    mov word [PLAYER+3], FLY_START_POS    ; Position
 
 next_level:
-    inc byte [LEVEL]        ; 0 -> 1st
-    mov si, ENTITIES+5      ; Set memory position after player
-    mov ax, MAX_ENEMIES     ; Enemies per level
-    mov byte bl, [LEVEL]        ; Multiply by level number
-    imul ax, bx              
-    mov cx, ax              ; Set loop counter
+    inc byte [LEVEL]            ; 0 -> 1st
+    mov si, ENTITIES            ; Set memory position to entites
+    mov ax, MAX_ENEMIES_PER_LEVEL ; Enemies per level
+    mov bx, [LEVEL]               ; Current level number
+    imul ax, bx                   ; Multiply enemies by level number
+    push ax
+    mov cx, ax                    ; Store the result in cx
     .next_entitie:
         MOV byte [SI], SPRITE_SPIDER        ; Sprite ID (position in memory)
         MOV byte [SI+1], COLOR_SPIDER       ; Color
-        mov byte al, [RND]                  ; Get random number
+        rdtsc                               ; Get random number
         and al, 7                           ; Clip 0-7
         mov byte [si+2], al                 ; Set direction
-        mov word ax, [RND]                  ; Get random number
+        rdtsc                               ; Get random number
         mov word [si+3], ax                 ; Set position
-        shr word [RND],1                    ; Set next random number
         add si, 5                           ; Move to next memory position
     loop .next_entitie
 
-    mov cx, MAX_FLOWERS
+    pop ax
+    mov bx, MAX_FLOWERS_PER_LEVEL ; Flowers per level
+    imul bx, [LEVEL]              ; Multiply flowers by level number
+    add ax, bx                    ; Total number of enemies and flowers
+    mov word [ENTITIES_COUNT], ax ; Save number
+    mov cx, bx
     .spawn_flowers:
         MOV byte [SI], SPRITE_FLOWER
         MOV byte [SI+1], COLOR_FLOWER
-        mov word ax, [RND] 
-        shr word [RND],1
-        mov word bx, [RND] 
-        imul ax, bx
+        rdtsc                           ; Get random number
         mov word [si+3], ax
-        shr word [RND],1
         add si, 5
     loop .spawn_flowers
+
+   
 
 ; ======== GAME LOOP  ========
 
@@ -121,19 +127,20 @@ draw_bg:
 ; ======== DRAW ENTITES ========
 
 draw_entities:
-    mov cx, MAX_ENEMIES+1+MAX_FLOWERS            ; Number of entitiea to process
-    ; mov ax, MAX_ENEMIES             ; Enemies per level
-    ; mov byte bl, [LEVEL]            ; Multiply by level number
-    ; imul ax, bx
-    ; add ax, MAX_FLOWERS
-    ; mov cx, ax
+    mov word cx, [ENTITIES_COUNT]
     mov si, ENTITIES                ; Start index for positions
     .next:
         push cx
         push si
         xor ax,ax
         mov byte al, [si]           ; Sprite
-        mov word [SPRITE], ax       
+        mov word [SPRITE], ax  
+        rdtsc                               ; Get random number
+        and al, 1
+        cmp al, 0
+        jz .ok
+        add word [SPRITE], 7
+        .ok:
         mov byte al, [si+1]         ; Color
         mov byte [COLOR], al
         mov byte al, [si+2]         ; Direction
@@ -168,6 +175,82 @@ draw_entities:
         pop cx
         loop .next                  ; Repeat
     
+
+
+handle_player:
+    mov di, [PLAYER+3]              ; Position
+    mov byte BL, [PLAYER+1]
+    mov byte al, [PLAYER+2]
+    movzx si,al                 
+    shl si, 1
+    add di, [MLT + si] ; Movement Lookup Table
+    add di, [MLT + si] ;
+    mov word [PLAYER+3], DI
+    mov si, sprites+SPRITE_FLY
+    rdtsc                               ; Get random number
+    and al, 1
+    cmp al, 0
+    jz .ok
+    add si, 7
+    .ok:
+    
+    call draw_sprite
+
+
+
+; mov si, ENTITIES
+; mov di, PLAYER+3
+; mov word cx, [ENTITIES_COUNT]
+
+; collision_detection:
+;     mov bx, [DI]    ; Player's linear position
+
+;     ; Convert player's linear position to 2D coordinates
+;     mov ax, bx
+;     xor dx, dx
+;     div word [SCREEN_WIDTH]
+;     mov si, dx         ; SI now stores player's y-coordinate temporarily
+;     mov bx, ax         ; BX now stores player's x-coordinate
+
+; .next_entity:
+;     ; Load entity's linear position
+;     mov ax, [SI+3]
+;     xor dx, dx
+;     div word [SCREEN_WIDTH]
+;     push dx            ; Save entity's y-coordinate
+;     mov dx, ax         ; Entity's x-coordinate
+
+;     ; Calculate squared x-distance
+;     sub ax, bx         ; AX = x1 - x2
+;     imul ax            ; AX = dx^2
+;     ;push ax            ; Save dx^2
+
+;     ; Calculate squared y-distance
+;     ;pop ax             ; Restore dx^2 to AX
+;     pop bx             ; Restore entity's y-coordinate to BX
+;     sub bx, si         ; BX = y1 - y2
+;     imul bx            ; BX = dy^2
+
+;     add ax, bx         ; AX = dx^2 + dy^2, sum of squares
+
+;     ; Check if distance squared is less than threshold squared
+;     cmp ax, COLLISION_THRESHOLD_SQUARED
+;     jae .no_collision  ; If greater or equal, no collision
+
+;     ; Collision detected, check entity type
+;     mov al, byte [SI]
+;     cmp al, SPRITE_FLOWER
+;     je next_level
+;     cmp al, SPRITE_SPIDER
+;     jne .no_collision
+;     dec byte [LIFE]
+
+; .no_collision:
+;     add si, 5 ; Advance to the next entity's position data
+;     loop .next_entity
+
+
+
 ; ======== CHECKING KEYBOARD ========
 
 handle_keyboard:
@@ -177,10 +260,10 @@ handle_keyboard:
     xor ax,ax               ; Get the key press
     int 0x16
     .rotate_player:
-        mov byte bl, [ENTITIES+2]   ; Get current rotation 0-7
+        mov byte bl, [PLAYER+2]   ; Get current rotation 0-7
         inc bl                      ; Move rotation clockvise
         and bl, 7                   ; Limit 0..7
-        mov byte [ENTITIES+2], bl   ; Save back
+        mov byte [PLAYER+2], bl   ; Save back
     .no_move:
 
 
@@ -253,14 +336,30 @@ db 01011100b
 db 01111101b
 db 00011110b
 
-; spider
 db 00000000b
-db 00111000b
-db 01010100b
-db 01111100b
-db 10101010b
-db 10101010b
-db 10000010b
+db 00000000b
+db 00011110b
+db 01110010b
+db 01011100b
+db 01111101b
+db 00011110b
+
+; spider
+db 00000110b
+db 01110111b
+db 10101111b
+db 11111110b
+db 00101010b
+db 01001001b
+db 01001001b
+
+db 00000110b
+db 01110111b
+db 10101111b
+db 11111110b
+db 00101011b
+db 11010100b
+db 00010100b
 
 ; flower
 db 00011100b
@@ -271,7 +370,13 @@ db 00111100b
 db 00001000b
 db 00001000b
 
-
+db 00011100b
+db 00110110b
+db 00011100b
+db 00001010b
+db 01111100b
+db 00001000b
+db 00001000b
 
 
 ; ======== BOOTSECTOR  ========
