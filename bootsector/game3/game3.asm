@@ -7,16 +7,15 @@
 
 ; ======== MEMORY MAP ========
 VGA equ 0xA000
-TIMER equ 0x046C                ; BIOS timer
-BUFFER equ 0x1000       ; 64000
-MEM_BASE equ 0x7e00
-; MEM_BASE equ 0x1000
-LIFE equ MEM_BASE               ; 1 byte
-LEVEL equ MEM_BASE+1
-SPRITE equ MEM_BASE+2       ; 2 bytes
-COLOR equ MEM_BASE+4       ; 1 bytes
-RND equ MEM_BASE+5          ; 2 bytes
-ENTITIES equ MEM_BASE+12        ; ?
+TIMER equ 0x046C        ; BIOS timer
+BUFFER equ 0x1000       ; 64000 bytes
+MEM_BASE equ 0x7e00     ; Memory position after the code
+LIFE equ MEM_BASE       ; 1 byte
+LEVEL equ MEM_BASE+1    ; 1 byte
+SPRITE equ MEM_BASE+2   ; 2 bytes
+COLOR equ MEM_BASE+4    ; 1 bytes
+RND equ MEM_BASE+5      ; 2 bytes
+ENTITIES equ MEM_BASE+12    ; A lot
 
 ; ======== SETTINGS ========
 
@@ -25,7 +24,8 @@ SCREEN_HEIGHT equ 200
 
 SPRITE_SIZE equ 8
 SPRITE_LINES equ 7
-MAX_ENEMIES equ 14
+MAX_ENEMIES equ 4
+MAX_FLOWERS equ 3
 
 COLOR_BG equ 20
 COLOR_SPIDER equ 0
@@ -34,46 +34,67 @@ COLOR_FLY equ 77
 
 SPRITE_FLY equ 0
 SPRITE_SPIDER equ 7
+SPRITE_FLOWER equ 14
 
 FLY_START_POS equ 320*100+160
 
 ; ======== GRAPHICS INITIALIZATION ========
 
 start:
-    xor ax,ax    ; Init segments
+    xor ax,ax       ; Init segments (0)
     mov ds, ax
-    mov ax, VGA
-    mov es, ax
+    mov ax, VGA     ; Set VGA memory
+    mov es, ax      ; as target
     mov ax, 13h     ; Init VGA 
     int 10h
     
-    mov ax, BUFFER
-    mov es, ax
+    mov ax, BUFFER  ; Set double buffer
+    mov es, ax      ; as target
 
 ; ======== GAME RESET/INIT ========
 
 game_reset:
-    mov byte [LIFE], 3
-    mov byte [LEVEL], 1
-    mov word [RND], 0x1234
-    mov byte [ENTITIES], SPRITE_FLY         ; Sprite
+    mov byte [LIFE], 3                      ; Starting lifes
+    mov word [RND], 0xfaaf                  ; Seed for pseudo random numbers
+    .set_player_entitie:                    ; First controlable by player
+    mov byte [ENTITIES], SPRITE_FLY         ; Sprite ID (position in memory)
     mov byte [ENTITIES+1], COLOR_FLY        ; Color
     mov byte [ENTITIES+2], 0                ; Direction
     mov word [ENTITIES+3], FLY_START_POS    ; Position
 
-    mov si, ENTITIES+5
-    mov cx, MAX_ENEMIES
-    .l:
-        MOV byte [SI], SPRITE_SPIDER            ; Set sprite ID
-        MOV byte [SI+1], COLOR_SPIDER    
-        mov byte al, [RND]
-        and al, 7
-        mov byte [si+2], al
-        mov word ax, [RND]
+; inc byte [LEVEL] 
+
+next_level:
+    inc byte [LEVEL]        ; 0 -> 1st
+    mov si, ENTITIES+5      ; Set memory position after player
+    mov ax, MAX_ENEMIES     ; Enemies per level
+    mov byte bl, [LEVEL]        ; Multiply by level number
+    imul ax, bx              
+    mov cx, ax              ; Set loop counter
+    .next_entitie:
+        MOV byte [SI], SPRITE_SPIDER        ; Sprite ID (position in memory)
+        MOV byte [SI+1], COLOR_SPIDER       ; Color
+        mov byte al, [RND]                  ; Get random number
+        and al, 7                           ; Clip 0-7
+        mov byte [si+2], al                 ; Set direction
+        mov word ax, [RND]                  ; Get random number
+        mov word [si+3], ax                 ; Set position
+        shr word [RND],1                    ; Set next random number
+        add si, 5                           ; Move to next memory position
+    loop .next_entitie
+
+    mov cx, MAX_FLOWERS
+    .spawn_flowers:
+        MOV byte [SI], SPRITE_FLOWER
+        MOV byte [SI+1], COLOR_FLOWER
+        mov word ax, [RND] 
+        shr word [RND],1
+        mov word bx, [RND] 
+        imul ax, bx
         mov word [si+3], ax
         shr word [RND],1
         add si, 5
-    loop .l
+    loop .spawn_flowers
 
 ; ======== GAME LOOP  ========
 
@@ -97,16 +118,15 @@ draw_bg:
     DEC DX
     JNZ .draw_bars
 
-draw_flowers:
-    MOV BL, COLOR_FLOWER
-    MOV DI, 320*80+220
-    MOV SI, spr_flower ; Point SI to the sprite data
-    call draw_sprite
-
 ; ======== DRAW ENTITES ========
 
 draw_entities:
-    mov cx, MAX_ENEMIES+1             ; Number of entitiea to process
+    mov cx, MAX_ENEMIES+1+MAX_FLOWERS            ; Number of entitiea to process
+    ; mov ax, MAX_ENEMIES             ; Enemies per level
+    ; mov byte bl, [LEVEL]            ; Multiply by level number
+    ; imul ax, bx
+    ; add ax, MAX_FLOWERS
+    ; mov cx, ax
     mov si, ENTITIES                ; Start index for positions
     .next:
         push cx
@@ -118,19 +138,32 @@ draw_entities:
         mov byte [COLOR], al
         mov byte al, [si+2]         ; Direction
         mov di, [SI+3]              ; Position
-        .move_entitie_forward:
-            movzx si,al                 
-            shl si, 1
-            add di, [MOVEMENT_LT + si] ; Movement Lookup Table
-            push di
+        .move_player_and_enemies:
+            cmp byte [SPRITE], SPRITE_SPIDER
+            ja .draw_entitie
+            .move_entitie_forward:
+                movzx si,al                 
+                shl si, 1
+                add di, [MLT + si] ; Movement Lookup Table
         .draw_entitie:
+            push di
             mov byte BL, [COLOR]
             mov si, sprites
             add word si, [SPRITE]
             call draw_sprite
-        pop di
+            pop di
         pop si
         mov word [si+3], DI         ; Save new position
+
+        .random_rotate:
+            mov ax, [TIMER]
+            and ax, 47
+            cmp ax, 0
+            jg .skip_now
+            inc byte [si+2]
+            and byte [si+2],7
+            .skip_now:
+
         add si, 5                   ; Move to the next entitie data
         pop cx
         loop .next                  ; Repeat
@@ -181,34 +214,34 @@ jmp game_loop
 ; ======== DRAWING SPRITE PROCEDURE ========
 
 draw_sprite:
-    MOV DX, SPRITE_LINES ; Number of lines in the sprite
+    MOV DX, SPRITE_LINES    ; Number of lines in the sprite
     .draw_row:
-        PUSH DX            ; Save DX
-        MOV AL, [SI]       ; Get sprite row data
-        MOV AH, 0          ; Clear AH
-        MOV CX, 8          ; 8 bits per row
+        PUSH DX             ; Save DX
+        MOV AL, [SI]        ; Get sprite row data
+        MOV AH, 0           ; Clear AH
+        MOV CX, 8           ; 8 bits per row
 
     .draw_pixel:
-        SHL AL, 1          ; Shift left to get the next bit into carry flag
+        SHL AL, 1           ; Shift left to get the next bit into carry flag
         JNC .skip_pixel     ; If carry flag is 0, skip setting the pixel
-        MOV byte [ES:DI], BL     ; Set the pixel (using color 1, change as needed)
+        MOV byte [ES:DI], BL    ; Set the pixel
 
     .skip_pixel:
-        INC DI             ; Move to the next pixel position horizontally
+        INC DI              ; Move to the next pixel position horizontally
         LOOP .draw_pixel    ; Repeat for all 8 pixels in the row
 
-        POP DX             ; Restore DX
+        POP DX              ; Restore DX
         INC SI
-        ADD DI, 320        ; Move to the next line in the video buffer
-        SUB DI, 8          ; Adjust DI back to the start of the line
-        DEC DX             ; Decrement row count
+        ADD DI, 320         ; Move to the next line in the video buffer
+        SUB DI, 8           ; Adjust DI back to the start of the line
+        DEC DX              ; Decrement row count
         JNZ .draw_row       ; If there are more rows, draw the next one
     ret
 
 
 ; ======== DATA ========
 
-MOVEMENT_LT dw -320,-319,1,321,320,319,-1,-321
+MLT dw -320,-319,1,321,320,319,-1,-321  ; Movement Lookup Table
 
 sprites:
 ; fly
@@ -229,12 +262,12 @@ db 10101010b
 db 10101010b
 db 10000010b
 
-spr_flower:
+; flower
 db 00011100b
 db 00110110b
 db 00011100b
 db 01101000b
-db 00111000b
+db 00111100b
 db 00001000b
 db 00001000b
 
