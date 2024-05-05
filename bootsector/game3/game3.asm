@@ -67,6 +67,9 @@ game_reset:
     mov byte [PLAYER+2], 0                ; Direction
     mov word [PLAYER+3], FLY_START_POS    ; Position
 
+inc byte [LEVEL]            ; 0 -> 1st
+inc byte [LEVEL]            ; 0 -> 1st
+
 next_level:
     inc byte [LEVEL]            ; 0 -> 1st
     mov si, ENTITIES            ; Set memory position to entites
@@ -193,62 +196,7 @@ handle_player:
     jz .ok
     add si, 7
     .ok:
-    
     call draw_sprite
-
-
-
-; mov si, ENTITIES
-; mov di, PLAYER+3
-; mov word cx, [ENTITIES_COUNT]
-
-; collision_detection:
-;     mov bx, [DI]    ; Player's linear position
-
-;     ; Convert player's linear position to 2D coordinates
-;     mov ax, bx
-;     xor dx, dx
-;     div word [SCREEN_WIDTH]
-;     mov si, dx         ; SI now stores player's y-coordinate temporarily
-;     mov bx, ax         ; BX now stores player's x-coordinate
-
-; .next_entity:
-;     ; Load entity's linear position
-;     mov ax, [SI+3]
-;     xor dx, dx
-;     div word [SCREEN_WIDTH]
-;     push dx            ; Save entity's y-coordinate
-;     mov dx, ax         ; Entity's x-coordinate
-
-;     ; Calculate squared x-distance
-;     sub ax, bx         ; AX = x1 - x2
-;     imul ax            ; AX = dx^2
-;     ;push ax            ; Save dx^2
-
-;     ; Calculate squared y-distance
-;     ;pop ax             ; Restore dx^2 to AX
-;     pop bx             ; Restore entity's y-coordinate to BX
-;     sub bx, si         ; BX = y1 - y2
-;     imul bx            ; BX = dy^2
-
-;     add ax, bx         ; AX = dx^2 + dy^2, sum of squares
-
-;     ; Check if distance squared is less than threshold squared
-;     cmp ax, COLLISION_THRESHOLD_SQUARED
-;     jae .no_collision  ; If greater or equal, no collision
-
-;     ; Collision detected, check entity type
-;     mov al, byte [SI]
-;     cmp al, SPRITE_FLOWER
-;     je next_level
-;     cmp al, SPRITE_SPIDER
-;     jne .no_collision
-;     dec byte [LIFE]
-
-; .no_collision:
-;     add si, 5 ; Advance to the next entity's position data
-;     loop .next_entity
-
 
 
 ; ======== CHECKING KEYBOARD ========
@@ -370,11 +318,11 @@ db 00111100b
 db 00001000b
 db 00001000b
 
-db 00011100b
-db 00110110b
-db 00011100b
-db 00001010b
-db 01111100b
+db 00111000b
+db 01101100b
+db 00111000b
+db 01101000b
+db 00111100b
 db 00001000b
 db 00001000b
 
