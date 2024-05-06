@@ -14,10 +14,9 @@ LIFE equ MEM_BASE       ; 1 byte
 LEVEL equ MEM_BASE+1    ; 1 byte
 SPRITE equ MEM_BASE+2   ; 2 bytes
 COLOR equ MEM_BASE+4    ; 1 bytes
-RND equ MEM_BASE+5      ; 2 bytes
-ENTITIES_COUNT equ MEM_BASE+7 ; 2 bytes
-PLAYER equ MEM_BASE+9   ; 5 bytes
-ENTITIES equ MEM_BASE+14    ; A lot
+ENTITIES_COUNT equ MEM_BASE+5 ; 2 bytes
+PLAYER equ MEM_BASE+7   ; 5 bytes
+ENTITIES equ MEM_BASE+12    ; A lot
 
 ; ======== SETTINGS ========
 
@@ -29,7 +28,7 @@ SPRITE_LINES equ 7
 MAX_ENEMIES equ 4
 MAX_FLOWERS equ 3
 MAX_ENEMIES_PER_LEVEL equ 4
-MAX_FLOWERS_PER_LEVEL equ 2
+MAX_FLOWERS_PER_LEVEL equ 1
 COLLISION_THRESHOLD_SQUARED equ 32
 
 COLOR_BG equ 20
@@ -41,65 +40,62 @@ SPRITE_FLY equ 0
 SPRITE_SPIDER equ 14
 SPRITE_FLOWER equ 28
 
-FLY_START_POS equ 320*100+160
+SCREEN_CENTER equ 320*100+160
 
 ; ======== GRAPHICS INITIALIZATION ========
 
 start:
-    xor ax,ax       ; Init segments (0)
+    xor ax,ax                               ; Init segments (0)
     mov ds, ax
-    mov ax, VGA     ; Set VGA memory
-    mov es, ax      ; as target
-    mov ax, 13h     ; Init VGA 
+    mov ax, VGA                             ; Set VGA memory
+    mov es, ax                              ; as target
+    mov ax, 13h                             ; Init VGA 
     int 10h
     
-    mov ax, BUFFER  ; Set double buffer
-    mov es, ax      ; as target
+    mov ax, BUFFER                          ; Set double buffer
+    mov es, ax                              ; as target
 
 ; ======== GAME RESET/INIT ========
 
-game_reset:
+restart_game:
     mov byte [LIFE], 3                      ; Starting lifes
-    mov byte [LEVEL], 0                    ; Starting level
-    mov word [RND], 0xf234                  ; Seed for pseudo random numbers
-    .set_player_entitie:                    ; First controlable by player
-    mov byte [PLAYER], SPRITE_FLY         ; Sprite ID (position in memory)
-    mov byte [PLAYER+1], COLOR_FLY        ; Color
-    mov byte [PLAYER+2], 0                ; Direction
-    mov word [PLAYER+3], FLY_START_POS    ; Position
-
-
+    mov byte [LEVEL], 0                     ; Starting level
+    mov byte [PLAYER+1], COLOR_FLY          ; Color
+    
 next_level:
-    inc byte [LEVEL]            ; 0 -> 1st
-    mov si, ENTITIES            ; Set memory position to entites
-    mov ax, MAX_ENEMIES_PER_LEVEL ; Enemies per level
-    mov bx, [LEVEL]               ; Current level number
-    imul ax, bx                   ; Multiply enemies by level number
+    mov word [PLAYER+3], SCREEN_CENTER      ; Position
+    inc byte [LEVEL]                        ; 0 -> 1st
+    mov si, ENTITIES                        ; Set memory position to entites
+    mov ax, MAX_ENEMIES_PER_LEVEL           ; Enemies per level
+    mov bx, [LEVEL]                         ; Current level number
+    imul ax, bx                             ; Multiply enemies by level number
     push ax
-    mov cx, ax                    ; Store the result in cx
+    mov cx, ax                              ; Store the result in cx
     .next_entitie:
         MOV byte [SI], SPRITE_SPIDER        ; Sprite ID (position in memory)
         MOV byte [SI+1], COLOR_SPIDER       ; Color
         rdtsc                               ; Get random number
-        and al, 7                           ; Clip 0-7
+        and al, 7                           ; Clip rotation
         mov byte [si+2], al                 ; Set direction
         rdtsc                               ; Get random number
+        and ax, 64000                       ; Clip screen size
         mov word [si+3], ax                 ; Set position
-        add si, 5                           ; Move to next memory position
+    add si, 5                               ; Move to next memory position
     loop .next_entitie
 
     pop ax
-    mov bx, MAX_FLOWERS_PER_LEVEL ; Flowers per level
-    imul bx, [LEVEL]              ; Multiply flowers by level number
-    add ax, bx                    ; Total number of enemies and flowers
-    mov word [ENTITIES_COUNT], ax ; Save number
+    mov bx, MAX_FLOWERS_PER_LEVEL           ; Flowers per level
+    imul bx, [LEVEL]                        ; Multiply flowers by level number
+    add ax, bx                              ; Total number of enemies and flowers
+    mov word [ENTITIES_COUNT], ax           ; Save number
     mov cx, bx
     .spawn_flowers:
         MOV byte [SI], SPRITE_FLOWER
         MOV byte [SI+1], COLOR_FLOWER
-        rdtsc                           ; Get random number
-        mov word [si+3], ax
-        add si, 5
+        rdtsc                               ; Get random number
+        and ax, 64000                       ; Clip screen size
+        mov word [si+3], ax                 ; Set position
+    add si, 5                               ; Move to next memory position
     loop .spawn_flowers
 
 
@@ -112,16 +108,16 @@ game_loop:
 draw_bg:
     xor di,di
     mov ah, 128
-    MOV DX, 8       ; We have 8 bars
+    MOV DX, 8                               ; We have 8 bars
     .draw_bars:
         PUSH DX
-        MOV CX, 320*25   ; 40 pixels per bar * 200 lines = 8000 pixels per bar
+        MOV CX, 320*25                      ; 320x25 pixels
     .draw_line:
-        MOV AL, AH      ; Set pixel to current color index
-        STOSB           ; Write AL to ES:DI and increment DI
+        MOV AL, AH                          ; Set pixel to current color index
+        STOSB                               ; Write to the bufferr
         LOOP .draw_line
     POP DX
-    inc AH  ; Increment color index for next bar
+    inc AH                                  ; Increment color index for next bar
     DEC DX
     JNZ .draw_bars
 
@@ -129,28 +125,28 @@ draw_bg:
 
 draw_entities:
     mov word cx, [ENTITIES_COUNT]
-    mov si, ENTITIES                ; Start index for positions
+    mov si, ENTITIES                        ; Start index for positions
     .next:
         push cx
         push si
         xor ax,ax
-        mov byte al, [si]           ; Sprite
+        mov byte al, [si]                   ; Sprite frame
         mov word [SPRITE], ax  
-        rdtsc                       ; Get random number
+        rdtsc                               ; Get random number
         and al, 1
         jnz .ok
-        add word [SPRITE], 7        ; Move to the second sprite
+        add word [SPRITE], 7                ; Move to the second sprite frame
         .ok:
-        mov byte al, [si+1]         ; Color
+        mov byte al, [si+1]                 ; Color
         mov byte [COLOR], al
-        mov di, [SI+3]              ; Position
+        mov di, [SI+3]                      ; Position
         .move_player_and_enemies:
             cmp byte [SPRITE], SPRITE_SPIDER
             ja .draw_entitie
             .move_entitie_forward:
-                movzx si, [si+2]        ; Direction            
+                movzx si, [si+2]            ; Direction            
                 shl si, 1
-                add di, [MLT + si] ; Movement Lookup Table
+                add di, [MLT + si]          ; Movement Lookup Table
         .draw_entitie:
             push di
             mov byte BL, [COLOR]
@@ -159,7 +155,7 @@ draw_entities:
             call draw_sprite
             pop di
         pop si
-        mov word [si+3], DI         ; Save new position
+        mov word [si+3], DI                 ; Save new position
 
         .random_rotate:
             mov ax, [TIMER]
@@ -168,9 +164,9 @@ draw_entities:
             inc byte [si+2]
             and byte [si+2],7
             .ok_rotate:
-        add si, 5                   ; Move to the next entitie data
+        add si, 5                           ; Move to the next entitie data
         pop cx
-        loop .next                  ; Repeat
+        loop .next
 
 
 check_collisions:
@@ -196,9 +192,9 @@ check_collisions:
     jmp .collision_done               ; No collision
 
     .collision_spider:
-        mov word [PLAYER+3], FLY_START_POS ; Reset player position
+        mov word [PLAYER+3], SCREEN_CENTER ; Reset player position
         dec byte [LIFE]                 ; Decrease life
-        jz game_reset                   ; Jump if no more lifes
+        jz restart_game                   ; Jump if no more lifes
         jmp .collision_done
 
     .collision_flower:
