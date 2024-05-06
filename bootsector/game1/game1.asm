@@ -1,4 +1,4 @@
-; GAME 1 - Unnamed/TBA
+; GAME 1 - Land Me
 ; by Krzysztof Krystian Jankowski ^ P1X
 ;
 
@@ -28,7 +28,6 @@ BOAT_WIDTH equ 80
 BOAT_HEIGHT equ 3
 SPRITE_SIZE equ 14
 DEATH_ROW equ 198
-TIMER equ 046Ch
 PLAYER_START equ 320*6+150
 LEVEL_SIZE equ 5
 PLATFORM_HEIGHT equ 6

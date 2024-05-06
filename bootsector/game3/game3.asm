@@ -60,6 +60,7 @@ start:
 
 game_reset:
     mov byte [LIFE], 3                      ; Starting lifes
+    mov byte [LEVEL], 0                    ; Starting level
     mov word [RND], 0xf234                  ; Seed for pseudo random numbers
     .set_player_entitie:                    ; First controlable by player
     mov byte [PLAYER], SPRITE_FLY         ; Sprite ID (position in memory)
@@ -67,8 +68,6 @@ game_reset:
     mov byte [PLAYER+2], 0                ; Direction
     mov word [PLAYER+3], FLY_START_POS    ; Position
 
-inc byte [LEVEL]            ; 0 -> 1st
-inc byte [LEVEL]            ; 0 -> 1st
 
 next_level:
     inc byte [LEVEL]            ; 0 -> 1st
@@ -103,7 +102,6 @@ next_level:
         add si, 5
     loop .spawn_flowers
 
-   
 
 ; ======== GAME LOOP  ========
 
@@ -138,21 +136,19 @@ draw_entities:
         xor ax,ax
         mov byte al, [si]           ; Sprite
         mov word [SPRITE], ax  
-        rdtsc                               ; Get random number
+        rdtsc                       ; Get random number
         and al, 1
-        cmp al, 0
-        jz .ok
-        add word [SPRITE], 7
+        jnz .ok
+        add word [SPRITE], 7        ; Move to the second sprite
         .ok:
         mov byte al, [si+1]         ; Color
         mov byte [COLOR], al
-        mov byte al, [si+2]         ; Direction
         mov di, [SI+3]              ; Position
         .move_player_and_enemies:
             cmp byte [SPRITE], SPRITE_SPIDER
             ja .draw_entitie
             .move_entitie_forward:
-                movzx si,al                 
+                movzx si, [si+2]        ; Direction            
                 shl si, 1
                 add di, [MLT + si] ; Movement Lookup Table
         .draw_entitie:
@@ -168,18 +164,49 @@ draw_entities:
         .random_rotate:
             mov ax, [TIMER]
             and ax, 47
-            cmp ax, 0
-            jg .skip_now
+            jg .ok_rotate
             inc byte [si+2]
             and byte [si+2],7
-            .skip_now:
-
+            .ok_rotate:
         add si, 5                   ; Move to the next entitie data
         pop cx
         loop .next                  ; Repeat
+
+
+check_collisions:
+    mov di, [PLAYER+3]              ; Player position
+    mov cx, 7                       ; Number of rows to check
+    .check_row:
+        push cx
+        mov cx, 8                   ; Number of columns to check
+        mov si, di                  ; Current position
+        .check_column:
+            push cx
+            mov al, [es:si]         ; Get pixel color at current position
+            cmp al, COLOR_SPIDER    ; Check if it matches spider color
+            je .collision_spider    ; Jump if collision with spider
+            cmp al, COLOR_FLOWER    ; Check if it matches flower color
+            je .collision_flower    ; Jump if collision with flower
+            add si, 1               ; Move to the next column
+            pop cx
+        loop .check_column
+        add di, 320                 ; Move to the next row
+        pop cx
+    loop .check_row
+    jmp .collision_done               ; No collision
+
+    .collision_spider:
+        mov word [PLAYER+3], FLY_START_POS ; Reset player position
+        dec byte [LIFE]                 ; Decrease life
+        jz game_reset                   ; Jump if no more lifes
+        jmp .collision_done
+
+    .collision_flower:
+        jmp next_level                  ; Jump to next level
+        ; jmp .collision_done
+
+    .collision_done:
     
-
-
 handle_player:
     mov di, [PLAYER+3]              ; Position
     mov byte BL, [PLAYER+1]
@@ -188,12 +215,12 @@ handle_player:
     shl si, 1
     add di, [MLT + si] ; Movement Lookup Table
     add di, [MLT + si] ;
+
     mov word [PLAYER+3], DI
     mov si, sprites+SPRITE_FLY
     rdtsc                               ; Get random number
     and al, 1
-    cmp al, 0
-    jz .ok
+    jnz .ok
     add si, 7
     .ok:
     call draw_sprite
@@ -255,7 +282,7 @@ draw_sprite:
     .draw_pixel:
         SHL AL, 1           ; Shift left to get the next bit into carry flag
         JNC .skip_pixel     ; If carry flag is 0, skip setting the pixel
-        MOV byte [ES:DI], BL    ; Set the pixel
+        MOV [ES:DI], BL     ; Set the pixel
 
     .skip_pixel:
         INC DI              ; Move to the next pixel position horizontally
