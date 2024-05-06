@@ -6,7 +6,7 @@
 [org 0x7c00]
 
 ; ======== MEMORY POINTERS ========
-
+VGA equ 0xA000
 TIMER equ 046Ch
 BUFFER equ 0x1000       ; 64000
 MEM_BASE equ 0x7e00
@@ -32,18 +32,20 @@ TIMER equ 046Ch
 PLAYER_START equ 320*6+150
 LEVEL_SIZE equ 5
 PLATFORM_HEIGHT equ 6
-LEVELS equ 4
+LEVELS equ 3
 
 ; ======== GRAPHICS INITIALIZATION ========
 
 start:
-    push    0xA000
-	pop     es
+    xor ax,ax       ; Init segments (0)
+    mov ds, ax
+    mov ax, VGA     ; Set VGA memory
+    mov es, ax      ; as target
     mov ax, 13h     ; Init VGA 
     int 10h
     
-    mov ax, BUFFER
-    mov es, ax
+    mov ax, BUFFER  ; Set double buffer
+    mov es, ax      ; as target
 
 ; ======== GAME RESTART ========
 
@@ -57,7 +59,7 @@ restart_game:
     jmp game_loop
 
     .game_over:
-    mov word [MEM_CURRENT_LEVEL], 0
+    mov word [MEM_CURRENT_LEVEL],0
     xor word [MEM_MIRROR], 1
     mov word [MEM_BOAT_ANIM], 0
     mov byte [MEM_SKY], SKY_COLOR
@@ -67,10 +69,9 @@ restart_game:
 ; ======== NEXT LEVEL ========
 
 next_level:
+    cmp word [MEM_CURRENT_LEVEL], LEVELS
+    ja restart_game
     inc word [MEM_CURRENT_LEVEL]
-    mov word ax, [MEM_CURRENT_LEVEL]
-    cmp ax, LEVELS
-    jz restart_game
     mov word [MEM_PLAYER_POS], PLAYER_START
     mov word [MEM_BOAT_ANIM], 0
     add byte [MEM_SKY], 64
@@ -337,15 +338,10 @@ level_3:
     db 168
     db 195
     db 0    ; End of level
-level_4:
-    db 87    
-    db 119
-    db 129
-    db 176
-    db 198
-    db 203      ; Continue read positions from P1X 80,50,88...
+level_4: 
+    db 132      ; Continue read positions from P1X 80,50,88...
     db 'P1X'    ; P1X signature 3b
-
+    db 0
 ; ======== BOOTSECTOR  ========
 TIMES 510 - ($ - $$) DB 0 ; Fill empty space (512) - signatures (5b)
 DW 0xAA55 ; Bootsector 2b

@@ -18,7 +18,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# dd if=${filename}/${filename}.bin of=floppy.img bs=512 count=1 conv=notrunc
+dd if=${filename}/${filename}.bin of=${filename}/floppy.img bs=512 count=1 conv=notrunc
 # dd if=${filename}/${filename}.second.bin of=floppy.img bs=512 seek=1 count=1 conv=notrunc
 # qemu-system-i386 -fda floppy.img
 # Run the resulting .bin file using QEMU
