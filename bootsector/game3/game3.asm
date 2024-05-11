@@ -14,9 +14,9 @@ LIFE equ MEM_BASE       ; 1 byte
 LEVEL equ MEM_BASE+1    ; 1 byte
 SPRITE equ MEM_BASE+2   ; 2 bytes
 COLOR equ MEM_BASE+4    ; 1 bytes
-ENTITIES_COUNT equ MEM_BASE+5 ; 2 bytes
-PLAYER equ MEM_BASE+7   ; 5 bytes
-ENTITIES equ MEM_BASE+12    ; A lot
+ENTITIES_COUNT equ MEM_BASE+6 ; 2 bytes
+PLAYER equ MEM_BASE+8   ; 5 bytes
+ENTITIES equ MEM_BASE+16    ; A lot
 
 ; ======== SETTINGS ========
 
@@ -68,7 +68,7 @@ next_level:
     mov si, ENTITIES                        ; Set memory position to entites
     mov ax, MAX_ENEMIES_PER_LEVEL           ; Enemies per level
     mov bx, [LEVEL]                         ; Current level number
-    imul ax, bx                             ; Multiply enemies by level number
+    mul bx                                  ; Multiply enemies by level number
     push ax
     mov cx, ax                              ; Store the result in cx
     .next_entitie:
@@ -170,56 +170,55 @@ draw_entities:
 
 
 check_collisions:
-    mov di, [PLAYER+3]              ; Player position
-    mov cx, 7                       ; Number of rows to check
-    .check_row:
-        push cx
-        mov cx, 8                   ; Number of columns to check
-        mov si, di                  ; Current position
-        .check_column:
-            push cx
-            mov al, [es:si]         ; Get pixel color at current position
-            cmp al, COLOR_SPIDER    ; Check if it matches spider color
-            je .collision_spider    ; Jump if collision with spider
-            cmp al, COLOR_FLOWER    ; Check if it matches flower color
-            je .collision_flower    ; Jump if collision with flower
-            add si, 1               ; Move to the next column
-            pop cx
-        loop .check_column
-        add di, 320                 ; Move to the next row
+    mov di, [PLAYER+3]                      ; Player position
+    mov cx, 7                               ; Number of rows to check
+    .check_row:     
+        push cx     
+        mov cx, 8                           ; Number of columns to check
+        mov si, di                          ; Current position
+        .check_column:      
+            push cx     
+            mov al, [es:si]                 ; Get pixel color at current position
+            cmp al, COLOR_SPIDER            ; Check if it matches spider color
+            je .collision_spider            ; Jump if collision with spider
+            cmp al, COLOR_FLOWER            ; Check if it matches flower color
+            je .collision_flower            ; Jump if collision with flower
+            add si, 1                       ; Move to the next column
+            pop cx      
+        loop .check_column      
+        add di, 320                         ; Move to the next row
         pop cx
     loop .check_row
-    jmp .collision_done               ; No collision
+    jmp .collision_done                     ; No collision
 
     .collision_spider:
-        mov word [PLAYER+3], SCREEN_CENTER ; Reset player position
-        dec byte [LIFE]                 ; Decrease life
-        jz restart_game                   ; Jump if no more lifes
-        jmp .collision_done
+        mov word [PLAYER+3], SCREEN_CENTER  ; Reset player position
+        dec byte [LIFE]                     ; Decrease life
+        jz restart_game                     ; Restart game if no more lifes
+        jmp .collision_done                 ; Continue if lifes left
 
     .collision_flower:
-        jmp next_level                  ; Jump to next level
+        jmp next_level                      ; Jump to next level
         ; jmp .collision_done
 
     .collision_done:
     
 handle_player:
-    mov di, [PLAYER+3]              ; Position
+    mov di, [PLAYER+3]                      ; Position
     mov byte BL, [PLAYER+1]
     mov byte al, [PLAYER+2]
     movzx si,al                 
     shl si, 1
-    add di, [MLT + si] ; Movement Lookup Table
-    add di, [MLT + si] ;
-
-    mov word [PLAYER+3], DI
-    mov si, sprites+SPRITE_FLY
-    rdtsc                               ; Get random number
-    and al, 1
-    jnz .ok
-    add si, 7
+    add di, [MLT + si]                      ; Movement Lookup Table
+    add di, [MLT + si]                      ; Second time for smoother movement
+    mov word [PLAYER+3], DI                 ; Save new position
+    mov si, sprites+SPRITE_FLY              ; Sprite
+    rdtsc                                   ; Get random number
+    and al, 1                               ; Last bit  
+    jnz .ok                                 ; If 1, add frame
+    add si, 7                               ; Move to the second srite frame position  
     .ok:
-    call draw_sprite
+    call draw_sprite                        ; Draw player sprite
 
 
 ; ======== CHECKING KEYBOARD ========
