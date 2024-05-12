@@ -118,8 +118,8 @@ draw_bg:
     add ax, 0x8080                          ; Set color to black
     mov dx, 8                               ; We have 8 bars
     .draw_bars:
-        mov cx, 160*25                      ; 320x25 pixels
-        rep stosw                           ; Write to the bufferr
+        mov cx, 320*25                      ; 320x25 pixels
+        rep stosb                           ; Write to the bufferr
         inc ax                              ; Increment color index for next bar
         dec dx                              ; Decrement bar counter
         jnz .draw_bars                      ; Repeat for all bars
