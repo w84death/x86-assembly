@@ -8,17 +8,9 @@
 cpu pentium
 
 ; ======== MEMORY MAP ========
+
 VGA equ 0xA000
 TIMER equ 0x046C                            ; BIOS timer
-BUFFER equ 0x1000                           ; 64000 bytes
-MEM_BASE equ 0x7e00                         ; Memory position after the code
-LIFE equ MEM_BASE                           ; 1 byte
-LEVEL equ MEM_BASE+1                        ; 1 byte
-SPRITE equ MEM_BASE+2                       ; 2 bytes
-COLOR equ MEM_BASE+4                        ; 1 bytes
-ENTITIES_COUNT equ MEM_BASE+6               ; 2 bytes
-PLAYER equ MEM_BASE+8                       ; 5 bytes
-ENTITIES equ MEM_BASE+16                    ; 5 bytes per entitie
 
 ; ======== SETTINGS ========
 
@@ -27,11 +19,10 @@ SCREEN_HEIGHT equ 200
 
 SPRITE_SIZE equ 8                           ; 8 pixels per sprite line
 SPRITE_LINES equ 7                          ; 7 lines per sprite  
-MAX_ENEMIES equ 4
-MAX_FLOWERS equ 3
+MAX_ENEMIES equ 64
+MAX_FLOWERS equ 8
 MAX_ENEMIES_PER_LEVEL equ 4
 MAX_FLOWERS_PER_LEVEL equ 1
-COLLISION_THRESHOLD_SQUARED equ 32
 
 COLOR_BG equ 20                                 
 COLOR_SPIDER equ 0
@@ -44,9 +35,21 @@ SPRITE_FLOWER equ 28
 
 SCREEN_CENTER equ 320*100+160
 
+section .bss
+    BUFFER resb 64000
+    LIFE resb 1
+    LEVEL resb 1
+    SPRITE resw 1
+    COLOR resb 1
+    PLAYER resb 5
+    ENTITIES resb MAX_ENEMIES*5+MAX_FLOWERS*5
+
+section .text
+    global _start
+
 ; ======== GRAPHICS INITIALIZATION ========
 
-start:
+_start:
     xor ax,ax                               ; Init segments (0)
     mov ds, ax
     mov ax, VGA                             ; Set VGA memory
@@ -73,27 +76,20 @@ next_level:
     mov ax, MAX_ENEMIES_PER_LEVEL           ; Enemies per level
     mov bx, [LEVEL]                         ; Current level number
     mul bx                                  ; Multiply enemies by level number
-    push ax
     mov cx, ax                              ; Store the result in cx
     .next_entitie:
         MOV byte [SI], SPRITE_SPIDER        ; Sprite ID (position in memory)
         MOV byte [SI+1], COLOR_SPIDER       ; Color
-        mov byte al, [TIMER]                ; Get random number
+        rdtsc                               ; Get random number
         and al, 7                           ; Clip rotation
         mov byte [si+2], al                 ; Set direction
-        mov ax, [TIMER]                     ; Get random number
-        mul si                              ; Make it more random
+        rdtsc                               ; Make it more random
         and ax, 64000                       ; Clip screen size
         mov word [si+3], ax                 ; Set position
     add si, 5                               ; Move to next memory position
     loop .next_entitie
 
-    pop bx  
-    mov ax, MAX_FLOWERS_PER_LEVEL           ; Flowers per level
-    mul byte [LEVEL]                        ; Multiply flowers by level number
-    add ax, bx                              ; Total number of enemies and flowers
-    mov word [ENTITIES_COUNT], ax           ; Save number
-    mov cx, bx
+    mov cx, [LEVEL]
     .spawn_flowers:
         MOV byte [SI], SPRITE_FLOWER
         MOV byte [SI+1], COLOR_FLOWER
@@ -123,13 +119,15 @@ draw_bg:
 ; ======== DRAW ENTITES ========
 
 draw_entities:
-    mov word cx, [ENTITIES_COUNT]
+    mov word cx, MAX_ENEMIES
     mov si, ENTITIES                        ; Start index for positions
     .next:
         push cx
         push si
         xor ax,ax
         mov byte al, [si]                   ; Sprite frame
+        cmp al, 0
+        je .done
         mov word [SPRITE], ax  
         rdtsc                               ; Get random number
         and al, 1
@@ -167,11 +165,11 @@ draw_entities:
         add si, 5                           ; Move to the next entitie data
         pop cx
         loop .next
-
+        .done:
 
 check_collisions:
     mov di, [PLAYER+3]                      ; Player position
-    mov cx, 7                               ; Number of rows to check
+    mov cx, SPRITE_LINES                               ; Number of rows to check
     .check_row:     
         push cx     
         mov cx, 8                           ; Number of columns to check
@@ -350,7 +348,6 @@ db 00001000b
 
 
 ; ======== BOOTSECTOR  ========
-
 times 507 - ($ - $$) db 0  ; Pad remaining bytes
 p1x db 'P1X'            ; P1X signature 4b
 dw 0xAA55
