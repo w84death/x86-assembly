@@ -16,13 +16,13 @@ TIMER equ 0x046C                            ; BIOS timer
 
 SCREEN_WIDTH equ 320                        ; 320x200 pixels
 SCREEN_HEIGHT equ 200
+SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2
 
 SPRITE_SIZE equ 8                           ; 8 pixels per sprite line
 SPRITE_LINES equ 7                          ; 7 lines per sprite  
 MAX_ENEMIES equ 64
 MAX_FLOWERS equ 8
-MAX_ENEMIES_PER_LEVEL equ 4
-MAX_FLOWERS_PER_LEVEL equ 1
+ENEMIES_PER_LEVEL equ 4
 
 COLOR_BG equ 20                                 
 COLOR_SPIDER equ 0
@@ -33,12 +33,11 @@ SPRITE_FLY equ 0
 SPRITE_SPIDER equ 14
 SPRITE_FLOWER equ 28
 
-SCREEN_CENTER equ 320*100+160
 
 section .bss
     BUFFER resb 64000
     LIFE resb 1
-    LEVEL resb 1
+    LEVEL resw 1
     SPRITE resw 1
     COLOR resb 1
     PLAYER resb 5
@@ -64,16 +63,22 @@ _start:
 
 restart_game:
     mov byte [LIFE], 3                      ; Starting lifes
-    mov byte [LEVEL], 0                     ; Starting level
+    mov word [LEVEL], 0                     ; Starting level
     mov byte [PLAYER+1], COLOR_FLY          ; Color
    
+    mov si, ENTITIES                        ; Set memory position to entites
+    mov cx, MAX_ENEMIES+MAX_FLOWERS         ; Number of enemies
+    .clear_entites:
+        mov byte [si], 0                    ; Clear sprite ID
+        add si, 5                           ; Move to next memory position
+    loop .clear_entites
 
 next_level:
     mov word [PLAYER+3], SCREEN_CENTER      ; Position
-    inc byte [LEVEL]                        ; 0 -> 1st
+    inc word [LEVEL]                        ; 0 -> 1st
     
     mov si, ENTITIES                        ; Set memory position to entites
-    mov ax, MAX_ENEMIES_PER_LEVEL           ; Enemies per level
+    mov ax, ENEMIES_PER_LEVEL               ; Number of enemies per level
     mov bx, [LEVEL]                         ; Current level number
     mul bx                                  ; Multiply enemies by level number
     mov cx, ax                              ; Store the result in cx
@@ -89,10 +94,10 @@ next_level:
     add si, 5                               ; Move to next memory position
     loop .next_entitie
 
-    mov cx, [LEVEL]
+    mov cx, [LEVEL] 
     .spawn_flowers:
-        MOV byte [SI], SPRITE_FLOWER
-        MOV byte [SI+1], COLOR_FLOWER
+        mov byte [si], SPRITE_FLOWER
+        mov byte [si+1], COLOR_FLOWER
         rdtsc                               ; Get random number
         and ax, 64000                       ; Clip screen size
         mov word [si+3], ax                 ; Set position
@@ -192,12 +197,11 @@ check_collisions:
     .collision_spider:
         mov word [PLAYER+3], SCREEN_CENTER  ; Reset player position
         dec byte [LIFE]                     ; Decrease life
-        jz restart_game                     ; Restart game if no more lifes
+        jz restart_game
         jmp .collision_done                 ; Continue if lifes left
-
+        
     .collision_flower:
-        jmp next_level                      ; Jump to next level
-        ; jmp .collision_done
+        jmp next_level
 
     .collision_done:
     
