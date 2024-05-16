@@ -20,8 +20,7 @@ SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2
 
 SPRITE_SIZE equ 8                           ; 8 pixels per sprite line
 SPRITE_LINES equ 7                          ; 7 lines per sprite  
-MAX_ENEMIES equ 64                          ; Maximum number of enemies
-MAX_FLOWERS equ 8                           ; Maximum number of flowers            
+MAX_ENEMIES equ 64                          ; Maximum number of enemies           
 ENEMIES_PER_LEVEL equ 4                     ; Number of enemies per level
 
 COLOR_BG equ 20                                 
@@ -38,11 +37,11 @@ SPRITE_FLOWER equ 28                        ; Flower sprite ID
 section .bss
     BUFFER resb VGA_BUFFER
     LIFE resb 1
-    LEVEL resw 1
+    LEVEL resw 2
     SPRITE resw 1
     COLOR resb 1
     PLAYER resb 5
-    ENTITIES resb MAX_ENEMIES*5+MAX_FLOWERS*5
+    ENTITIES resb MAX_ENEMIES*5+5           ; 5 bytes per entitie + flower
 
 ; =========================================== IMPLEMENTATION ===================
 
@@ -70,7 +69,7 @@ restart_game:
     mov byte [PLAYER+1], COLOR_FLY          ; Color
    
     mov si, ENTITIES                        ; Set memory position to entites
-    mov cx, MAX_ENEMIES+MAX_FLOWERS         ; Number of enemies
+    mov cx, MAX_ENEMIES                     ; Number of enemies
     .clear_entites:
         mov byte [si], 0                    ; Clear sprite ID
         add si, 5                           ; Move to next memory position
