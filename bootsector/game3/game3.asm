@@ -36,12 +36,12 @@ SPRITE_FLOWER equ 28                        ; Flower sprite ID
 
 section .bss
     BUFFER resb VGA_BUFFER
-    LIFE resb 1
+    LIFE resb 2
     LEVEL resw 2
-    SPRITE resw 1
-    COLOR resb 1
+    SPRITE resw 2
+    COLOR resb 2
     PLAYER resb 5
-    ENTITIES resb MAX_ENEMIES*5+5           ; 5 bytes per entitie + flower
+    ENTITIES resb MAX_ENEMIES*5*2           ; 5 bytes per entitie + flowers
 
 ; =========================================== IMPLEMENTATION ===================
 
@@ -320,7 +320,6 @@ db 0x06, 0x77, 0xAF, 0xFE, 0x2A, 0x49, 0x49 ; Spider sprite frame 0
 db 0x06, 0x77, 0xAF, 0xFE, 0x2B, 0xD4, 0x14 ; Frame 1
 db 0x1C, 0x36, 0x1C, 0x48, 0x3F, 0x08, 0x08 ; Flower sprite frame 0
 db 0x38, 0x6C, 0x38, 0x09, 0x7E, 0x08, 0x08 ; Frame 1
-
 
 ; =========================================== BOOTSECTOR =======================
 
