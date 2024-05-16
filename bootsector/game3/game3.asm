@@ -120,10 +120,10 @@ game_loop:
 
 draw_bg:
     xor di,di
-    mov ax, 0x08                          ; Set color to black
-    add bx, [LEVEL]
-    mul bx
-    add ax, 0x8080                          ; Set color to black
+    mov ax, 0x08                            ; Set color to 8
+    add bx, [LEVEL]                         ; Get current level number
+    mul bx                                  ; Multiply by level number
+    add ax, 0x8080                          ; Add 8 to the color for each pixel
     mov dx, 8                               ; We have 8 bars
     .draw_bars:
         mov cx, 320*25                      ; 320x25 pixels
@@ -136,41 +136,41 @@ draw_bg:
 ; =========================================== DRAW ENTITIES ====================
 
 draw_entities:
-    mov word cx, MAX_ENEMIES
+    mov word cx, MAX_ENEMIES                ; Number of enemies to check
     mov si, ENTITIES                        ; Start index for positions
     .next:
-        push cx
-        push si
-        xor ax,ax
+        push cx                             ; Save counter
+        push si                             ; Save position
+        xor ax,ax                           ; Clear AX
         mov byte al, [si]                   ; Sprite frame
-        cmp al, 0
-        je .done
-        mov word [SPRITE], ax  
+        cmp al, 0                           ; Check if it's not empty
+        je .done                            ; Kill loop if empty    
+        mov word [SPRITE], ax               ; Set sprite frame
         rdtsc                               ; Get random number
-        and al, 1
-        jnz .ok
+        and al, 1                           ; Last bit
+        jnz .ok                             ; If 1, add frame
         add word [SPRITE], 7                ; Move to the second sprite frame
         .ok:
-        mov byte al, [si+1]                 ; Color
-        mov byte [COLOR], al
-        mov di, [SI+3]                      ; Position
+        mov byte al, [si+1]                 ; Get color
+        mov byte [COLOR], al                ; Set color
+        mov di, [SI+3]                      ; Get position
         .move_player_and_enemies:
-            cmp byte [SPRITE], SPRITE_SPIDER
-            ja .draw_entitie
+            cmp byte [SPRITE], SPRITE_SPIDER; Check if it's a spider
+            ja .draw_entitie                ; Do not move if not a spider
             .move_entitie_forward:
                 movzx si, [si+2]            ; Direction            
-                shl si, 1
+                shl si, 1                   ; Shift left
                 add di, [MLT + si]          ; Movement Lookup Table
-                cmp di, VGA_BUFFER               ; Clip screen size (VGA_BUFFER is the hexadecimal representation of 64000)
-                jb .draw_entitie
-                and di, VGA_BUFFER               ; Clip screen size 
+                cmp di, VGA_BUFFER          ; Check if out of bounds
+                jb .draw_entitie            ; No clip below
+                and di, VGA_BUFFER          ; Clip screen size 
         .draw_entitie:
-            push di
-            mov byte BL, [COLOR]
-            mov si, sprites
-            add word si, [SPRITE]
-            call draw_sprite
-            pop di
+            push di                         ; Save position
+            mov byte BL, [COLOR]            ; Set color
+            mov si, sprites                 ; Set sprites data position
+            add word si, [SPRITE]           ; Shift to the current sprite
+            call draw_sprite                ; Draw the sprite
+            pop di                          ; Restore position
         pop si
         mov word [si+3], di                 ; Save new position
 
@@ -178,9 +178,9 @@ draw_entities:
             rdtsc                           ; Randomize rotation
             and ax, 42                      ; Wait 42 cycles
             jg .skip
-            rdtsc 
-            and byte al, 7
-            mov byte [si+2],al
+            rdtsc                           ; Get random number
+            and byte al, 7                  ; Clip rotation
+            mov byte [si+2], al             ; Set direction
             .skip:
         add si, 5                           ; Move to the next entitie data
         pop cx
@@ -192,34 +192,34 @@ draw_entities:
 
 check_collisions:
     mov di, [PLAYER+3]                      ; Player position
-    mov cx, SPRITE_LINES                               ; Number of rows to check
+    mov cx, SPRITE_LINES                    ; Number of rows to check
     .check_row:     
-        push cx     
+        push cx                             ; Save row counter
         mov cx, 8                           ; Number of columns to check
         mov si, di                          ; Current position
         .check_column:      
-            push cx     
+            push cx                         ; Save column counter
             mov al, [es:si]                 ; Get pixel color at current position
             cmp al, COLOR_SPIDER            ; Check if it matches spider color
             je .collision_spider            ; Jump if collision with spider
             cmp al, COLOR_FLOWER            ; Check if it matches flower color
             je .collision_flower            ; Jump if collision with flower
             add si, 1                       ; Move to the next column
-            pop cx      
+            pop cx                          ; Restore column counter
         loop .check_column      
         add di, 320                         ; Move to the next row
-        pop cx
+        pop cx                              ; Restore row counter
     loop .check_row
     jmp .collision_done                     ; No collision
 
     .collision_spider:
         mov word [PLAYER+3], SCREEN_CENTER  ; Reset player position
         dec byte [LIFE]                     ; Decrease life
-        jz restart_game
+        jz restart_game                     ; Restart game if no lifes left
         jmp .collision_done                 ; Continue if lifes left
         
     .collision_flower:
-        jmp next_level
+        jmp next_level                      ; Advance to the next level
 
     .collision_done:
 
@@ -227,12 +227,12 @@ check_collisions:
 
 handle_player:
     mov di, [PLAYER+3]                      ; Position
-    mov byte BL, [PLAYER+1]
-    mov byte al, [PLAYER+2]
-    movzx si,al                 
-    shl si, 1
+    mov byte bl, [PLAYER+1]                 ; Color
+    mov byte al, [PLAYER+2]                 ; Rotation
+    movzx si,al                             ; Set SI to rotation
+    shl si, 1                               ; Shift left
     add di, [MLT + si]                      ; Movement Lookup Table
-    add di, [MLT + si]                      ; Second time for smoother movement
+    add di, [MLT + si]                      ; Second time for faster movement
     mov word [PLAYER+3], DI                 ; Save new position
     mov si, sprites+SPRITE_FLY              ; Sprite
     rdtsc                                   ; Get random number
