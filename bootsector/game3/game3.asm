@@ -36,7 +36,7 @@ SPRITE_FLOWER equ 28                        ; Flower sprite ID
 
 section .bss
     BUFFER resb VGA_BUFFER
-    LIFE resb 2
+    LIFE resb 1
     LEVEL resw 2
     SPRITE resw 2
     COLOR resb 2
@@ -292,8 +292,8 @@ draw_sprite:
     MOV DX, SPRITE_LINES                    ; Number of lines in the sprite
     .draw_row:
         PUSH DX                             ; Save DX
+        xor ax,ax                           ; Clear AX  
         MOV AL, [SI]                        ; Get sprite row data
-        MOV AH, 0                           ; Clear AH
         MOV CX, 8                           ; 8 bits per row
         .draw_pixel:
             SHL AL, 1                       ; Shift left to get the next bit into carry flag
