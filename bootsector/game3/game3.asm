@@ -2,11 +2,9 @@
 ; by Krzysztof Krystian Jankowski ^ P1X
 ;
 
-[bits 16]
-[org 0x7c00]
-
-cpu pentium
-
+[bits 16]                                   ; 16-bit mode          
+[org 0x7c00]                                ; Boot sector
+cpu pentium                                 ; Minimum CPU is Pentium
 
 ; =========================================== MEMORY ===========================
 
@@ -96,17 +94,17 @@ next_level:
         and al, 7                           ; Clip rotation
         mov byte [si+2], al                 ; Set direction
         rdtsc                               ; Make it more random
-        and ax, 64000                       ; Clip screen size
+        and ax, VGA_BUFFER                  ; Clip screen size
         mov word [si+3], ax                 ; Set position
     add si, 5                               ; Move to next memory position
-    loop .next_entitie
+    loop .next_entitie                      ; Repeat for all enemies
 
     mov cx, [LEVEL]                         ; One more flower per level
     .spawn_flowers:
-        mov byte [si], SPRITE_FLOWER
-        mov byte [si+1], COLOR_FLOWER
+        mov byte [si], SPRITE_FLOWER        ; Sprite ID
+        mov byte [si+1], COLOR_FLOWER       ; Color
         rdtsc                               ; Get random number
-        and ax, 64000                       ; Clip screen size
+        and ax, VGA_BUFFER                  ; Clip screen size
         mov word [si+3], ax                 ; Set position
     add si, 5                               ; Move to next memory position
     loop .spawn_flowers
