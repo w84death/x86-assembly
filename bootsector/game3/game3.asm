@@ -8,9 +8,22 @@ cpu pentium                                 ; Minimum CPU is Pentium
 
 ; =========================================== MEMORY ===========================
 
-VGA_MEMORY_ADR equ 0xA000
+VGA_MEMORY_ADR equ 0xA000                   ; VGA memory address
+DBUFFER_MEMORY_ADR equ 0x1000               ; Doublebuffer memory address
+SCREEN_BUFFER_SIZE equ 0xFA00                  ; Size of the VGA buffer size
 TIMER equ 0x046C                            ; BIOS timer
-VGA_BUFFER equ 0xFA00                       ; DoubleDBUFFER_MEMORY_ADR  
+
+BASE_MEM equ 0x7e00                         ; Base memory address
+LIFE equ BASE_MEM+0x00                      ; Number of lifes, 1 byte
+LEVEL equ BASE_MEM+0x01                     ; Current level, 2 bytes
+SPRITE equ BASE_MEM+0x03                    ; Current sprite, 2 bytes
+COLOR equ BASE_MEM+0x05                     ; Current color, 1 byte
+PLAYER equ BASE_MEM+0x06                    ; Player data, 5 bytes of:
+                                            ;       sprite ID, 1 byte
+                                            ;       color, 1 byte
+                                            ;       rotation, 1 byte
+                                            ;       position, 2 bytes
+ENTITIES equ BASE_MEM+0x0B                  ; 5 bytes per entitie
 
 ; =========================================== MAGIC NUMBERS ====================
 
@@ -32,41 +45,15 @@ SPRITE_FLY equ 0                            ; Fly sprite ID (position in memory)
 SPRITE_SPIDER equ 14                        ; Spider sprite ID
 SPRITE_FLOWER equ 28                        ; Flower sprite ID
 
-; =========================================== RESERVE MEMORY ===================
-
-section .bss
-    DBUFFER_MEMORY_ADR   resb VGA_BUFFER    ; Doublebuffer
-    LIFE resb 1                             ; Number of lifes, 1 byte
-    LEVEL resw 2                            ; Current level, 2 bytes
-    SPRITE resw 2                           ; Current sprite, 2 bytes
-    COLOR resb 2                            ; Current color, 1 byte
-    PLAYER resb 5                           ; Player data, 5 bytes of:
-                                            ;       sprite ID, 1 byte
-                                            ;       color, 1 byte
-                                            ;       rotation, 1 byte
-                                            ;       position, 2 bytes
-    ENTITIES resb MAX_ENTITIES*5            ; 5 bytes per entitie
-    
-   
-
-; =========================================== IMPLEMENTATION ===================
-
-section .text
-    global _start
 
 ; =========================================== BOOTSTRAP ========================
 
 _start:
-    xor ax,ax                               ; Init segments (0)
-    mov ds, ax
-    mov ax, VGA_MEMORY_ADR                  ; Set VGA memory
-    mov es, ax                              ; as target
-    mov ax, 13h                             ; Init VGA 320x200x256
-    int 10h                                 ; Video BIOS interrupt
-    
-; =========================================== DOUBLE BUFFER INITIALIZATION =====
-
-    mov ax,DBUFFER_MEMORY_ADR               ; Set doublebuffer memory
+    xor ax, ax                              ; Clear AX
+    mov ds, ax                              ; Set DS to 0
+    mov ax, 0x0013                          ; Init VGA 320x200x256
+    int 0x10                                ; Video BIOS interrupt  
+    mov ax, DBUFFER_MEMORY_ADR               ; Set doublebuffer memory
     mov es, ax                              ; as target
 
 ; =========================================== GAME INITIALIZATION / RESET ======
@@ -94,13 +81,13 @@ next_level:
     mul bx                                  ; Multiply enemies by level number
     mov cx, ax                              ; Store the result in cx
     .next_entitie:
-        mov word [SI], (COLOR_SPIDER << 8) | SPRITE_SPIDER  
+        mov word [si], (COLOR_SPIDER << 8) | SPRITE_SPIDER  
                                             ; Set sprite ID and color
         rdtsc                               ; Get random number
         and al, 7                           ; Clip rotation
         mov byte [si+2], al                 ; Set direction
         rdtsc                               ; Make it more random
-        and ax, VGA_BUFFER                  ; Clip screen size
+        and ax, SCREEN_BUFFER_SIZE          ; Clip screen size
         mov word [si+3], ax                 ; Set position
     add si, 5                               ; Move to next memory position
     loop .next_entitie                      ; Repeat for all enemies
@@ -110,7 +97,7 @@ next_level:
         mov word [si], (COLOR_FLOWER << 8) | SPRITE_FLOWER
                                             ; Set sprite ID and color
         rdtsc                               ; Get random number
-        and ax, VGA_BUFFER                  ; Clip screen size
+        and ax, SCREEN_BUFFER_SIZE                  ; Clip screen size
         mov word [si+3], ax                 ; Set position
     add si, 5                               ; Move to next memory position
     loop .spawn_flowers
@@ -166,9 +153,9 @@ draw_entities:
                 movzx si, [si+2]            ; Direction            
                 shl si, 1                   ; Shift left
                 add di, [MLT + si]          ; Movement Lookup Table
-                cmp di, VGA_BUFFER          ; Check if out of bounds
+                cmp di, SCREEN_BUFFER_SIZE          ; Check if out of bounds
                 jb .draw_entitie            ; No clip below
-                and di, VGA_BUFFER          ; Clip screen size 
+                and di, SCREEN_BUFFER_SIZE          ; Clip screen size 
         .draw_entitie:
             push di                         ; Save position
             mov byte BL, [COLOR]            ; Set color
@@ -252,7 +239,7 @@ handle_player:
 
 
 handle_keyboard:
-    mov ax, 0x0100                            ; Check if a key has been pressed
+    mov ax, 0x0100                          ; Check if a key has been pressed
     int 0x16                                ; Get the key press
     jz .no_move                             ; No press
     xor ax, ax                              ; Clear AX
@@ -272,7 +259,7 @@ vga_blit:
 
     mov ax, VGA_MEMORY_ADR                   ; Set VGA memory
     mov es, ax                               ; as target
-    mov ax,DBUFFER_MEMORY_ADR                ; Set doublebuffer memory
+    mov ax, DBUFFER_MEMORY_ADR                ; Set doublebuffer memory
     mov ds, ax                               ; as source
     mov cx, 0x3E80                           ; Quarter of 320x200 pixels
     xor si, si                               ; Clear SI
