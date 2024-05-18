@@ -174,7 +174,6 @@ draw_entities:
         loop .next
         .done:
 
-
 ; =========================================== COLLISION CHECKING ===============
 
 check_collisions:
@@ -199,14 +198,13 @@ check_collisions:
     loop .check_row
     jmp .collision_done                     ; No collision
 
+    .collision_flower:
+        jmp next_level                      ; Advance to the next level
+
     .collision_spider:
         mov word [PLAYER+3], SCREEN_CENTER  ; Reset player position
         dec byte [LIFE]                     ; Decrease life
         jz restart_game                     ; Restart game if no lifes left
-        jmp .collision_done                 ; Continue if lifes left
-        
-    .collision_flower:
-        jmp next_level                      ; Advance to the next level
 
     .collision_done:
 
@@ -229,9 +227,7 @@ handle_player:
     .ok:
     call draw_sprite                        ; Draw player sprite
 
-
 ; =========================================== KEYBOARD INPUT ===================
-
 
 handle_keyboard:
     mov ax, 0x0100                          ; Check if a key has been pressed
