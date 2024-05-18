@@ -8,9 +8,9 @@ cpu pentium                                 ; Minimum CPU is Pentium
 
 ; =========================================== MEMORY ===========================
 
-VGA equ 0xA000
+VGA_MEMORY_ADR equ 0xA000
 TIMER equ 0x046C                            ; BIOS timer
-VGA_BUFFER equ 0xFA00                       ; Double buffer
+VGA_BUFFER equ 0xFA00                       ; DoubleDBUFFER_MEMORY_ADR  
 
 ; =========================================== MAGIC NUMBERS ====================
 
@@ -20,7 +20,7 @@ SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2
 
 SPRITE_SIZE equ 8                           ; 8 pixels per sprite line
 SPRITE_LINES equ 7                          ; 7 lines per sprite  
-MAX_ENEMIES equ 64                          ; Maximum number of enemies           
+MAX_ENTITIES equ 64                          ; Maximum number of enemies           
 ENEMIES_PER_LEVEL equ 4                     ; Number of enemies per level
 
 COLOR_BG equ 20                                 
@@ -35,13 +35,19 @@ SPRITE_FLOWER equ 28                        ; Flower sprite ID
 ; =========================================== RESERVE MEMORY ===================
 
 section .bss
-    BUFFER resb VGA_BUFFER
-    LIFE resb 1
-    LEVEL resw 2
-    SPRITE resw 2
-    COLOR resb 2
-    PLAYER resb 5
-    ENTITIES resb MAX_ENEMIES*5*2           ; 5 bytes per entitie + flowers
+    DBUFFER_MEMORY_ADR   resb VGA_BUFFER    ; Doublebuffer
+    LIFE resb 1                             ; Number of lifes, 1 byte
+    LEVEL resw 2                            ; Current level, 2 bytes
+    SPRITE resw 2                           ; Current sprite, 2 bytes
+    COLOR resb 2                            ; Current color, 1 byte
+    PLAYER resb 5                           ; Player data, 5 bytes of:
+                                            ;       sprite ID, 1 byte
+                                            ;       color, 1 byte
+                                            ;       rotation, 1 byte
+                                            ;       position, 2 bytes
+    ENTITIES resb MAX_ENTITIES*5            ; 5 bytes per entitie
+    
+   
 
 ; =========================================== IMPLEMENTATION ===================
 
@@ -53,12 +59,14 @@ section .text
 _start:
     xor ax,ax                               ; Init segments (0)
     mov ds, ax
-    mov ax, VGA                             ; Set VGA memory
+    mov ax, VGA_MEMORY_ADR                  ; Set VGA memory
     mov es, ax                              ; as target
-    mov ax, 13h                             ; Init VGA 
-    int 10h
+    mov ax, 13h                             ; Init VGA 320x200x256
+    int 10h                                 ; Video BIOS interrupt
     
-    mov ax, BUFFER                          ; Set double buffer
+; =========================================== DOUBLE BUFFER INITIALIZATION =====
+
+    mov ax,DBUFFER_MEMORY_ADR               ; Set doublebuffer memory
     mov es, ax                              ; as target
 
 ; =========================================== GAME INITIALIZATION / RESET ======
@@ -69,7 +77,7 @@ restart_game:
     mov byte [PLAYER+1], COLOR_FLY          ; Color
    
     mov si, ENTITIES                        ; Set memory position to entites
-    mov cx, MAX_ENEMIES                     ; Number of enemies
+    mov cx, MAX_ENTITIES                     ; Number of enemies
     .clear_entites:
         mov byte [si], 0                    ; Clear sprite ID
         add si, 5                           ; Move to next memory position
@@ -78,17 +86,16 @@ restart_game:
 ; =========================================== LEVEL INITIALIZATION / NEXT LEVEL
 
 next_level:
-    mov word [PLAYER+3], SCREEN_CENTER      ; Position
-    inc word [LEVEL]                        ; 0 -> 1st
-    
+    mov word [PLAYER+3], SCREEN_CENTER      ; Set player initial position
+    inc word [LEVEL]                        ; 0 -> 1st level
     mov si, ENTITIES                        ; Set memory position to entites
     mov ax, ENEMIES_PER_LEVEL               ; Number of enemies per level
     mov bx, [LEVEL]                         ; Current level number
     mul bx                                  ; Multiply enemies by level number
     mov cx, ax                              ; Store the result in cx
     .next_entitie:
-        MOV byte [SI], SPRITE_SPIDER        ; Sprite ID (position in memory)
-        MOV byte [SI+1], COLOR_SPIDER       ; Color
+        mov word [SI], (COLOR_SPIDER << 8) | SPRITE_SPIDER  
+                                            ; Set sprite ID and color
         rdtsc                               ; Get random number
         and al, 7                           ; Clip rotation
         mov byte [si+2], al                 ; Set direction
@@ -100,8 +107,8 @@ next_level:
 
     mov cx, [LEVEL]                         ; One more flower per level
     .spawn_flowers:
-        mov byte [si], SPRITE_FLOWER        ; Sprite ID
-        mov byte [si+1], COLOR_FLOWER       ; Color
+        mov word [si], (COLOR_FLOWER << 8) | SPRITE_FLOWER
+                                            ; Set sprite ID and color
         rdtsc                               ; Get random number
         and ax, VGA_BUFFER                  ; Clip screen size
         mov word [si+3], ax                 ; Set position
@@ -116,16 +123,17 @@ game_loop:
 ; =========================================== DRAW BACKGROUND ==================
 
 draw_bg:
-    xor di,di
-    mov ax, 0x08                            ; Set color to 8
-    add bx, [LEVEL]                         ; Get current level number
+    xor di,di                               ; Clear DI                     
+    xor bx,bx                               ; Clear BX
+    mov ax, 0x0808                          ; Set color to 8
+    add byte bl, [LEVEL]                    ; Get current level number
     mul bx                                  ; Multiply by level number
     add ax, 0x8080                          ; Add 8 to the color for each pixel
     mov dx, 8                               ; We have 8 bars
     .draw_bars:
         mov cx, 320*25                      ; 320x25 pixels
-        rep stosb                           ; Write to the bufferr
-        inc ax                              ; Increment color index for next bar
+        rep stosb                           ; Write to the doublebuffer
+        inc al                              ; Increment color index for next bar
         dec dx                              ; Decrement bar counter
         jnz .draw_bars                      ; Repeat for all bars
 
@@ -133,7 +141,7 @@ draw_bg:
 ; =========================================== DRAW ENTITIES ====================
 
 draw_entities:
-    mov word cx, MAX_ENEMIES                ; Number of enemies to check
+    mov word cx, MAX_ENTITIES                ; Number of enemies to check
     mov si, ENTITIES                        ; Start index for positions
     .next:
         push cx                             ; Save counter
@@ -196,7 +204,7 @@ check_collisions:
         mov si, di                          ; Current position
         .check_column:      
             push cx                         ; Save column counter
-            mov al, [es:si]                 ; Get pixel color at current position
+            mov al, [es:si]                 ; Get pixel color
             cmp al, COLOR_SPIDER            ; Check if it matches spider color
             je .collision_spider            ; Jump if collision with spider
             cmp al, COLOR_FLOWER            ; Check if it matches flower color
@@ -235,7 +243,7 @@ handle_player:
     rdtsc                                   ; Get random number
     and al, 1                               ; Last bit  
     jnz .ok                                 ; If 1, add frame
-    add si, 7                               ; Move to the second srite frame position  
+    add si, 7                               ; Move to the second srite frame
     .ok:
     call draw_sprite                        ; Draw player sprite
 
@@ -244,10 +252,10 @@ handle_player:
 
 
 handle_keyboard:
-    mov ah, 0x01                            ; Check if a key has been pressed
+    mov ax, 0x0100                            ; Check if a key has been pressed
     int 0x16                                ; Get the key press
     jz .no_move                             ; No press
-    xor ax,ax                               ; Clear AX
+    xor ax, ax                              ; Clear AX
     int 0x16                                ; Get the key press code
     .rotate_player:
         mov byte bl, [PLAYER+2]             ; Get current rotation 0-7
@@ -256,23 +264,24 @@ handle_keyboard:
         mov byte [PLAYER+2], bl             ; Save back
     .no_move:
 
-; =========================================== VGA SPILT ========================
+; =========================================== VGA BLIT =========================
 
 vga_blit:
     push es
     push ds
- 
-    mov ax, VGA                             ; VGA memory
-    mov bx, BUFFER                          ; Buffer memory
-    mov es, ax                              ; Set VGA memory as target
-    mov ds, bx                              ; Set buffer memory as source
-    mov cx, 0x3E80                          ; Quater of buffer (hex value)
-    xor si, si                              ; Clear SI
-    xor di, di                              ; Clear DI
-    rep movsd                               ; Push double words (4x pixels)
+
+    mov ax, VGA_MEMORY_ADR                   ; Set VGA memory
+    mov es, ax                               ; as target
+    mov ax,DBUFFER_MEMORY_ADR                ; Set doublebuffer memory
+    mov ds, ax                               ; as source
+    mov cx, 0x3E80                           ; Quarter of 320x200 pixels
+    xor si, si                               ; Clear SI
+    xor di, di                               ; Clear DI
+    rep movsd                                ; Push double words (4x pixels)
 
     pop ds
     pop es
+
 
 ; =========================================== DELAY CYCLE ======================
 
@@ -289,24 +298,24 @@ jmp game_loop
 
 
 draw_sprite:
-    MOV DX, SPRITE_LINES                    ; Number of lines in the sprite
+    mov dx, SPRITE_LINES                    ; Number of lines in the sprite
     .draw_row:
-        PUSH DX                             ; Save DX
+        push dx                             ; Save DX
         xor ax,ax                           ; Clear AX  
-        MOV AL, [SI]                        ; Get sprite row data
-        MOV CX, 8                           ; 8 bits per row
+        mov al, [si]                        ; Get sprite row data
+        mov cx, 8                           ; 8 bits per row
         .draw_pixel:
-            SHL AL, 1                       ; Shift left to get the next bit into carry flag
-            JNC .skip_pixel                 ; If carry flag is 0, skip setting the pixel
-            MOV [ES:DI], BL                 ; Set the pixel
+            shl al, 1                       ; Shift left
+            jnc .skip_pixel                 ; If carry flag is 0, skip
+            mov [es:di], bl                 ; Set the pixel
         .skip_pixel:
-            INC DI                          ; Move to the next pixel position horizontally
-            LOOP .draw_pixel                ; Repeat for all 8 pixels in the row
-        POP DX                              ; Restore DX
-        INC SI
-    ADD DI, 312                             ; Move to the next line in the video buffer
-    DEC DX                                  ; Decrement row count
-    JNZ .draw_row                           ; If there are more rows, draw the next one
+            inc di                          ; Move to the next pixel position
+            loop .draw_pixel                ; Repeat for all 8 pixels in the row
+        pop dx                              ; Restore DX
+        inc si
+    add di, 312                             ; Move to the next line
+    dec dx                                  ; Decrement row count
+    jnz .draw_row                           ; Draw the next row
     ret
 
 
