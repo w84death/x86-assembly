@@ -2,8 +2,8 @@
 ; by Krzysztof Krystian Jankowski ^ P1X
 ;
 
-[bits 16]                                   ; 16-bit mode          
-[org 0x7c00]                                ; Boot sector
+bits 16                                   ; 16-bit mode          
+org 0x7c00                                ; Boot sector
 cpu pentium                                 ; Minimum CPU is Pentium
 
 ; =========================================== MEMORY ===========================
@@ -33,7 +33,7 @@ SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2 ; Center
 
 SPRITE_SIZE equ 8                           ; 8 pixels per sprite line
 SPRITE_LINES equ 7                          ; 7 lines per sprite  
-MAX_ENTITIES equ 64                         ; Maximum number of entities           
+MAX_ENTITIES equ 128                        ; Maximum number of entities           
 ENEMIES_PER_LEVEL equ 4                     ; Number of enemies per level
 
 COLOR_BG equ 20                             ; Background color
@@ -59,8 +59,8 @@ _start:
 ; =========================================== GAME INITIALIZATION / RESET ======
 
 restart_game:
-    mov byte [LIFE], 3                      ; Starting lifes
-    mov word [LEVEL], 0                     ; Starting level
+    mov byte [LIFE], 0x03                      ; Starting lifes
+    mov word [LEVEL], 0x00                     ; Starting level
     mov byte [PLAYER+1], COLOR_FLY          ; Color
    
     mov si, ENTITIES                        ; Set memory position to entites
@@ -68,7 +68,7 @@ restart_game:
     .clear_entites:
         mov byte [si], 0                    ; Clear sprite ID
         add si, 5                           ; Move to next memory position
-    loop .clear_entites
+    loop .clear_entites                              ; Store AL into [ES:DI] and increment DI
 
 ; =========================================== LEVEL INITIALIZATION / NEXT LEVEL
 
@@ -81,14 +81,16 @@ next_level:
     mul bx                                  ; Multiply enemies by level number
     mov cx, ax                              ; Store the result in cx
     .next_entitie:
+        ; cmp cx, 0                           ; Check if there are any enemies left
+        .spawn_flower:
+        .spawn_spider:
         mov word [si], (COLOR_SPIDER << 8) | SPRITE_SPIDER  
                                             ; Set sprite ID and color
         rdtsc                               ; Get random number
-        and al, 7                           ; Clip rotation
-        mov byte [si+2], al                 ; Set direction
-        rdtsc                               ; Make it more random
         and ax, SCREEN_BUFFER_SIZE          ; Clip screen size
         mov word [si+3], ax                 ; Set position
+        and al, 7                           ; Clip rotation
+        mov byte [si+2], al                 ; Set direction
     add si, 5                               ; Move to next memory position
     loop .next_entitie                      ; Repeat for all enemies
 
@@ -128,7 +130,7 @@ draw_bg:
 ; =========================================== DRAW ENTITIES ====================
 
 draw_entities:
-    mov word cx, MAX_ENTITIES                ; Number of enemies to check
+    mov cx, MAX_ENTITIES                ; Number of enemies to check
     mov si, ENTITIES                        ; Start index for positions
     .next:
         push cx                             ; Save counter
@@ -321,6 +323,6 @@ db 0x38, 0x6C, 0x38, 0x09, 0x7E, 0x08, 0x08 ; Frame 1
 
 ; =========================================== BOOTSECTOR =======================
 
-times 507 - ($ - $$) db 0                   ; Pad remaining bytes
+; times 507 - ($ - $$) db 0                   ; Pad remaining bytes
 db 'P1X'                                    ; P1X signature 3b
 dw 0xAA55                                   ; Boot signature    
