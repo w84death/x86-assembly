@@ -4,7 +4,7 @@
 
 bits 16                                   ; 16-bit mode          
 org 0x7c00                                ; Boot sector
-cpu pentium                                 ; Minimum CPU is Pentium
+cpu 386                                 ; Minimum CPU is Pentium
 
 ; =========================================== MEMORY ===========================
 
@@ -27,6 +27,7 @@ ENTITIES equ BASE_MEM+0x0B                  ; 5 bytes per entitie
 
 ; =========================================== MAGIC NUMBERS ====================
 
+SEED equ 0x1234                            ; Random seed
 SCREEN_WIDTH equ 320                        ; 320x200 pixels
 SCREEN_HEIGHT equ 200
 SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2 ; Center
@@ -90,9 +91,13 @@ next_level:
         mov word [si], (COLOR_SPIDER << 8) | SPRITE_SPIDER  
         .spawn_done:
                                             ; Set sprite ID and color
-        rdtsc                               ; Get random number
+        mov byte al, [TIMER]                ; Get random number
+        add ax, si                          ; Add memory position
+        add ax, SEED                        ; Add seed
         and ax, SCREEN_BUFFER_SIZE          ; Clip screen size
         mov word [si+3], ax                 ; Set position
+        mov byte al, [TIMER]                           ; Randomize rotation
+        add ax, si                          ; Add memory position
         and al, 7                           ; Clip rotation
         mov byte [si+2], al                 ; Set direction
     add si, 5                               ; Move to next memory position
@@ -133,7 +138,7 @@ draw_entities:
         cmp al, 0                           ; Check if it's not empty
         je .done                            ; Kill loop if empty    
         mov word [SPRITE], ax               ; Set sprite frame
-        rdtsc                               ; Get random number
+        mov al, [TIMER]                               ; Get random number
         and al, 1                           ; Last bit
         jnz .ok                             ; If 1, add frame
         add word [SPRITE], 7                ; Move to the second sprite frame
@@ -162,10 +167,11 @@ draw_entities:
         mov word [si+3], di                 ; Save new position
 
         .random_rotate:
-            rdtsc                           ; Randomize rotation
+            mov ax, [TIMER]                           ; Randomize rotation
             and ax, 42                      ; Wait 42 cycles
             jg .skip
-            rdtsc                           ; Get random number
+            mov ax, [TIMER]                           ; Get random number
+            add ax, si                      ; Add memory position
             and byte al, 7                  ; Clip rotation
             mov byte [si+2], al             ; Set direction
             .skip:
@@ -217,7 +223,7 @@ handle_player:
     add di, [MLT + si]                      ; Second time for faster movement
     mov word [PLAYER+3], DI                 ; Save new position
     mov si, sprites+SPRITE_FLY              ; Sprite
-    rdtsc                                   ; Get random number
+    mov byte al, [TIMER]                                   ; Get random number
     and al, 1                               ; Last bit  
     jnz .ok                                 ; If 1, add frame
     add si, 7                               ; Move to the second srite frame
