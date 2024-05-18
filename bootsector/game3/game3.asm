@@ -59,16 +59,16 @@ _start:
 ; =========================================== GAME INITIALIZATION / RESET ======
 
 restart_game:
-    mov byte [LIFE], 0x03                      ; Starting lifes
-    mov word [LEVEL], 0x00                     ; Starting level
+    mov byte [LIFE], 0x03                   ; Starting lifes
+    mov word [LEVEL], 0x00                  ; Starting level
     mov byte [PLAYER+1], COLOR_FLY          ; Color
    
     mov si, ENTITIES                        ; Set memory position to entites
-    mov cx, MAX_ENTITIES                     ; Number of enemies
+    mov cx, MAX_ENTITIES                    ; Number of enemies
     .clear_entites:
         mov byte [si], 0                    ; Clear sprite ID
         add si, 5                           ; Move to next memory position
-    loop .clear_entites                              ; Store AL into [ES:DI] and increment DI
+    loop .clear_entites                     ; Store AL into [ES:DI] and increment DI
 
 ; =========================================== LEVEL INITIALIZATION / NEXT LEVEL
 
@@ -81,10 +81,14 @@ next_level:
     mul bx                                  ; Multiply enemies by level number
     mov cx, ax                              ; Store the result in cx
     .next_entitie:
-        ; cmp cx, 0                           ; Check if there are any enemies left
+        cmp cx, [LEVEL]                           ; Check if there are any enemies left
+        ja .spawn_spider
         .spawn_flower:
+        mov word [si], (COLOR_FLOWER << 8) | SPRITE_FLOWER
+        jmp .spawn_done
         .spawn_spider:
         mov word [si], (COLOR_SPIDER << 8) | SPRITE_SPIDER  
+        .spawn_done:
                                             ; Set sprite ID and color
         rdtsc                               ; Get random number
         and ax, SCREEN_BUFFER_SIZE          ; Clip screen size
@@ -93,17 +97,6 @@ next_level:
         mov byte [si+2], al                 ; Set direction
     add si, 5                               ; Move to next memory position
     loop .next_entitie                      ; Repeat for all enemies
-
-    mov cx, [LEVEL]                         ; One more flower per level
-    .spawn_flowers:
-        mov word [si], (COLOR_FLOWER << 8) | SPRITE_FLOWER
-                                            ; Set sprite ID and color
-        rdtsc                               ; Get random number
-        and ax, SCREEN_BUFFER_SIZE                  ; Clip screen size
-        mov word [si+3], ax                 ; Set position
-    add si, 5                               ; Move to next memory position
-    loop .spawn_flowers
-
 
 ; =========================================== MAIN GAME LOOP ===================
 
@@ -323,6 +316,6 @@ db 0x38, 0x6C, 0x38, 0x09, 0x7E, 0x08, 0x08 ; Frame 1
 
 ; =========================================== BOOTSECTOR =======================
 
-; times 507 - ($ - $$) db 0                   ; Pad remaining bytes
+times 507 - ($ - $$) db 0                   ; Pad remaining bytes
 db 'P1X'                                    ; P1X signature 3b
 dw 0xAA55                                   ; Boot signature    
