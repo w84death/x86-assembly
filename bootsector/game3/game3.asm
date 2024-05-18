@@ -178,24 +178,21 @@ draw_entities:
 
 check_collisions:
     mov di, [PLAYER+3]                      ; Player position
-    mov cx, SPRITE_LINES                    ; Number of rows to check
+    mov bx, SPRITE_LINES                    ; Number of rows to check
     .check_row:     
-        push cx                             ; Save row counter
         mov cx, 8                           ; Number of columns to check
         mov si, di                          ; Current position
         .check_column:      
-            push cx                         ; Save column counter
             mov al, [es:si]                 ; Get pixel color
             cmp al, COLOR_SPIDER            ; Check if it matches spider color
             je .collision_spider            ; Jump if collision with spider
             cmp al, COLOR_FLOWER            ; Check if it matches flower color
             je .collision_flower            ; Jump if collision with flower
-            add si, 1                       ; Move to the next column
-            pop cx                          ; Restore column counter
+            inc si                          ; Move to the next column
         loop .check_column      
         add di, 320                         ; Move to the next row
-        pop cx                              ; Restore row counter
-    loop .check_row
+    dec bx                                  ; Decrement row counter
+    jnz .check_row
     jmp .collision_done                     ; No collision
 
     .collision_flower:
