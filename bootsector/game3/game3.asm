@@ -16,17 +16,17 @@ VGA_BUFFER equ 0xFA00                       ; DoubleDBUFFER_MEMORY_ADR
 
 SCREEN_WIDTH equ 320                        ; 320x200 pixels
 SCREEN_HEIGHT equ 200
-SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2
+SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2 ; Center
 
 SPRITE_SIZE equ 8                           ; 8 pixels per sprite line
 SPRITE_LINES equ 7                          ; 7 lines per sprite  
-MAX_ENTITIES equ 64                          ; Maximum number of enemies           
+MAX_ENTITIES equ 64                         ; Maximum number of entities           
 ENEMIES_PER_LEVEL equ 4                     ; Number of enemies per level
 
-COLOR_BG equ 20                                 
-COLOR_SPIDER equ 0
-COLOR_FLOWER equ 10
-COLOR_FLY equ 77
+COLOR_BG equ 20                             ; Background color
+COLOR_SPIDER equ 0                          ; Spider color    
+COLOR_FLOWER equ 10                         ; Flower color
+COLOR_FLY equ 77                            ; Fly color
 
 SPRITE_FLY equ 0                            ; Fly sprite ID (position in memory)
 SPRITE_SPIDER equ 14                        ; Spider sprite ID
@@ -289,10 +289,12 @@ delay_timer:
     mov ax, [TIMER]                         ; Get current timer value
     inc ax                                  ; Increment it by 1 cycle (42ms)
     .wait:
-        cmp [TIMER], ax                     ; Compare with the current timer value
+        cmp [TIMER], ax                     ; Compare with the current timer
         jl .wait                            ; Loop until equal
 
-jmp game_loop
+; =========================================== END OF GAME LOOP =================
+
+jmp game_loop                               ; Repeat the game loop
 
 ; =========================================== DRAWING SPRITE PROCEDURE =========
 
