@@ -1,6 +1,6 @@
 ; GAME 3 - Fly Escape
 ; by Krzysztof Krystian Jankowski ^ P1X
-;
+; 18 MAY 2024
 
 bits 16                                     ; 16-bit mode          
 org 0x7c00                                  ; Boot sector origin
@@ -27,7 +27,7 @@ ENTITIES equ BASE_MEM+0x0B                  ; 5 bytes per entitie
 
 ; =========================================== MAGIC NUMBERS ====================
 
-SEED equ 0x2077                            ; Random seed
+SEED equ 0xaccc                             ; Random seed
 SCREEN_WIDTH equ 320                        ; 320x200 pixels
 SCREEN_HEIGHT equ 200
 SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2 ; Center
@@ -60,7 +60,7 @@ _start:
 ; =========================================== GAME INITIALIZATION / RESET ======
 
 restart_game:
-    mov byte [LIFE], 0x03                   ; Starting lifes
+    mov byte [LIFE], 0x04                   ; Starting lifes
     mov word [LEVEL], 0x00                  ; Starting level
     mov byte [PLAYER+1], COLOR_FLY          ; Color
    
@@ -82,7 +82,7 @@ next_level:
     mul bx                                  ; Multiply enemies by level number
     mov cx, ax                              ; Store the result in cx
     .next_entitie:
-        cmp cx, [LEVEL]                           ; Check if there are any enemies left
+        cmp cx, 1                           ; Check if there are any enemies left
         ja .spawn_spider
         .spawn_flower:
         mov word [si], (COLOR_FLOWER << 8) | SPRITE_FLOWER
@@ -124,6 +124,11 @@ draw_bg:
         dec dx                              ; Decrement bar counter
         jnz .draw_bars                      ; Repeat for all bars
 
+; ======== DRAW LIFES ========
+
+    ; xor di, di                              ; Clear DI
+    ; mov byte cl, [LIFE]
+    ; rep stosb
 
 ; =========================================== DRAW ENTITIES ====================
 
@@ -232,6 +237,13 @@ handle_player:
     .ok:
     call draw_sprite                        ; Draw player sprite
 
+; =========================================== DRAW LIFES =======================
+
+    mov byte cl, [LIFE]                     ; Set lifes
+                                            ; No space for color set
+    rep stosw                               ; Write to the doublebuffer 
+                                            ; 2x pixels per life
+
 ; =========================================== KEYBOARD INPUT ===================
 
 handle_keyboard:
@@ -285,7 +297,7 @@ jmp game_loop                               ; Repeat the game loop
 draw_sprite:
     mov dx, SPRITE_LINES                    ; Number of lines in the sprite
     .draw_row:
-        push dx                             ; Save DX
+        ; push dx                             ; Save DX
         xor ax,ax                           ; Clear AX  
         mov al, [si]                        ; Get sprite row data
         mov cx, 8                           ; 8 bits per row
@@ -296,7 +308,7 @@ draw_sprite:
         .skip_pixel:
             inc di                          ; Move to the next pixel position
             loop .draw_pixel                ; Repeat for all 8 pixels in the row
-        pop dx                              ; Restore DX
+        ; pop dx                              ; Restore DX
         inc si
     add di, 312                             ; Move to the next line
     dec dx                                  ; Decrement row count
