@@ -2,9 +2,9 @@
 ; by Krzysztof Krystian Jankowski ^ P1X
 ;
 
-bits 16                                   ; 16-bit mode          
-org 0x7c00                                ; Boot sector
-cpu 386                                 ; Minimum CPU is Pentium
+bits 16                                     ; 16-bit mode          
+org 0x7c00                                  ; Boot sector origin
+cpu 386                                     ; Minimum CPU is Intel 386
 
 ; =========================================== MEMORY ===========================
 
@@ -27,7 +27,7 @@ ENTITIES equ BASE_MEM+0x0B                  ; 5 bytes per entitie
 
 ; =========================================== MAGIC NUMBERS ====================
 
-SEED equ 0x1234                            ; Random seed
+SEED equ 0x2077                            ; Random seed
 SCREEN_WIDTH equ 320                        ; 320x200 pixels
 SCREEN_HEIGHT equ 200
 SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2 ; Center
@@ -96,7 +96,7 @@ next_level:
         add ax, SEED                        ; Add seed
         and ax, SCREEN_BUFFER_SIZE          ; Clip screen size
         mov word [si+3], ax                 ; Set position
-        mov byte al, [TIMER]                           ; Randomize rotation
+        mov byte al, [TIMER]                ; Randomize rotation
         add ax, si                          ; Add memory position
         and al, 7                           ; Clip rotation
         mov byte [si+2], al                 ; Set direction
@@ -167,12 +167,14 @@ draw_entities:
         mov word [si+3], di                 ; Save new position
 
         .random_rotate:
-            mov ax, [TIMER]                           ; Randomize rotation
-            and ax, 42                      ; Wait 42 cycles
+            mov ax, [TIMER]            ; Get timer value
+            add ax, di                      ; mod 42
+            and ax, 42
             jg .skip
-            mov ax, [TIMER]                           ; Get random number
+            mov byte al, [TIMER]            ; Get random number
             add ax, si                      ; Add memory position
-            and byte al, 7                  ; Clip rotation
+            inc ax
+            and al, 7                       ; Clip rotation
             mov byte [si+2], al             ; Set direction
             .skip:
         add si, 5                           ; Move to the next entitie data
