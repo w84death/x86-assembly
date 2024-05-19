@@ -231,7 +231,7 @@ handle_player:
     add di, [MLT + si]                      ; Second time for faster movement
     mov word [PLAYER+3], DI                 ; Save new position
     mov si, sprites+SPRITE_FLY              ; Sprite
-    mov byte al, [TIMER]                                   ; Get random number
+    mov byte al, [TIMER]                    ; Get random number
     and al, 1                               ; Last bit  
     jnz .ok                                 ; If 1, add frame
     add si, 7                               ; Move to the second srite frame

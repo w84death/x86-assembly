@@ -17,6 +17,8 @@ Fly Escape is a boot sector game developed by Krzysztof Krystian Jankowski ^ P1X
 - Entity Types: Different entities with unique behaviors:
     - Spiders: Dangerous enemies to avoid.
     - Flowers: Collect these to advance to the next level.
+- Animated sprites: 8x7 in 2 frames
+- Level and live indicator: Dots in top-left of the screen and a line under fly.
 - Keyboard Controls: Rotate the fly to navigate through the game environment.
 - Compact Size: Entire game fits within a 512-byte boot sector.
 
@@ -45,8 +47,8 @@ Arrow Keys: Rotate the fly to navigate the screen.
 # Gameplay
 
 - Objective: Control the fly, avoid spiders, and collect flowers.
-- Lives: You start with 4 lives. Colliding with a spider decreases your life by one. If you lose all lives, the game restarts.
-- Level Progression: Collect flowers to advance to the next level. Each new level spawns more enemies, increasing the difficulty.
+- Lives: You start with 4 lives. Colliding with a spider decreases your life by one. If you lose all lives, the game restarts. Line under fly indicates lives left.
+- Level Progression: Collect flowers to advance to the next level. Each new level spawns more enemies, increasing the difficulty. Current level number indicated by a dots on a top-left corner of the screen.
 
 # Code Structure
 
