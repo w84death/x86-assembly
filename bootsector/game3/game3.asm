@@ -120,7 +120,7 @@ draw_bg:
     .draw_bars:
         mov cx, 320*25                      ; 320x25 pixels
         rep stosb                           ; Write to the doublebuffer
-        inc al                              ; Increment color index for next bar
+        inc ax                              ; Increment color index for next bar
         dec dx                              ; Decrement bar counter
         jnz .draw_bars                      ; Repeat for all bars
 
@@ -249,11 +249,9 @@ handle_player:
 ; =========================================== KEYBOARD INPUT ===================
 
 handle_keyboard:
-    mov ax, 0x0100                          ; Check if a key has been pressed
-    int 0x16                                ; Get the key press
-    jz .no_move                             ; No press
-    xor ax, ax                              ; Clear AX
-    int 0x16                                ; Get the key press code
+    in al, 60h                              ; Read keyboard
+    das                                     ; Hack to get parity flag
+    jnp .no_move                            ; Jump if no parity flag
     .rotate_player:
         inc byte [PLAYER+2]                 ; Move rotation clockvise
         and byte [PLAYER+2], 7              ; Limit 0..7
