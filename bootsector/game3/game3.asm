@@ -127,6 +127,7 @@ draw_bg:
 ; =========================================== DRAW LEVEL =======================
 
     xor di, di                              ; Clear DI - top left corner
+    mov al, 0x0f                          ; Set color to 15
     mov cl, bl
     rep stosw                               ; Write to the doublebuffer
                                             ; 2x pixels per level
@@ -144,8 +145,8 @@ draw_entities:
         cmp al, 0                           ; Check if it's not empty
         je .done                            ; Kill loop if empty    
         mov word [SPRITE], ax               ; Set sprite frame
-        mov al, [TIMER]                               ; Get random number
-        and al, 1                           ; Last bit
+        mov al, [TIMER]                     ; Get timer value
+        and al, 1                           ; Limit to 0..1
         jnz .ok                             ; If 1, add frame
         add word [SPRITE], 7                ; Move to the second sprite frame
         .ok:
@@ -174,14 +175,14 @@ draw_entities:
 
         .random_rotate:
             mov ax, [TIMER]                 ; Get timer value
-            add ax, di                      ; mod 42
-            and ax, 42
+            add ax, di                      ; Add position
+            and ax, 42                      ; Wait until 42
             jg .skip
             mov byte al, [TIMER]            ; Get random number
             add ax, si                      ; Add memory position
-            inc ax
-            and al, 7                       ; Clip rotation
-            mov byte [si+2], al             ; Set direction
+            inc ax                          ; Rotate by 1 clockwise
+            and al, 7                       ; Clip rotation 0..7
+            mov byte [si+2], al             ; Save direction
             .skip:
         add si, 5                           ; Move to the next entitie data
         pop cx
@@ -295,14 +296,13 @@ jmp game_loop                               ; Repeat the game loop
 
 draw_sprite:
     mov dx, SPRITE_LINES                    ; Number of lines in the sprite
-    .draw_row:
-        xor ax,ax                           ; Clear AX  
+    .draw_row: 
         mov al, [si]                        ; Get sprite row data
         mov cx, 8                           ; 8 bits per row
         .draw_pixel:
-            shl al, 1                       ; Shift left
+            shl al, 1                       ; Shift left to get the pixel out
             jnc .skip_pixel                 ; If carry flag is 0, skip
-            mov [es:di], bl                 ; Set the pixel
+            mov [es:di], bl                 ; Carry flag is 1, set the pixel
         .skip_pixel:
             inc di                          ; Move to the next pixel position
             loop .draw_pixel                ; Repeat for all 8 pixels in the row
