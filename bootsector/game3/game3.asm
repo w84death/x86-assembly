@@ -124,11 +124,12 @@ draw_bg:
         dec dx                              ; Decrement bar counter
         jnz .draw_bars                      ; Repeat for all bars
 
-; ======== DRAW LIFES ========
+; =========================================== DRAW LEVEL =======================
 
-    ; xor di, di                              ; Clear DI
-    ; mov byte cl, [LIFE]
-    ; rep stosb
+    xor di, di                              ; Clear DI - top left corner
+    mov cl, bl
+    rep stosw                               ; Write to the doublebuffer
+                                            ; 2x pixels per level
 
 ; =========================================== DRAW ENTITIES ====================
 
@@ -172,7 +173,7 @@ draw_entities:
         mov word [si+3], di                 ; Save new position
 
         .random_rotate:
-            mov ax, [TIMER]            ; Get timer value
+            mov ax, [TIMER]                 ; Get timer value
             add ax, di                      ; mod 42
             and ax, 42
             jg .skip
@@ -253,10 +254,8 @@ handle_keyboard:
     xor ax, ax                              ; Clear AX
     int 0x16                                ; Get the key press code
     .rotate_player:
-        mov byte bl, [PLAYER+2]             ; Get current rotation 0-7
-        inc bl                              ; Move rotation clockvise
-        and bl, 7                           ; Limit 0..7
-        mov byte [PLAYER+2], bl             ; Save back
+        inc byte [PLAYER+2]                 ; Move rotation clockvise
+        and byte [PLAYER+2], 7              ; Limit 0..7
     .no_move:
 
 ; =========================================== VGA BLIT =========================
@@ -297,7 +296,6 @@ jmp game_loop                               ; Repeat the game loop
 draw_sprite:
     mov dx, SPRITE_LINES                    ; Number of lines in the sprite
     .draw_row:
-        ; push dx                             ; Save DX
         xor ax,ax                           ; Clear AX  
         mov al, [si]                        ; Get sprite row data
         mov cx, 8                           ; 8 bits per row
@@ -308,7 +306,6 @@ draw_sprite:
         .skip_pixel:
             inc di                          ; Move to the next pixel position
             loop .draw_pixel                ; Repeat for all 8 pixels in the row
-        ; pop dx                              ; Restore DX
         inc si
     add di, 312                             ; Move to the next line
     dec dx                                  ; Decrement row count
