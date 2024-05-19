@@ -17,7 +17,7 @@ Fly Escape is a boot sector game developed by Krzysztof Krystian Jankowski ^ P1X
 - Entity Types: Different entities with unique behaviors:
     - Spiders: Dangerous enemies to avoid.
     - Flowers: Collect these to advance to the next level.
-- Animated sprites: 8x7 in 2 frames
+- Animated sprites: Three sprites each 8x7 pixels in 2 frames
 - Level and live indicator: Dots in top-left of the screen and a line under fly.
 - Keyboard Controls: Rotate the fly to navigate through the game environment.
 - Compact Size: Entire game fits within a 512-byte boot sector.

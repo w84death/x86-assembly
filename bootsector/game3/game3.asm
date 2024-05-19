@@ -135,7 +135,7 @@ draw_bg:
 ; =========================================== DRAW ENTITIES ====================
 
 draw_entities:
-    mov cx, MAX_ENTITIES                ; Number of enemies to check
+    mov cx, MAX_ENTITIES                    ; Number of enemies to check
     mov si, ENTITIES                        ; Start index for positions
     .next:
         push cx                             ; Save counter
