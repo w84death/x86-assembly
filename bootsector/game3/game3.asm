@@ -54,6 +54,7 @@ _start:
     mov ds, ax                              ; Set DS to 0
     mov ax, 0x0013                          ; Init VGA 320x200x256
     int 0x10                                ; Video BIOS interrupt  
+    
     mov ax, DBUFFER_MEMORY_ADR              ; Set doublebuffer memory
     mov es, ax                              ; as target
 
@@ -243,7 +244,8 @@ handle_player:
 ; =========================================== DRAW LIFES =======================
 
     mov byte cl, [LIFE]                     ; Set lifes
-                                            ; No space for color set
+    sub di, 320*9                           ; Move to the top
+    mov ax, 0x040c                          ; Set color to 15
     rep stosw                               ; Write to the doublebuffer 
                                             ; 2x pixels per life
 
