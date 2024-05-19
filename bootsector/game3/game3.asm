@@ -1,6 +1,6 @@
 ; GAME 3 - Fly Escape
 ; by Krzysztof Krystian Jankowski ^ P1X
-; 18 MAY 2024
+; Version 1.1 - 19 MAY 2024
 
 bits 16                                     ; 16-bit mode          
 org 0x7c00                                  ; Boot sector origin
@@ -10,7 +10,7 @@ cpu 386                                     ; Minimum CPU is Intel 386
 
 VGA_MEMORY_ADR equ 0xA000                   ; VGA memory address
 DBUFFER_MEMORY_ADR equ 0x1000               ; Doublebuffer memory address
-SCREEN_BUFFER_SIZE equ 0xFA00                  ; Size of the VGA buffer size
+SCREEN_BUFFER_SIZE equ 0xFA00               ; Size of the VGA buffer size
 TIMER equ 0x046C                            ; BIOS timer
 
 BASE_MEM equ 0x7e00                         ; Base memory address
@@ -54,7 +54,7 @@ _start:
     mov ds, ax                              ; Set DS to 0
     mov ax, 0x0013                          ; Init VGA 320x200x256
     int 0x10                                ; Video BIOS interrupt  
-    mov ax, DBUFFER_MEMORY_ADR               ; Set doublebuffer memory
+    mov ax, DBUFFER_MEMORY_ADR              ; Set doublebuffer memory
     mov es, ax                              ; as target
 
 ; =========================================== GAME INITIALIZATION / RESET ======
@@ -69,7 +69,7 @@ restart_game:
     .clear_entites:
         mov byte [si], 0                    ; Clear sprite ID
         add si, 5                           ; Move to next memory position
-    loop .clear_entites                     ; Store AL into [ES:DI] and increment DI
+    loop .clear_entites                     ; Loop for all enemies
 
 ; =========================================== LEVEL INITIALIZATION / NEXT LEVEL
 
@@ -82,15 +82,16 @@ next_level:
     mul bx                                  ; Multiply enemies by level number
     mov cx, ax                              ; Store the result in cx
     .next_entitie:
-        cmp cx, 1                           ; Check if there are any enemies left
-        ja .spawn_spider
-        .spawn_flower:
-        mov word [si], (COLOR_FLOWER << 8) | SPRITE_FLOWER
+        cmp cx, 1                           ; Check counter
+        ja .spawn_spider                    ; Spawn spider on all others
+        .spawn_flower:                      ; Spawn flower on first entitie
+        mov word [si], (COLOR_FLOWER << 8) | SPRITE_FLOWER  
+                                            ; Set sprite ID and color for flower
         jmp .spawn_done
         .spawn_spider:
         mov word [si], (COLOR_SPIDER << 8) | SPRITE_SPIDER  
+                                            ; Set sprite ID and color for spider
         .spawn_done:
-                                            ; Set sprite ID and color
         mov byte al, [TIMER]                ; Get random number
         add ax, si                          ; Add memory position
         add ax, SEED                        ; Add seed
@@ -226,7 +227,7 @@ handle_player:
     mov di, [PLAYER+3]                      ; Position
     mov byte bl, [PLAYER+1]                 ; Color
     mov byte al, [PLAYER+2]                 ; Rotation
-    movzx si,al                             ; Set SI to rotation
+    movzx si, al                            ; Set SI to rotation
     shl si, 1                               ; Shift left
     add di, [MLT + si]                      ; Movement Lookup Table
     add di, [MLT + si]                      ; Second time for faster movement
