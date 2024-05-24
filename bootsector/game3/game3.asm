@@ -1,6 +1,9 @@
 ; GAME 3 - Fly Escape
 ; by Krzysztof Krystian Jankowski ^ P1X
+;
+; Version 1.0 - 18 MAY 2024
 ; Version 1.1 - 19 MAY 2024
+; Version 2.0 - 25 MAY 2024
 
 bits 16                                     ; 16-bit mode          
 org 0x7c00                                  ; Boot sector origin
@@ -283,12 +286,16 @@ vga_blit:
 
 ; =========================================== DELAY CYCLE ======================
 
+%ifdef IS_286
+%else
 delay_timer:
     mov ax, [TIMER]                         ; Get current timer value
     inc ax                                  ; Increment it by 1 cycle (42ms)
     .wait:
         cmp [TIMER], ax                     ; Compare with the current timer
         jl .wait                            ; Loop until equal
+
+%endif
 
 ; =========================================== END OF GAME LOOP =================
 

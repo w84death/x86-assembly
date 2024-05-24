@@ -11,7 +11,7 @@ filename=$1
 
 # Assemble the .asm file to .bin using NASM
 nasm -f bin "${filename}/${filename}.asm" -o "${filename}/${filename}.bin"
-
+nasm -DIS_286 -f bin "${filename}/${filename}.asm" -o "${filename}/${filename}_286.bin"
 # Check if NASM succeeded
 if [ $? -ne 0 ]; then
     echo "Assembly failed."
@@ -19,6 +19,7 @@ if [ $? -ne 0 ]; then
 fi
 
 dd if=${filename}/${filename}.bin of=${filename}/floppy.img bs=512 count=1 conv=notrunc
+dd if=${filename}/${filename}_286.bin of=${filename}/floppy_286.img bs=512 count=1 conv=notrunc
 # dd if=${filename}/${filename}.second.bin of=floppy.img bs=512 seek=1 count=1 conv=notrunc
 # qemu-system-i386 -fda floppy.img
 # Run the resulting .bin file using QEMU
