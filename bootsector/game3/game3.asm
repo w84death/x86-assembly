@@ -258,12 +258,11 @@ handle_player:
 
 handle_keyboard:
     in al, 60h                              ; Read keyboard
-    das                                     ; Hack to get parity flag
-    jnp .no_move                            ; Jump if no parity flag
-    .rotate_player:
+    cmp al, 0x39                            ; Check if Spacebar is pressed
+    jne .no_rotate
         inc byte [PLAYER+2]                 ; Move rotation clockvise
         and byte [PLAYER+2], 7              ; Limit 0..7
-    .no_move:
+    .no_rotate:
 
 ; =========================================== VGA BLIT =========================
 
@@ -273,12 +272,12 @@ vga_blit:
 
     mov ax, VGA_MEMORY_ADR                   ; Set VGA memory
     mov es, ax                               ; as target
-    mov ax, DBUFFER_MEMORY_ADR                ; Set doublebuffer memory
+    mov ax, DBUFFER_MEMORY_ADR               ; Set doublebuffer memory
     mov ds, ax                               ; as source
-    mov cx, 0x3E80*2                           ; Quarter of 320x200 pixels
+    mov cx, 0x7D00                           ; Half of 320x200 pixels
     xor si, si                               ; Clear SI
     xor di, di                               ; Clear DI
-    rep movsw                                ; Push double words (4x pixels)
+    rep movsw                                ; Push words (2x pixels)
 
     pop ds
     pop es
