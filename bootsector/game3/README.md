@@ -28,7 +28,12 @@ Fly Escape is a boot sector game developed by Krzysztof Krystian Jankowski ^ P1X
 
 - Intel 386 processor or emulator
 - Floppy disk or emulator capable of booting from a 512-byte boot sector
-
+- Tested on:
+    - QEMU i386
+    - 2007: Asus EeePC 701 (real floppy)
+    - 86Box: 
+        - 1987: IBM PS/2 Model 80, 386 16Mhz, 2MB Ram (Works perfectly fine!)
+        - 1984: IBM AT, 268 8Mhz, 256KB RAM (Very slow, barely playable)
 
 ## Download
 - [Floppy Image](https://raw.githubusercontent.com/w84death/x86-assembly/main/bootsector/game3/floppy.img)

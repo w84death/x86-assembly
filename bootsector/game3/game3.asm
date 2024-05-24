@@ -4,7 +4,7 @@
 
 bits 16                                     ; 16-bit mode          
 org 0x7c00                                  ; Boot sector origin
-cpu 386                                     ; Minimum CPU is Intel 386
+cpu 286                                     ; Minimum CPU is Intel 286
 
 ; =========================================== MEMORY ===========================
 
@@ -27,7 +27,6 @@ ENTITIES equ BASE_MEM+0x0B                  ; 5 bytes per entitie
 
 ; =========================================== MAGIC NUMBERS ====================
 
-SEED equ 0xaccc                             ; Random seed
 SCREEN_WIDTH equ 320                        ; 320x200 pixels
 SCREEN_HEIGHT equ 200
 SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2 ; Center
@@ -95,10 +94,8 @@ next_level:
         .spawn_done:
         mov byte al, [TIMER]                ; Get random number
         add ax, si                          ; Add memory position
-        add ax, SEED                        ; Add seed
         and ax, SCREEN_BUFFER_SIZE          ; Clip screen size
         mov word [si+3], ax                 ; Set position
-        mov byte al, [TIMER]                ; Randomize rotation
         add ax, si                          ; Add memory position
         and al, 7                           ; Clip rotation
         mov byte [si+2], al                 ; Set direction
@@ -120,7 +117,7 @@ draw_bg:
     add ax, 0x8080                          ; Add 8 to the color for each pixel
     mov dx, 8                               ; We have 8 bars
     .draw_bars:
-        mov cx, 320*25                      ; 320x25 pixels
+        mov cx, 320*200/8                      ; 320x25 pixels
         rep stosb                           ; Write to the doublebuffer
         inc ax                              ; Increment color index for next bar
         dec dx                              ; Decrement bar counter
@@ -145,10 +142,10 @@ draw_entities:
         xor ax,ax                           ; Clear AX
         mov byte al, [si]                   ; Sprite frame
         cmp al, 0                           ; Check if it's not empty
-        je .done                            ; Kill loop if empty    
+        je .skip_this_one                   ; Skip if empty 
         mov word [SPRITE], ax               ; Set sprite frame
-        mov al, [TIMER]                     ; Get timer value
-        and al, 1                           ; Limit to 0..1
+        mov ax, [TIMER]                     ; Get timer value
+        and al, 2                           ; Limit to 0..1
         jnz .ok                             ; If 1, add frame
         add word [SPRITE], 7                ; Move to the second sprite frame
         .ok:
@@ -159,12 +156,14 @@ draw_entities:
             cmp byte [SPRITE], SPRITE_SPIDER; Check if it's a spider
             ja .draw_entitie                ; Do not move if not a spider
             .move_entitie_forward:
-                movzx si, [si+2]            ; Direction            
+                xor ax,ax                   ; Clear AX
+                mov al, [si+2]              ; Direction  
+                mov si, ax                  ; Set SI to direction
                 shl si, 1                   ; Shift left
                 add di, [MLT + si]          ; Movement Lookup Table
-                cmp di, SCREEN_BUFFER_SIZE          ; Check if out of bounds
+                cmp di, SCREEN_BUFFER_SIZE  ; Check if out of bounds
                 jb .draw_entitie            ; No clip below
-                and di, SCREEN_BUFFER_SIZE          ; Clip screen size 
+                and di, SCREEN_BUFFER_SIZE  ; Clip screen size 
         .draw_entitie:
             push di                         ; Save position
             mov byte BL, [COLOR]            ; Set color
@@ -172,25 +171,27 @@ draw_entities:
             add word si, [SPRITE]           ; Shift to the current sprite
             call draw_sprite                ; Draw the sprite
             pop di                          ; Restore position
+
+
+        .skip_this_one:                     ; Jump to here to pop si, cx
+                                            ; wihtout additional code
         pop si
         mov word [si+3], di                 ; Save new position
 
         .random_rotate:
             mov ax, [TIMER]                 ; Get timer value
             add ax, di                      ; Add position
-            and ax, 42                      ; Wait until 42
+            and ax, 66                      ; Wait until 66
             jg .skip
             mov byte al, [TIMER]            ; Get random number
             add ax, si                      ; Add memory position
-            inc ax                          ; Rotate by 1 clockwise
             and al, 7                       ; Clip rotation 0..7
             mov byte [si+2], al             ; Save direction
             .skip:
         add si, 5                           ; Move to the next entitie data
         pop cx
         loop .next
-        .done:
-
+ 
 ; =========================================== COLLISION CHECKING ===============
 
 check_collisions:
@@ -228,14 +229,15 @@ handle_player:
     mov di, [PLAYER+3]                      ; Position
     mov byte bl, [PLAYER+1]                 ; Color
     mov byte al, [PLAYER+2]                 ; Rotation
-    movzx si, al                            ; Set SI to rotation
+    mov ah, 0                               ; Clear AH
+    mov si, ax                              ; Set SI to rotation
     shl si, 1                               ; Shift left
     add di, [MLT + si]                      ; Movement Lookup Table
     add di, [MLT + si]                      ; Second time for faster movement
     mov word [PLAYER+3], DI                 ; Save new position
     mov si, sprites+SPRITE_FLY              ; Sprite
     mov byte al, [TIMER]                    ; Get random number
-    and al, 1                               ; Last bit  
+    and al, 2                               ; Last bit  
     jnz .ok                                 ; If 1, add frame
     add si, 7                               ; Move to the second srite frame
     .ok:
@@ -270,10 +272,10 @@ vga_blit:
     mov es, ax                               ; as target
     mov ax, DBUFFER_MEMORY_ADR                ; Set doublebuffer memory
     mov ds, ax                               ; as source
-    mov cx, 0x3E80                           ; Quarter of 320x200 pixels
+    mov cx, 0x3E80*2                           ; Quarter of 320x200 pixels
     xor si, si                               ; Clear SI
     xor di, di                               ; Clear DI
-    rep movsd                                ; Push double words (4x pixels)
+    rep movsw                                ; Push double words (4x pixels)
 
     pop ds
     pop es
