@@ -178,8 +178,8 @@ draw_entities:
 
         .skip_this_one:                     ; Jump to here to pop si, cx
                                             ; wihtout additional code
-        pop si
-        mov word [si+3], di                 ; Save new position
+        pop si                              ; Restore position
+        mov word [si+3], di                 ; Save new, updated position
 
         .random_rotate:
             mov ax, [TIMER]                 ; Get timer value
@@ -198,13 +198,13 @@ draw_entities:
 ; =========================================== COLLISION CHECKING ===============
 
 check_collisions:
-    push word [PLAYER+3] 
+    mov dx, [PLAYER+3]                      ; Get player position
     mov bx, SPRITE_LINES                    ; Number of rows to check
     .check_row:     
         mov cx, 8                           ; Number of columns to check
-        pop si
+        mov si, dx                          ; Set SI to player position
         .check_column:      
-            mov al, [es:si]                 ; Get pixel color
+            mov al, [es:si]                 ; Get pixel color at player position
             cmp al, COLOR_SPIDER            ; Check if it matches spider color
             je .collision_spider            ; Jump if collision with spider
             cmp al, COLOR_FLOWER            ; Check if it matches flower color
@@ -335,6 +335,6 @@ db 0x38, 0x6C, 0x38, 0x09, 0x7E, 0x08, 0x08 ; Frame 1
 
 ; =========================================== BOOTSECTOR =======================
 
-times 507 - ($ - $$) db 0                   ; Pad remaining bytes
+; times 507 - ($ - $$) db 0                   ; Pad remaining bytes
 db 'P1X'                                    ; P1X signature 3b
 dw 0xAA55                                   ; Boot signature    
