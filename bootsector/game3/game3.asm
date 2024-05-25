@@ -335,6 +335,6 @@ db 0x38, 0x6C, 0x38, 0x09, 0x7E, 0x08, 0x08 ; Frame 1
 
 ; =========================================== BOOTSECTOR =======================
 
-; times 507 - ($ - $$) db 0                   ; Pad remaining bytes
+times 507 - ($ - $$) db 0                   ; Pad remaining bytes
 db 'P1X'                                    ; P1X signature 3b
 dw 0xAA55                                   ; Boot signature    
