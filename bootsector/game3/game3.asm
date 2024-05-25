@@ -57,8 +57,8 @@ _start:
     mov ax, 0x0013                          ; Init VGA 320x200x256
     int 0x10                                ; Video BIOS interrupt  
     
-    mov ax, DBUFFER_MEMORY_ADR              ; Set doublebuffer memory
-    mov es, ax                              ; as target
+    push DBUFFER_MEMORY_ADR                 ; Set doublebuffer memory
+    pop es                                  ; as target
 
 ; =========================================== GAME INITIALIZATION / RESET ======
 
@@ -129,7 +129,7 @@ draw_bg:
 ; =========================================== DRAW LEVEL =======================
 
     xor di, di                              ; Clear DI - top left corner
-    mov al, 0x0f                          ; Set color to 15
+    mov al, 0x0f                            ; Set color to 15
     mov cl, bl
     rep stosw                               ; Write to the doublebuffer
                                             ; 2x pixels per level
@@ -198,11 +198,11 @@ draw_entities:
 ; =========================================== COLLISION CHECKING ===============
 
 check_collisions:
-    mov di, [PLAYER+3]                      ; Player position
+    push word [PLAYER+3] 
     mov bx, SPRITE_LINES                    ; Number of rows to check
     .check_row:     
         mov cx, 8                           ; Number of columns to check
-        mov si, di                          ; Current position
+        pop si
         .check_column:      
             mov al, [es:si]                 ; Get pixel color
             cmp al, COLOR_SPIDER            ; Check if it matches spider color
@@ -250,7 +250,7 @@ handle_player:
 
     mov byte cl, [LIFE]                     ; Set lifes
     sub di, 320*9                           ; Move to the top
-    mov ax, 0x040c                          ; Set color to 15
+    mov ax, 0x040c                          ; Set color to red and light red
     rep stosw                               ; Write to the doublebuffer 
                                             ; 2x pixels per life
 
@@ -270,14 +270,14 @@ vga_blit:
     push es
     push ds
 
-    mov ax, VGA_MEMORY_ADR                   ; Set VGA memory
-    mov es, ax                               ; as target
-    mov ax, DBUFFER_MEMORY_ADR               ; Set doublebuffer memory
-    mov ds, ax                               ; as source
-    mov cx, 0x7D00                           ; Half of 320x200 pixels
-    xor si, si                               ; Clear SI
-    xor di, di                               ; Clear DI
-    rep movsw                                ; Push words (2x pixels)
+    push VGA_MEMORY_ADR                     ; Set VGA memory
+    pop es                                  ; as target
+    push DBUFFER_MEMORY_ADR                 ; Set doublebuffer memory
+    pop ds                                  ; as source
+    mov cx, 0x7D00                          ; Half of 320x200 pixels
+    xor si, si                              ; Clear SI
+    xor di, di                              ; Clear DI
+    rep movsw                               ; Push words (2x pixels)
 
     pop ds
     pop es
