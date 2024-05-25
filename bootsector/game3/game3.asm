@@ -54,7 +54,7 @@ SPRITE_FLOWER equ 28                        ; Flower sprite ID
 _start:
     xor ax, ax                              ; Clear AX
     mov ds, ax                              ; Set DS to 0
-    mov ax, 0x0013                          ; Init VGA 320x200x256
+    mov ax, 0x13                          ; Init VGA 320x200x256
     int 0x10                                ; Video BIOS interrupt  
     
     push DBUFFER_MEMORY_ADR                 ; Set doublebuffer memory
@@ -80,10 +80,8 @@ next_level:
     mov word [PLAYER+3], SCREEN_CENTER      ; Set player initial position
     inc word [LEVEL]                        ; 0 -> 1st level
     mov si, ENTITIES                        ; Set memory position to entites
-    mov ax, ENEMIES_PER_LEVEL               ; Number of enemies per level
     mov bx, [LEVEL]                         ; Current level number
-    mul bx                                  ; Multiply enemies by level number
-    mov cx, ax                              ; Store the result in cx
+    imul cx, bx, ENEMIES_PER_LEVEL          ; Multiply enemies by level number
     .next_entitie:
         cmp cx, 1                           ; Check counter
         ja .spawn_spider                    ; Spawn spider on all others
@@ -114,10 +112,9 @@ game_loop:
 draw_bg:
     xor di,di                               ; Clear DI                     
     xor bx,bx                               ; Clear BX
-    mov ax, 0x0404                          ; Set color to 8
-    add bx, [LEVEL]                         ; Get current level number
-    mul bx                                  ; Multiply by level number
-    add ax, 0xa0a0                          ; Add 8 to the color for each pixel
+    mov bx, [LEVEL]                         ; Get current level number
+    imul ax, bx, 0x0404                     ; Multiply level by 0x0404
+    add ax, 0xa0a0                          ; Shift colors by 10
     mov dx, 8                               ; We have 8 bars
     .draw_bars:
         mov cx, 320*200/16                   ; One bar of 320x200
