@@ -115,15 +115,15 @@ draw_bg:
     xor di,di                               ; Clear DI                     
     xor bx,bx                               ; Clear BX
     mov ax, 0x0404                          ; Set color to 8
-    add bx, [LEVEL]                    ; Get current level number
+    add bx, [LEVEL]                         ; Get current level number
     mul bx                                  ; Multiply by level number
     add ax, 0xa0a0                          ; Add 8 to the color for each pixel
-    mov dx, 4                               ; We have 8 bars
+    mov dx, 8                               ; We have 8 bars
     .draw_bars:
-        mov cx, 320*200/8                   ; One bar of 320x200
+        mov cx, 320*200/16                   ; One bar of 320x200
         rep stosw                           ; Write to the doublebuffer
         inc ax                              ; Increment color index for next bar
-        xchg al, ah                         ; Swap colors    
+        xchg al, ah                         ; Swap colors 
         dec dx                              ; Decrement bar counter
         jnz .draw_bars                      ; Repeat for all bars
 
