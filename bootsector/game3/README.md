@@ -9,7 +9,7 @@ Fly Escape is a boot sector game developed by Krzysztof Krystian Jankowski ^ P1X
 ![Fly Escape cover](fly_escape_cover.gif)
 ![Screenshot #1](screen1.png)
 
-
+## Video Booting on Real Hardware
 https://raw.githubusercontent.com/w84death/x86-assembly/main/bootsector/game3/fly-escape.mp4
 
 ## Features
@@ -50,6 +50,8 @@ https://raw.githubusercontent.com/w84death/x86-assembly/main/bootsector/game3/fl
 - [Floppy Image for 286](https://raw.githubusercontent.com/w84death/x86-assembly/main/bootsector/game3/floppy_286.img)
 - [Source Code](https://raw.githubusercontent.com/w84death/x86-assembly/main/bootsector/game3/game3.asm)
 
+<iframe frameborder="0" src="https://itch.io/embed/2730618?bg_color=000000&amp;fg_color=eeeeee&amp;link_color=9d3add" width="552" height="167"><a href="https://w84death.itch.io/fly-escape">Fly Escape by P1X</a></iframe>
+
 ## Installation
 
 - Write the game to a bootable floppy disk or configure your emulator to boot from the provided game image.
@@ -58,7 +60,7 @@ https://raw.githubusercontent.com/w84death/x86-assembly/main/bootsector/game3/fl
 
 # Controls
 
-Arrow Keys: Rotate the fly to navigate the screen.
+Spacebar: Rotate the fly to navigate the screen.
 
 # Gameplay
 
