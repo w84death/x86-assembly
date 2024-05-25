@@ -114,15 +114,16 @@ game_loop:
 draw_bg:
     xor di,di                               ; Clear DI                     
     xor bx,bx                               ; Clear BX
-    mov ax, 0x0808                          ; Set color to 8
-    add byte bl, [LEVEL]                    ; Get current level number
+    mov ax, 0x0404                          ; Set color to 8
+    add bx, [LEVEL]                    ; Get current level number
     mul bx                                  ; Multiply by level number
-    add ax, 0x8080                          ; Add 8 to the color for each pixel
-    mov dx, 8                               ; We have 8 bars
+    add ax, 0xa0a0                          ; Add 8 to the color for each pixel
+    mov dx, 4                               ; We have 8 bars
     .draw_bars:
-        mov cx, 320*200/8                      ; 320x25 pixels
-        rep stosb                           ; Write to the doublebuffer
+        mov cx, 320*200/8                   ; One bar of 320x200
+        rep stosw                           ; Write to the doublebuffer
         inc ax                              ; Increment color index for next bar
+        xchg al, ah                         ; Swap colors    
         dec dx                              ; Decrement bar counter
         jnz .draw_bars                      ; Repeat for all bars
 
@@ -198,11 +199,11 @@ draw_entities:
 ; =========================================== COLLISION CHECKING ===============
 
 check_collisions:
-    mov dx, [PLAYER+3]                      ; Get player position
+    mov di, [PLAYER+3]                      ; Get player position
     mov bx, SPRITE_LINES                    ; Number of rows to check
     .check_row:     
         mov cx, 8                           ; Number of columns to check
-        mov si, dx                          ; Set SI to player position
+        mov si, di                          ; Set SI to player position
         .check_column:      
             mov al, [es:si]                 ; Get pixel color at player position
             cmp al, COLOR_SPIDER            ; Check if it matches spider color
