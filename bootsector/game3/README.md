@@ -5,6 +5,10 @@
 ![Fly Escape cover](fly_escape_cover.gif)
 Fly Escape is a boot sector game developed by Krzysztof Krystian Jankowski ^ P1X, released version 1.0 on May 18, 2024. The game runs on Intel 386 processors in 16-bit real mode and features a simple yet engaging gameplay experience in a VGA 320x200x256 graphics mode. The objective of the game is to control a fly, avoid spiders, and collect flowers to advance through levels.
 
+![Screenshot #1](screen1.png)
+![Floppy](floppy.jpg)
+![Video](fly-escape.mp4)
+
 ## Features
 
 - VGA Graphics: Runs in 320x200 resolution with 256 colors.
@@ -37,6 +41,7 @@ Fly Escape is a boot sector game developed by Krzysztof Krystian Jankowski ^ P1X
 
 ## Download
 - [Floppy Image](https://raw.githubusercontent.com/w84death/x86-assembly/main/bootsector/game3/floppy.img)
+- [Floppy Image for 286](https://raw.githubusercontent.com/w84death/x86-assembly/main/bootsector/game3/floppy_286.img)
 - [Source Code](https://raw.githubusercontent.com/w84death/x86-assembly/main/bootsector/game3/game3.asm)
 
 ## Installation
