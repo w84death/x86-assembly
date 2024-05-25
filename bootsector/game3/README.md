@@ -40,6 +40,7 @@ Fly Escape is a boot sector game developed by Krzysztof Krystian Jankowski ^ P1X
         - 1984: IBM AT, 268 6Mhz, 256KB RAM (Slow, but playable)
 
 ## Download
+![Floppy Image](floppy2.jpg)
 - [Floppy Image](https://raw.githubusercontent.com/w84death/x86-assembly/main/bootsector/game3/floppy.img)
 - [Floppy Image for 286](https://raw.githubusercontent.com/w84death/x86-assembly/main/bootsector/game3/floppy_286.img)
 - [Source Code](https://raw.githubusercontent.com/w84death/x86-assembly/main/bootsector/game3/game3.asm)
