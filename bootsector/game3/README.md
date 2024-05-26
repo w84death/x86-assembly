@@ -81,7 +81,7 @@ Support me at [itch.io](https://w84death.itch.io/fly-escape)
 
 # Code Structure
 
-![Binary](game3-hex.png)
+![Binary](game3-hex.gif)
 
 - Memory and Constants Setup: Defines VGA memory addresses, game parameters, and constants.
 - Bootstrap (_start): Initializes VGA mode and sets up double buffering.
