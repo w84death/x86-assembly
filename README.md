@@ -23,8 +23,7 @@ This image size is exactly 512 bytes. Same as the limit of bootsector programs.
 ## Game 3 - Fly Escape
 [Fly Escape Home Page](bootsector/game3/)
 
-![Game 2 Level 1](bootsector/game3/floppy2.jpg)
-![Game 2 Level 1](bootsector/game3/screen1.gif)
+![Game 3 Level 1](bootsector/game3/screen1.gif)
 
 ## Download floppy image and run
 - Game 1 [floppy.img](bootsector/game1/floppy.img)
