@@ -4,7 +4,7 @@
 # Fly Escape
 
 
-Fly Escape is a boot sector game developed by Krzysztof Krystian Jankowski ^ P1X, released version 1.0 on May 18, 2024. The game runs on Intel 386 processors in 16-bit real mode and features a simple yet engaging gameplay experience in a VGA 320x200x256 graphics mode. The objective of the game is to control a fly, avoid spiders, and collect flowers to advance through levels.
+Fly Escape is a boot sector game developed by Krzysztof Krystian Jankowski ^ P1X, released version 2.1 on May 26, 2024. The game runs on Intel 286 processors in 16-bit real mode and features a simple yet engaging gameplay experience in a VGA 320x200x256 graphics mode. The objective of the game is to control a fly, avoid spiders, and collect flowers to advance through levels.
 
 ![Fly Escape cover](fly_escape_cover.gif)
 
@@ -80,6 +80,8 @@ Support me at [itch.io](https://w84death.itch.io/fly-escape)
 - Start Over: After you eventually dies the screen pauses so you can take a photo/screenshot of your accomplishment! Press ESC to restart game.
 
 # Code Structure
+
+![Binary](game3-hex.png)
 
 - Memory and Constants Setup: Defines VGA memory addresses, game parameters, and constants.
 - Bootstrap (_start): Initializes VGA mode and sets up double buffering.
