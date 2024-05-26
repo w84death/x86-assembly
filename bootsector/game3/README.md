@@ -36,7 +36,12 @@ Fly Escape is a boot sector game developed by Krzysztof Krystian Jankowski ^ P1X
 
 ## Prerequisites
 
-- Intel 386 processor or emulator
+- Intel 286 processor or emulator:
+    - https://www.qemu.org/
+    - https://86box.net/
+    - https://bochs.sourceforge.io/
+    - https://copy.sh/v86/​​​
+    - https://www.bootsector.games/​​​​
 - Floppy disk or emulator capable of booting from a 512-byte boot sector
 - Tested on:
     - QEMU i386
@@ -56,18 +61,21 @@ Support me at [itch.io](https://w84death.itch.io/fly-escape)
 ## Installation
 
 - Write the game to a bootable floppy disk or configure your emulator to boot from the provided game image.
+    - For older systems (286) use dedicated image
 - Insert the floppy disk into your system or configure the emulator to use the game image.
 - Boot the system from the floppy disk or emulator to start playing the game.
 
 # Controls
 
-Spacebar: Rotate the fly to navigate the screen.
+- *Spacebar*: Rotate the fly to navigate the screen.
+- *ESC*: Restart game after loosing all lives.
 
 # Gameplay
 
 - Objective: Control the fly, avoid spiders, and collect flowers.
 - Lives: You start with 4 lives. Colliding with a spider decreases your life by one. If you lose all lives, the game restarts. Line under fly indicates lives left.
 - Level Progression: Collect flowers to advance to the next level. Each new level spawns more enemies, increasing the difficulty. Current level number indicated by a dots on a top-left corner of the screen.
+- Start Over: After you eventually dies the screen pauses so you can take a photo/screenshot of your accomplishment! Press ESC to restart game.
 
 # Code Structure
 

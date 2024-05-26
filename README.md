@@ -20,6 +20,18 @@ This image size is exactly 512 bytes. Same as the limit of bootsector programs.
 - Run in emulator (online) https://copy.sh/v86/ or boot on real hardware (x86)
 - Examine image in https://hexed.it/
 
+## Game 3 - Fly Escape
+[Fly Escape Home Page](bootsector/game3/)
+
+![Game 2 Level 1](bootsector/game3/floppy2.jpg)
+![Game 2 Level 1](bootsector/game3/screen1.gif)
+
+## Download floppy image and run
+- Game 1 [floppy.img](bootsector/game1/floppy.img)
+- Game 2 [floppy.img](bootsector/game2/floppy.img)
+- Game 3 [floppy.img](bootsector/game3/floppy.img)
+- Run in emulator (online) https://copy.sh/v86/ or boot on real hardware (x86)
+- Examine image in https://hexed.it/
 
 ### Prequisite for building
 - QEMU (x86_64)
