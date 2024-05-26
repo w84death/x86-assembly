@@ -25,6 +25,7 @@ SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2 ; Center
 
 SPRITE_SIZE equ 8                           ; 8 pixels per sprite line
 SPRITE_LINES equ 7                          ; 7 lines per sprite  
+PALETTE_SIZE equ 0x1E                       ; 30 colors 
 
 ; =========================================== BOOTSTRAP ========================
 
@@ -38,22 +39,25 @@ _start:
     pop es                                  ; as target
 
 ; Anapurna by Dee
-SALC
- MOV DX,3C8H
- OUT DX,AL
- INC DX
-.1:
- PUSH AX
- OUT DX,AL
- SHR AX,1
- OUT DX,AL
- SHR AX,1
- OUT DX,AL
- POP AX
- INC AX
- JNZ .1
+palette:
+    SALC
+    MOV DX,3C8H
+    OUT DX,AL
+    INC DX
+    .1:
+    PUSH AX
+    OUT DX,AL
+    SHR AX,1
+    OUT DX,AL
+    SHR AX,1
+    OUT DX,AL
+    POP AX
+    INC AX
+    JNZ .1
 
-mov word [LEVEL], 0x04                  ; Starting level
+
+restart_game:
+    mov word [LEVEL], PALETTE_SIZE          ; Starting level
 
 ; =========================================== MAIN GAME LOOP ===================
 
@@ -67,10 +71,9 @@ draw_bg:
     xor bx,bx                               ; Clear BX
     mov bx, [LEVEL]                         ; Get current level number
     imul ax, bx, 0x0808                     ; Multiply level by 0x0404
-    ; add ax, 0xa0a0                          ; Shift colors by 10
-    mov dx, 16                               ; We have 8 bars
+    mov dx, 16                              ; We have 8 bars
     .draw_bars:
-        mov cx, 320*200/32                   ; One bar of 320x200
+        mov cx, 320*200/32                  ; One bar of 320x200
         rep stosw                           ; Write to the doublebuffer
         inc ax                              ; Increment color index for next bar
         xchg al, ah                         ; Swap colors 
@@ -84,10 +87,9 @@ handle_keyboard:
     in al, 60h                              ; Read keyboard
     cmp al, 0x39                            ; Check if Spacebar is pressed
     jne .no_spacebar
-        inc word [LEVEL]                 ; Move rotation clockvise
-        cmp word [LEVEL], 32                ; Check if level is 8
+        dec word [LEVEL]                    ; Move rotation clockvise
         jnz .no_spacebar
-            xor word [LEVEL], 32            ; Reset level to 0
+            mov word [LEVEL], PALETTE_SIZE  ; Reset level to 0
     .no_spacebar:
 
 ; =========================================== VGA BLIT =========================
@@ -152,7 +154,6 @@ draw_sprite:
 MLT dw -320,-319,1,321,320,319,-1,-321      ; Movement Lookup Table
 sprites:
 db 0x60, 0x96, 0x49, 0x32, 0x5C, 0x7D, 0x1E ; Fly sprite frame 0
-db 0x00, 0x00, 0x1E, 0x72, 0x5C, 0x7D, 0x1E ; Frame 1
 
 ; ======== BOOTSECTOR  ========
 times 507 - ($ - $$) db 0  ; Pad remaining bytes
