@@ -4,6 +4,7 @@
 ; Version 1.0 - 18 MAY 2024
 ; Version 1.1 - 19 MAY 2024
 ; Version 2.0 - 25 MAY 2024
+; Version 2.1 - 26 MAY 2024
 
 bits 16                                     ; 16-bit mode          
 org 0x7c00                                  ; Boot sector origin
@@ -65,8 +66,7 @@ _start:
 restart_game:
     mov byte [LIFE], 0x04                   ; Starting lifes
     mov word [LEVEL], 0x00                  ; Starting level
-    mov byte [PLAYER+1], COLOR_FLY          ; Color
-   
+    mov word [PLAYER+1], (0x06 << 8) | COLOR_FLY ; Set player color and sprite   
     mov si, ENTITIES                        ; Set memory position to entites
     mov cx, MAX_ENTITIES                    ; Number of enemies
     .clear_entites:
@@ -220,7 +220,12 @@ check_collisions:
     .collision_spider:
         mov word [PLAYER+3], SCREEN_CENTER  ; Reset player position
         dec byte [LIFE]                     ; Decrease life
-        jz restart_game                     ; Restart game if no lifes left
+        jnz .collision_done                 ; If lifes left, continue
+        .waint_for_esc:                     ; If no lifes left, wait for ESC
+            in al, 60h                      ; Read keyboard
+            cmp al, 0x01                    ; Check if ESC key is pressed
+            jne .waint_for_esc
+        jmp restart_game
 
     .collision_done:
 
