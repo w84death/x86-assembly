@@ -23,7 +23,8 @@ SCREEN_WIDTH equ 320                        ; 320x200 pixels
 SCREEN_HEIGHT equ 200
 SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2 ; Center
 
- 
+SPRITE_SIZE equ 8                           ; 8 pixels per sprite line
+SPRITE_LINES equ 7                          ; 7 lines per sprite  
 PALETTE_SIZE equ 0x1E                       ; 30 colors 
 
 ; =========================================== BOOTSTRAP ========================
@@ -50,15 +51,28 @@ game_loop:
 ; =========================================== DRAW BACKGROUND ==================
 
 draw_bg:
-    ; draw stars
+    xor di,di                               ; Clear DI                     
+    xor bx,bx                               ; Clear BX
+    mov bx, [LEVEL]                         ; Get current level number
+    imul ax, bx, 0x0808                     ; Multiply level by 0x0404
+    mov dx, 16                              ; We have 8 bars
+    .draw_bars:
+        mov cx, 320*200/32                  ; One bar of 320x200
+        rep stosw                           ; Write to the doublebuffer
+        inc ax                              ; Increment color index for next bar
+        xchg al, ah                         ; Swap colors 
+        dec dx                              ; Decrement bar counter
+        jnz .draw_bars                      ; Repeat for all bars
 
 
+; =========================================== DRAW SPRITE ======================
 
-; =========================================== DRAW SPRITEA =====================
+draw_fly:
+    mov bl, 0x0F                            ; Set color to white
+    mov si, sprites                         ; Set sprite data
+    mov di, SCREEN_CENTER                   ; Set sprite position
+    call draw_sprite                        ; Draw the sprite  
 
-draw_rects:
-    mov si, rects                           ; Set SI to the rects data
-    call draw_rect                          ; Draw the first rectangle
 
 ; =========================================== KEYBOARD INPUT ===================
 
@@ -66,7 +80,9 @@ handle_keyboard:
     in al, 60h                              ; Read keyboard
     cmp al, 0x39                            ; Check if Spacebar is pressed
     jne .no_spacebar
-
+        dec word [LEVEL]                    ; Move rotation clockvise
+        jnz .no_spacebar
+            mov word [LEVEL], PALETTE_SIZE  ; Reset level to 0
     .no_spacebar:
 
 ; =========================================== VGA BLIT =========================
@@ -107,30 +123,30 @@ jmp game_loop                               ; Repeat the game loop
 ; =========================================== DRAWING SPRITE PROCEDURE =========
 
 
-draw_rect:
-    xor ax, ax
-    xor dx, dx
-    mov byte al, [si+3]
-    mov byte dl, [si+2]
-    mov di, [si]
-    .draw_line: 
-        mov cx, [si+1]
-        rep stosb
-        add di, 320
-        sub di, cx
-        dec dl
-        jnz .draw_line
+draw_sprite:
+    mov dx, SPRITE_LINES                    ; Number of lines in the sprite
+    .draw_row: 
+        mov al, [si]                        ; Get sprite row data
+        mov cx, 8                           ; 8 bits per row
+        .draw_pixel:
+            shl al, 1                       ; Shift left to get the pixel out
+            jnc .skip_pixel                 ; If carry flag is 0, skip
+            mov [es:di], bl                 ; Carry flag is 1, set the pixel
+        .skip_pixel:
+            inc di                          ; Move to the next pixel position
+            loop .draw_pixel                ; Repeat for all 8 pixels in the row
+        inc si
+    add di, 312                             ; Move to the next line
+    dec dx                                  ; Decrement row count
+    jnz .draw_row                           ; Draw the next row
     ret
+
 
 ; =========================================== DATA =============================
 
-
-rects:
-    dw 320*10
-    db 100
-    db 70
-    db 5
-
+MLT dw -320,-319,1,321,320,319,-1,-321      ; Movement Lookup Table
+sprites:
+db 0x60, 0x96, 0x49, 0x32, 0x5C, 0x7D, 0x1E ; Fly sprite frame 0
 
 ; ======== BOOTSECTOR  ========
 times 507 - ($ - $$) db 0  ; Pad remaining bytes
