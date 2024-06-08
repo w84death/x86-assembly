@@ -105,13 +105,11 @@ handle_keyboard:
     .no_spacebar:
     cmp al, 0x4B                            ; Left
     jne .no_left
-        dec byte [PLAYER_DIR]                 ; Move rotation clockvise
-        and byte [PLAYER_DIR], 7              ; Limit 0..7
+        mov byte [PLAYER_DIR], 7                    
     .no_left:
     cmp al, 0x4D                            ; Right
     jne .no_right
-        inc byte [PLAYER_DIR]                 ; Move rotation clockvise
-        and byte [PLAYER_DIR], 7              ; Limit 0..7
+        mov byte [PLAYER_DIR], 1            
     .no_right:
 
 ; =========================================== VGA BLIT =========================
@@ -173,15 +171,7 @@ draw_sprite:
 MLT dw -320,-319,1,321,320,319,-1,-321      ; Movement Lookup Table
 sprites:
 db 0x00,0xD5,0x75,0xD2,0x95,0x95,0x95,0x00  ; P1X
-
-db 00000001b
-db 01110011b
-db 01010111b
-db 00111111b
-db 00011100b
-db 00110110b
-db 01110100b
-db 11110000b
+db 0x01,0x73,0x57,0x3F,0x1C,0x36,0x74,0xF0  ; Parrot direction 6
 
 ; ======== BOOTSECTOR  ========
 times 507 - ($ - $$) db 0  ; Pad remaining bytes
