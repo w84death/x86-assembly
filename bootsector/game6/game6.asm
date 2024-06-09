@@ -9,7 +9,7 @@ cpu 286                                     ; Minimum CPU is Intel 286
 ; =========================================== MEMORY ===========================
 
 VGA_MEMORY_ADR equ 0xA000                   ; VGA memory address
-DBUFFER_MEMORY_ADR equ 0x1000               ; Doublebuffer memory address
+DBUFFER_MEMORY_ADR equ 0x9000               ; Doublebuffer memory address
 SCREEN_BUFFER_SIZE equ 0xFA00               ; Size of the VGA buffer size
 TIMER equ 0x046C                            ; BIOS timer
 
@@ -76,40 +76,44 @@ draw_bg:
 
 draw_logo:
     mov bx, 0x00                            ; Set color 0x1E
-    mov si, sprites                         ; Set sprite data
+    mov si, p1x_sprite                         ; Set sprite data
     mov di, SCREEN_CENTER-4                 ; Set sprite position
     call draw_sprite                        ; Draw the sprite
 
     mov bx, 0x04
-    mov si, sprites+8
+    mov si, parrot_sprites
     mov di, SCREEN_CENTER+16
     call draw_sprite
 
-    mov si, sprites+16
+    mov si, parrot_sprites+8
     mov di, SCREEN_CENTER+28
     call draw_sprite
 
-    mov si, sprites+24
+    mov si, parrot_sprites+16
     mov di, SCREEN_CENTER+40
     call draw_sprite
 
-    mov si, sprites+32
+    mov si, parrot_sprites+24
     mov di, SCREEN_CENTER+52
     call draw_sprite
 
-; draw_parrot:
-;     mov bx, 0x04                            ; Set color 0x1E
+draw_parrot:
     
-;     mov di, [PLAYER_POS]                     ; Set sprite position
-
-;     mov al, [PLAYER_DIR]
-;     mov ah, 0                               ; Clear AH
-;     mov si, ax                              ; Set SI to rotation
-;     shl si, 1                               ; Shift left
-;     add di, [MLT + si]                      ; Movement Lookup Table
-;     mov word [PLAYER_POS], DI                 ; Save new position  
-;     mov si, sprites+8                         ; Set sprite data
-;     call draw_sprite  
+    mov di, [PLAYER_POS]                     ; Set sprite position
+    mov al, [PLAYER_DIR]
+    mov ah, 0                               ; Clear AH
+    mov si, ax                              ; Set SI to rotation
+    shl si, 1                               ; Shift left
+    add di, [MLT + si]                      ; Movement Lookup Table
+    mov word [PLAYER_POS], DI                 ; Save new position  
+    
+    mov bx, 8
+    mul bx
+    
+    mov si, parrot_sprites                         ; Set sprite data
+    add si, ax
+    mov bx, 38                            ; Set color 0x1E
+    call draw_sprite  
 
 ; =========================================== KEYBOARD INPUT ===================
 
@@ -120,10 +124,19 @@ handle_keyboard:
     jne .no_spacebar
 
     .no_spacebar:
+    
+    cmp al, 0x48                            ; Up
+    jne .no_up
+        mov byte [PLAYER_DIR], 0                    
+    .no_up:
     cmp al, 0x4B                            ; Left
     jne .no_left
-        mov byte [PLAYER_DIR], 7                    
+        mov byte [PLAYER_DIR], 3                    
     .no_left:
+    cmp al, 0x50                            ; Down
+    jne .no_down
+        mov byte [PLAYER_DIR], 2                    
+    .no_down:
     cmp al, 0x4D                            ; Right
     jne .no_right
         mov byte [PLAYER_DIR], 1            
@@ -185,14 +198,17 @@ draw_sprite:
 
 ; =========================================== DATA =============================
 
-MLT dw -320,-319,1,321,320,319,-1,-321      ; Movement Lookup Table
+MLT dw -319,321,319,-321      ; Movement Lookup Table
 
-sprites:
+p1x_sprite:
 db 0x00,0xD5,0x75,0xD2,0x95,0x95,0x95,0x00  ; P1X
-db 0x80,0xCE,0xEA,0xFC,0x38,0x6C,0x2E,0x0F  ; Parrot direction 1
-db 0x2F,0x6E,0x3C,0x3C,0xFE,0xEA,0xC6,0x80  ; Parrot direction 3
-db 0xF4,0x76,0x3C,0x1C,0x7F,0x57,0x63,0x01  ; Parrot direction 5
-db 0x01,0x73,0x57,0x3F,0x1C,0x36,0x74,0xF0  ; Parrot direction 7
+parrot_sprites:
+db 0x80,0xCE,0xEA,0xFC,0x38,0x6C,0x2E,0x0F  ; Parrot direction 0
+db 0x2F,0x6E,0x3C,0x3C,0xFE,0xEA,0xC6,0x80  ; Parrot direction 1 
+db 0xF4,0x76,0x3C,0x1C,0x7F,0x57,0x63,0x01  ; Parrot direction 2
+db 0x01,0x73,0x57,0x3F,0x1C,0x36,0x74,0xF0  ; Parrot direction 3
+food_sprites:
+arrows_sprites:
 
 ; =========================================== BOOT SECTOR ======================
 times 507 - ($ - $$) db 0  ; Pad remaining bytes
