@@ -80,19 +80,22 @@ draw_logo:
     mov di, SCREEN_CENTER-4                 ; Set sprite position
     call draw_sprite                        ; Draw the sprite
 
-    mov bx, 0x04
+    mov bx, 0x2a
     mov si, parrot_sprites
     mov di, SCREEN_CENTER+16
     call draw_sprite
 
+    mov bx, 0x2b
     mov si, parrot_sprites+8
     mov di, SCREEN_CENTER+28
     call draw_sprite
 
+    mov bx, 0x28
     mov si, parrot_sprites+16
     mov di, SCREEN_CENTER+40
     call draw_sprite
 
+    mov bx, 0x29
     mov si, parrot_sprites+24
     mov di, SCREEN_CENTER+52
     call draw_sprite
@@ -112,7 +115,7 @@ draw_parrot:
     
     mov si, parrot_sprites                         ; Set sprite data
     add si, ax
-    mov bx, 38                            ; Set color 0x1E
+    mov bx, 0x29                            ; Set color 0x1E
     call draw_sprite  
 
 ; =========================================== KEYBOARD INPUT ===================
