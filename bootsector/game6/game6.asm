@@ -127,20 +127,48 @@ handle_keyboard:
     
     cmp al, 0x48                            ; Up
     jne .no_up
+        cmp byte [PLAYER_DIR], 1
+        je .go_right_down
+        cmp byte [PLAYER_DIR], 2
+        jne .no_up
+            mov byte [PLAYER_DIR], 3
+            jmp .no_up
+        .go_right_down:
         mov byte [PLAYER_DIR], 0                    
     .no_up:
-    cmp al, 0x4B                            ; Left
-    jne .no_left
-        mov byte [PLAYER_DIR], 3                    
-    .no_left:
-    cmp al, 0x50                            ; Down
-    jne .no_down
-        mov byte [PLAYER_DIR], 2                    
-    .no_down:
     cmp al, 0x4D                            ; Right
     jne .no_right
+        cmp byte [PLAYER_DIR], 2
+        je .go_right_down2
+        cmp byte [PLAYER_DIR], 3
+        jne .no_right
+            mov byte [PLAYER_DIR], 0
+            jmp .no_right
+        .go_right_down2:
         mov byte [PLAYER_DIR], 1            
     .no_right:
+    cmp al, 0x50                            ; Down
+    jne .no_down
+        cmp byte [PLAYER_DIR], 3
+        je .go_down_left
+        cmp byte [PLAYER_DIR], 0
+        jne .no_down
+            mov byte [PLAYER_DIR], 1
+            jmp .no_down
+        .go_down_left:
+        mov byte [PLAYER_DIR], 2                    
+    .no_down:
+    cmp al, 0x4B                            ; Left
+    jne .no_left
+    cmp byte [PLAYER_DIR], 0
+    je .go_left_up
+    cmp byte [PLAYER_DIR], 1
+    jne .no_left
+        mov byte [PLAYER_DIR], 2
+        jmp .no_left
+    .go_left_up:
+        mov byte [PLAYER_DIR], 3                    
+    .no_left:
 
 ; =========================================== VGA BLIT =========================
 
