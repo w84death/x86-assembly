@@ -146,7 +146,7 @@ draw_sprite:
 
 MLT dw -320,-319,1,321,320,319,-1,-321      ; Movement Lookup Table
 sprites:
-db 0x60, 0x96, 0x49, 0x32, 0x5C, 0x7D, 0x1E ; Fly sprite frame 0
+db 0x00,0xD5,0x75,0xD2,0x95,0x95,0x95,0x00  ; P1X
 
 ; ======== BOOTSECTOR  ========
 times 507 - ($ - $$) db 0  ; Pad remaining bytes
