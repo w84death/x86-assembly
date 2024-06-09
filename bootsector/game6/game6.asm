@@ -119,55 +119,22 @@ draw_parrot:
 
 handle_keyboard:
     in al, 60h                              ; Read keyboard
-    
-    cmp al, 0x39                            ; Check if Spacebar is pressed
-    jne .no_spacebar
 
-    .no_spacebar:
-    
-    cmp al, 0x48                            ; Up
+    cmp al, 0x48                            ; Up pressed
     jne .no_up
-        cmp byte [PLAYER_DIR], 1
-        je .go_right_down
-        cmp byte [PLAYER_DIR], 2
-        jne .no_up
-            mov byte [PLAYER_DIR], 3
-            jmp .no_up
-        .go_right_down:
-        mov byte [PLAYER_DIR], 0                    
+        and byte [PLAYER_DIR], 0xfd         ; Set second bit to 0         
     .no_up:
-    cmp al, 0x4D                            ; Right
-    jne .no_right
-        cmp byte [PLAYER_DIR], 2
-        je .go_right_down2
-        cmp byte [PLAYER_DIR], 3
-        jne .no_right
-            mov byte [PLAYER_DIR], 0
-            jmp .no_right
-        .go_right_down2:
-        mov byte [PLAYER_DIR], 1            
-    .no_right:
-    cmp al, 0x50                            ; Down
+    cmp al, 0x50                            ; Down pressed
     jne .no_down
-        cmp byte [PLAYER_DIR], 3
-        je .go_down_left
-        cmp byte [PLAYER_DIR], 0
-        jne .no_down
-            mov byte [PLAYER_DIR], 1
-            jmp .no_down
-        .go_down_left:
-        mov byte [PLAYER_DIR], 2                    
-    .no_down:
-    cmp al, 0x4B                            ; Left
+        or byte [PLAYER_DIR], 0x02          ; Set second bit to 1
+    .no_down:   
+    cmp al, 0x4D                            ; Right pressed
+    jne .no_right
+        or byte [PLAYER_DIR], 0x01          ; Set first bit to 1
+    .no_right:    
+    cmp al, 0x4B                            ; Left pressed
     jne .no_left
-    cmp byte [PLAYER_DIR], 0
-    je .go_left_up
-    cmp byte [PLAYER_DIR], 1
-    jne .no_left
-        mov byte [PLAYER_DIR], 2
-        jmp .no_left
-    .go_left_up:
-        mov byte [PLAYER_DIR], 3                    
+        and byte [PLAYER_DIR], 0xfe         ; Set first bit to 0
     .no_left:
 
 ; =========================================== VGA BLIT =========================
@@ -226,15 +193,19 @@ draw_sprite:
 
 ; =========================================== DATA =============================
 
-MLT dw -319,321,319,-321      ; Movement Lookup Table
-
+MLT dw -321, -319, 319, 321                 ; Movement Lookup Table 
+                                            ; 0 - up/left
+                                            ; 1 - up/right
+                                            ; 2 - down/left
+                                            ; 3 - down/right      
 p1x_sprite:
 db 0x00,0xD5,0x75,0xD2,0x95,0x95,0x95,0x00  ; P1X
 parrot_sprites:
-db 0x80,0xCE,0xEA,0xFC,0x38,0x6C,0x2E,0x0F  ; Parrot direction 0
-db 0x2F,0x6E,0x3C,0x3C,0xFE,0xEA,0xC6,0x80  ; Parrot direction 1 
+
+db 0x01,0x73,0x57,0x3F,0x1C,0x36,0x74,0xF0  ; Parrot direction 0
+db 0x80,0xCE,0xEA,0xFC,0x38,0x6C,0x2E,0x0F  ; Parrot direction 1
 db 0xF4,0x76,0x3C,0x1C,0x7F,0x57,0x63,0x01  ; Parrot direction 2
-db 0x01,0x73,0x57,0x3F,0x1C,0x36,0x74,0xF0  ; Parrot direction 3
+db 0x2F,0x6E,0x3C,0x3C,0xFE,0xEA,0xC6,0x80  ; Parrot direction 3
 food_sprites:
 arrows_sprites:
 
