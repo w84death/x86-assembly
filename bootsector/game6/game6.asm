@@ -77,22 +77,39 @@ draw_bg:
 draw_logo:
     mov bx, 0x00                            ; Set color 0x1E
     mov si, sprites                         ; Set sprite data
-    mov di, SCREEN_CENTER-4                     ; Set sprite position
+    mov di, SCREEN_CENTER-4                 ; Set sprite position
     call draw_sprite                        ; Draw the sprite
 
-draw_parrot:
-    mov bx, 0x04                            ; Set color 0x1E
+    mov bx, 0x04
+    mov si, sprites+8
+    mov di, SCREEN_CENTER+16
+    call draw_sprite
+
+    mov si, sprites+16
+    mov di, SCREEN_CENTER+28
+    call draw_sprite
+
+    mov si, sprites+24
+    mov di, SCREEN_CENTER+40
+    call draw_sprite
+
+    mov si, sprites+32
+    mov di, SCREEN_CENTER+52
+    call draw_sprite
+
+; draw_parrot:
+;     mov bx, 0x04                            ; Set color 0x1E
     
-    mov di, [PLAYER_POS]                     ; Set sprite position
-                      ; Draw the sprite
- mov al, [PLAYER_DIR]
-    mov ah, 0                               ; Clear AH
-    mov si, ax                              ; Set SI to rotation
-    shl si, 1                               ; Shift left
-    add di, [MLT + si]                      ; Movement Lookup Table
-    mov word [PLAYER_POS], DI                 ; Save new position  
-    mov si, sprites+8                         ; Set sprite data
-    call draw_sprite  
+;     mov di, [PLAYER_POS]                     ; Set sprite position
+
+;     mov al, [PLAYER_DIR]
+;     mov ah, 0                               ; Clear AH
+;     mov si, ax                              ; Set SI to rotation
+;     shl si, 1                               ; Shift left
+;     add di, [MLT + si]                      ; Movement Lookup Table
+;     mov word [PLAYER_POS], DI                 ; Save new position  
+;     mov si, sprites+8                         ; Set sprite data
+;     call draw_sprite  
 
 ; =========================================== KEYBOARD INPUT ===================
 
@@ -169,11 +186,15 @@ draw_sprite:
 ; =========================================== DATA =============================
 
 MLT dw -320,-319,1,321,320,319,-1,-321      ; Movement Lookup Table
+
 sprites:
 db 0x00,0xD5,0x75,0xD2,0x95,0x95,0x95,0x00  ; P1X
-db 0x01,0x73,0x57,0x3F,0x1C,0x36,0x74,0xF0  ; Parrot direction 6
+db 0x80,0xCE,0xEA,0xFC,0x38,0x6C,0x2E,0x0F  ; Parrot direction 1
+db 0x2F,0x6E,0x3C,0x3C,0xFE,0xEA,0xC6,0x80  ; Parrot direction 3
+db 0xF4,0x76,0x3C,0x1C,0x7F,0x57,0x63,0x01  ; Parrot direction 5
+db 0x01,0x73,0x57,0x3F,0x1C,0x36,0x74,0xF0  ; Parrot direction 7
 
-; ======== BOOTSECTOR  ========
+; =========================================== BOOT SECTOR ======================
 times 507 - ($ - $$) db 0  ; Pad remaining bytes
 p1x db 'P1X'            ; P1X signature 4b
 dw 0xAA55
