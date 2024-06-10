@@ -29,7 +29,6 @@ PLAYER_START_POS equ SCREEN_WIDTH*180+SCREEN_WIDTH/2          ; Player start pos
 
 SPRITE_SIZE equ 8                           ; 8 pixels per sprite line
 SPRITE_LINES equ 8                          ; 7 lines per sprite  
-PALETTE_SIZE equ 0x1E                       ; 30 colors 
 
 ; =========================================== BOOTSTRAP ========================
 
@@ -46,9 +45,9 @@ _start:
 
 
 restart_game:
-    mov word [LEVEL], 0x18                  ; Starting level
+    mov word [LEVEL], 0x01                  ; Starting level
     mov byte [LIFE], 0x03                   ; Starting lifes
-    mov word [PLAYER_POS], PLAYER_START_POS ; Starting ship position
+    mov word [PLAYER_POS], PLAYER_START_POS ; Starting player position
 
 ; =========================================== MAIN GAME LOOP ===================
 
@@ -108,6 +107,7 @@ draw_parrot:
     mov ah, 0                               ; And clear AH
     mov si, ax                              ; Set SI to rotation
     shl si, 1                               ; Shift left
+    add di, [MLT + si]                      ; Movement Lookup Table
     add di, [MLT + si]                      ; Movement Lookup Table
     mov word [PLAYER_POS], di               ; Save new position 
     mov bx, 8
@@ -181,7 +181,7 @@ draw_sprite:
     mov dx, SPRITE_LINES                    ; Number of lines in the sprite
     .draw_row: 
         mov al, [si]                        ; Get sprite row data
-        mov cx, 8                           ; 8 bits per row
+        mov cx, SPRITE_SIZE                 ; 8 bits per row
         .draw_pixel:
             shl al, 1                       ; Shift left to get the pixel out
             jnc .skip_pixel                 ; If carry flag is 0, skip
@@ -190,7 +190,7 @@ draw_sprite:
             inc di                          ; Move to the next pixel position
             loop .draw_pixel                ; Repeat for all 8 pixels in the row
         inc si
-    add di, 312                             ; Move to the next line
+    add di, 320-SPRITE_SIZE                 ; Move to the next line
     dec dx                                  ; Decrement row count
     jnz .draw_row                           ; Draw the next row
     ret
@@ -217,6 +217,6 @@ food_sprites:
 arrows_sprites:
 
 ; =========================================== BOOT SECTOR ======================
-times 507 - ($ - $$) db 0  ; Pad remaining bytes
-p1x db 'P1X'            ; P1X signature 4b
+times 507 - ($ - $$) db 0                   ; Pad remaining bytes
+p1x db 'P1X'                                ; P1X signature 4b
 dw 0xAA55
