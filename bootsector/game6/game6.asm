@@ -74,12 +74,13 @@ draw_bg:
 
 ; =========================================== DRAW SPRITE ======================
 
-draw_logo:
-    mov bx, 0x00                            ; Set color 0x1E
-    mov si, p1x_sprite                         ; Set sprite data
+draw_p1x_logo:
+    mov bx, 0x00                            ; Set color black
+    mov si, p1x_sprite                      ; Set sprite data address
     mov di, SCREEN_CENTER-4                 ; Set sprite position
-    call draw_sprite                        ; Draw the sprite
+    call draw_sprite
 
+    ; testing
     mov bx, 0x2a
     mov si, parrot_sprites
     mov di, SCREEN_CENTER+16
@@ -99,24 +100,25 @@ draw_logo:
     mov si, parrot_sprites+24
     mov di, SCREEN_CENTER+52
     call draw_sprite
+    ; end testing
 
 draw_parrot:
-    
-    mov di, [PLAYER_POS]                     ; Set sprite position
-    mov al, [PLAYER_DIR]
-    mov ah, 0                               ; Clear AH
+    mov di, [PLAYER_POS]                    ; Get player position in VGA memory
+    mov al, [PLAYER_DIR]                    ; Get player direction to AL
+    mov ah, 0                               ; And clear AH
     mov si, ax                              ; Set SI to rotation
     shl si, 1                               ; Shift left
     add di, [MLT + si]                      ; Movement Lookup Table
-    mov word [PLAYER_POS], DI                 ; Save new position  
-    
+    mov word [PLAYER_POS], di               ; Save new position 
     mov bx, 8
-    mul bx
-    
-    mov si, parrot_sprites                         ; Set sprite data
-    add si, ax
-    mov bx, 0x29                            ; Set color 0x1E
-    call draw_sprite  
+    mul bx                                  ; Calculate offset for sprite data 
+    mov si, parrot_sprites                  ; Set sprite data start address
+    add si, ax                              ; Add sprite data offset
+    mov bx, 0x29                            ; Set color
+    call draw_sprite
+
+
+
 
 ; =========================================== KEYBOARD INPUT ===================
 
