@@ -71,7 +71,7 @@ create_levels:
     loop .l
 
 restart_game:
-    mov word [LEVEL],0x01                   ; Starting level
+    mov word [LEVEL],0x00                   ; Starting level
     mov word [PLAYER_POS],PLAYER_START_POS  ; Starting player position
     mov byte [PLAYER_TIMER], 0x00           ; Reset player timer  
         
@@ -83,11 +83,12 @@ game_loop:
 
 draw_bg:
     mov ax,COLOR_BACKGROUND                 ; Set color 0x10
-    mov cx, SCREEN_BUFFER_SIZE              ; Set buffer size
+    mov cx,SCREEN_BUFFER_SIZE              ; Set buffer size
     rep stosw
 
 draw_level_indicator:
     mov cx,[LEVEL]
+    inc cx
     mov bx,COLOR_TILE_WALL
     mov si,tiles+16
     mov di,320*4+132
@@ -160,8 +161,6 @@ check_collisions:
             in al, 60h
             cmp al, 1
             jne .waint_for_esc
-        jmp restart_game 
-        
     .collision_wall:
         jmp restart_game
         
