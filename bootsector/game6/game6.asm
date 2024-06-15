@@ -31,8 +31,10 @@ SPRITE_SIZE equ 8                           ; 8 pixels per sprite line
 SPRITE_LINES equ 8                          ; 7 lines per sprite  
 LEVEL_COLS equ 16                           ; 16 columns per level
 LEVEL_ROWS equ 16                           ; 16 rows per level
-COLOR_TILE_MOVABLE equ 0x47                 ; Color for movable tile
+COLOR_TILE_MOVABLE equ 0x43                 ; Color for movable tile
 COLOR_TILE_NONMOVABLE equ 0x7d              ; Color for non-movable tile
+COLOR_TILE_WALL equ 0x36                    ; Color for shaded wall tile
+COLOR_TILE_WALL_LIGH equ 0x35               ; Color for wall tile
 
 ; =========================================== BOOTSTRAP ========================
 
@@ -92,7 +94,7 @@ draw_level:
         mov cx,LEVEL_COLS                  ; 16 bits per row
         .draw_tile_box:
             shl ax,1                       ; Shift left to get the tile out
-            jc .color_non_movable     ; If carry flag is 0, draw ground
+            jc .color_non_movable     ; If carry flag is 0,draw ground
                 mov bx,COLOR_TILE_MOVABLE
                 jmp .draw_the_tile
             .color_non_movable:
@@ -101,7 +103,7 @@ draw_level:
             .draw_the_tile:
             push si
             xor si,si                       ; Set sprite ID to 0
-            add di, 320*4-17       
+            add di,320*4-17       
             call draw_tile
             pop si
 
@@ -190,12 +192,12 @@ delay_timer:
 ; move_level:
 ;     cmp byte [PLAYER_DIR],0x00
 ;     jne .check_inc
-;         sub word [LEVEL], 0x02
+;         sub word [LEVEL],0x02
 ;         jmp .done
 ;     .check_inc:
 ;     cmp byte [PLAYER_DIR],0x03
 ;     jne .done
-;         add word [LEVEL], 0x02
+;         add word [LEVEL],0x02
 ;     .done:
 
 ; =========================================== END OF GAME LOOP =================
@@ -245,38 +247,24 @@ draw_tile:
     call draw_sprite
     popa
     
-
-
     cmp bx,COLOR_TILE_MOVABLE
     je .skip_box
 
     push di
     
-    mov bx,0x36
+    mov bx,COLOR_TILE_WALL
     add si,8
-    add di, -320*4
+    sub di,320*2+4
     pusha
     call draw_sprite
     popa
     
+    mov bx,COLOR_TILE_WALL_LIGH
     add si,8
-    add di, -8
     pusha
     call draw_sprite
     popa
     
-    mov bx, 0x4c
-    add di, 320*4+8
-    pusha
-    call draw_sprite
-    popa
-
-    add si,-8
-    add di, -8
-    pusha
-    call draw_sprite
-    popa
-
     pop di
     
     .skip_box:
@@ -301,25 +289,27 @@ db 0x2F,0x6E,0x3C,0x3C,0xFE,0xEA,0xC6,0x80  ; Parrot direction 3
 tiles:
 db 0x03,0x0F,0x3F,0xFF,0xFF,0x3F,0x0F,0x03  ; Tile ground left
 db 0xC0,0xF0,0xFC,0xFF,0xFF,0xFC,0xF0,0xC0  ; Tile ground right
-db 0xC0,0xB0,0x8C,0x83,0xC1,0x31,0x0D,0x43  ; Tile wall horizontal
-db 0x03,0x0D,0x31,0xC1,0x83,0x8C,0xB0,0xC0  ; Tile wall vertical
+db 0x3C,0xFF,0xE7,0xFF,0xFF,0xFF,0xFF,0x3C  ; Tile wall base/shaded
+db 0x00,0x18,0x66,0x18,0x70,0x70,0x70,0x18  ; Tile wall light
+; db 0xC0,0xB0,0x8C,0x83,0xC1,0x31,0x0D,0x43  ; Tile wall horizontal
+; db 0x03,0x0D,0x31,0xC1,0x83,0x8C,0xB0,0xC0  ; Tile wall vertical
 
 level:
 dw 1111111111111111b
 dw 1000000011111111b
-dw 1000000000000011b
-dw 1000000001100011b
+dw 1001100000000011b
+dw 1001110001100011b
 dw 1000000001100011b
 dw 1000000000000011b
 dw 1100000000000011b
-dw 1111111000000011b
-dw 1111111000000011b
-dw 1111000000000011b
-dw 1111000000000011b
+dw 1100111000001111b
+dw 1100111000001111b
+dw 1100000000000011b
+dw 1100000000000011b
 dw 1111000001100011b
-dw 1111000001100011b
+dw 1111110001100011b
 dw 1100000001100011b
-dw 1100000001100011b
+dw 1100000111111011b
 dw 1111111111111111b
 
 
