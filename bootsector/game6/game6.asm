@@ -19,6 +19,7 @@ LEVEL equ BASE_MEM+0x01                     ; Current level,2 bytes
 PLAYER_POS equ BASE_MEM+0x03                ; Ship position,2 bytes
 PLAYER_TIMER equ BASE_MEM+0x05              ; Movement timer,2 bytes
 PLAYER_DIR equ BASE_MEM+0x07                ; Ship direction,1 byte
+TREASURE_POS equ BASE_MEM+0x08              ; Flower position,2 bytes
 
 ; =========================================== MAGIC NUMBERS ====================
 
@@ -27,6 +28,7 @@ SCREEN_HEIGHT equ 200
 SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2 ; Center
 LEVEL_START_POS equ 168+320*40              ; Level start position    
 PLAYER_START_POS equ LEVEL_START_POS+320*10-14 ; Player start position
+TREASURE_START_POS equ LEVEL_START_POS+320*112-14 ; Treasure start position
 SPRITE_SIZE equ 8                           ; 8 pixels per sprite line
 SPRITE_LINES equ 8                          ; 7 lines per sprite  
 LEVEL_COLS equ 16                           ; 16 columns per level
@@ -39,6 +41,7 @@ COLOR_TILE_WALL equ 0x36                    ; Color for shaded wall tile
 COLOR_TILE_WALL_LIGH equ 0x35               ; Color for wall tile
 COLOR_BALL_MAIN equ 0x3d                    ; Color for the player ball
 COLOR_BALL_LIGH equ 0x6c                    ; Color for shading the ball
+COLOR_TREASURE equ 0x0f                     ; Color for the treasure
 
 ; =========================================== BOOTSTRAP ========================
 
@@ -54,8 +57,11 @@ _start:
 restart_game:
     mov word [LEVEL],0x00                   ; Starting level
     mov byte [LIFE],0x03                    ; Starting lifes
+    mov word [TREASURE_POS],TREASURE_START_POS ; Starting treasure position
+reset_player:
     mov word [PLAYER_POS],PLAYER_START_POS  ; Starting player position
-
+    mov byte [PLAYER_TIMER], 0x00        ; Reset player timer  
+        
 ; =========================================== MAIN GAME LOOP ===================
 
 game_loop:
@@ -73,18 +79,8 @@ draw_bg:
         xchg al,ah                          ; Swap colors 
         dec dx                              ; Decrement bar counter
         jnz .draw_bars                      ; Repeat for all bars
-
-
     mov cx,320*200/3                        ; Half of the screen    
-    rep stosw                               ; Write to the doublebuffer
-
-; =========================================== DRAW LOGO ========================
-
-draw_p1x_logo:
-    mov bx,COLOR_LOGO                       ; Set logo color
-    mov si,p1x_sprite                       ; Set sprite data address
-    mov di,320*4+320-12                     ; Set sprite position
-    call draw_sprite
+    rep stosw                               ; Write to the doublebuffera
 
 ; =========================================== DRAW LEVEL =======================
 
@@ -118,6 +114,41 @@ draw_level:
     add di,-320*60+136                      ; Move to the next row
     dec dx                                  ; Decrement row count
     jnz .draw_row                           ; Draw the next row
+
+; =========================================== DRAW TREASURE ====================
+
+draw_treasure:
+    mov bx,COLOR_TREASURE                   ; Set sprite color
+    mov si,p1x_sprite                       ; Set sprite data address
+    mov word di, [TREASURE_POS]             ; Set sprite position
+    call draw_sprite
+
+; =========================================== CHECK COLLISIONS ==============
+
+check_collisions:
+    mov si, [PLAYER_POS]                      ; Get player position
+    add si, 320*4
+    mov al, [es:si]                 ; Get pixel color at player position
+    cmp al, COLOR_TREASURE            ; Check if it matches flower color
+    je .collision_treasure            ; Jump if collision with flower
+    cmp al, COLOR_TILE_MOVABLE            ; Check if it matches spider color
+    jne .collision_wall            ; Jump if collision with spider
+    jmp .collision_done                     ; No collision
+
+    .collision_treasure:
+        inc word [LEVEL]                        ; Increase level
+        jmp reset_player 
+        
+    .collision_wall:
+        dec byte [LIFE]                     ; Decrease life
+        jnz reset_player                    ; If lifes left, continue game
+        .waint_for_esc:                     ; If no lifes left, wait for ESC
+            in al, 60h                      ; Read keyboard
+            cmp al, 0x01                    ; Check if ESC key is pressed
+            jne .waint_for_esc
+        jmp restart_game
+        
+    .collision_done:
 
 ; =========================================== DRAW PLAYER ======================
     
