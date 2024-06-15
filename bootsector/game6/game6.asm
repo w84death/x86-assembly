@@ -20,6 +20,7 @@ PLAYER_POS equ BASE_MEM+0x03                ; Ship position,2 bytes
 PLAYER_TIMER equ BASE_MEM+0x05              ; Movement timer,2 bytes
 PLAYER_DIR equ BASE_MEM+0x07                ; Ship direction,1 byte
 TREASURE_POS equ BASE_MEM+0x08              ; Flower position,2 bytes
+LEVEL_DATA equ BASE_MEM+0x0A                ; Level data, 512 bytes
 
 ; =========================================== MAGIC NUMBERS ====================
 
@@ -28,14 +29,14 @@ SCREEN_HEIGHT equ 200
 SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2 ; Center
 LEVEL_START_POS equ 168+320*40              ; Level start position    
 PLAYER_START_POS equ LEVEL_START_POS+320*10-14 ; Player start position
-TREASURE_START_POS equ LEVEL_START_POS+320*112-14 ; Treasure start position
+TREASURE_START_POS equ LEVEL_START_POS+320*114-14 ; Treasure start position
 SPRITE_SIZE equ 8                           ; 8 pixels per sprite line
 SPRITE_LINES equ 8                          ; 7 lines per sprite  
 LEVEL_COLS equ 16                           ; 16 columns per level
 LEVEL_ROWS equ 16                           ; 16 rows per level
-COLOR_BACKGROUND equ 0x1010                 ; Color for background
+COLOR_BACKGROUND equ 0x4040                 ; Color for background
 COLOR_LOGO equ 0x0f                         ; Color for logo
-COLOR_TILE_MOVABLE equ 0x43                 ; Color for movable tile
+COLOR_TILE_MOVABLE equ 0x58                 ; Color for movable tile
 COLOR_TILE_NONMOVABLE equ 0x7d              ; Color for non-movable tile
 COLOR_TILE_WALL equ 0x36                    ; Color for shaded wall tile
 COLOR_TILE_WALL_LIGH equ 0x35               ; Color for wall tile
@@ -54,39 +55,58 @@ _start:
     push DBUFFER_MEMORY_ADR                 ; Set doublebuffer memory
     pop es                                  ; as target
 
+create_levels:
+    xor di,di
+    mov ax, 0x1212
+    mov bx, 0xabcd
+    mov cx, 0xff
+    .l:
+    
+    add bx, di
+    ror ax, 4
+    xor ax, bx
+    
+    mov word [LEVEL_DATA+di], ax
+    inc di
+    loop .l
+
 restart_game:
-    mov word [LEVEL],0x00                   ; Starting level
-    mov byte [LIFE],0x03                    ; Starting lifes
-    mov word [TREASURE_POS],TREASURE_START_POS ; Starting treasure position
-reset_player:
+    mov word [LEVEL],0x01                   ; Starting level
     mov word [PLAYER_POS],PLAYER_START_POS  ; Starting player position
-    mov byte [PLAYER_TIMER], 0x00        ; Reset player timer  
+    mov byte [PLAYER_TIMER], 0x00           ; Reset player timer  
         
 ; =========================================== MAIN GAME LOOP ===================
 
 game_loop:
 
-
 ; =========================================== DRAW BACKGROUND ==================
 
 draw_bg:
     mov ax,COLOR_BACKGROUND                 ; Set color 0x10
-    mov dx,12                               ; We have 12 bars
-    .draw_bars:
-        mov cx,320*200/64                   ; One bar of 320x200
-        rep stosw                           ; Write to the doublebuffer
-        inc ax                              ; Increment color index for next bar
-        xchg al,ah                          ; Swap colors 
-        dec dx                              ; Decrement bar counter
-        jnz .draw_bars                      ; Repeat for all bars
-    mov cx,320*200/3                        ; Half of the screen    
-    rep stosw                               ; Write to the doublebuffera
+    mov cx, SCREEN_BUFFER_SIZE              ; Set buffer size
+    rep stosw
+
+draw_level_indicator:
+    mov cx,[LEVEL]
+    mov bx,COLOR_TILE_WALL
+    mov si,tiles+16
+    mov di,320*4+132
+    .draw_glyph:
+        pusha
+        call draw_sprite
+        popa
+        add di, 12
+        loop .draw_glyph
 
 ; =========================================== DRAW LEVEL =======================
 
 draw_level:
-    mov si,level                            ; Set level data address
-    add si,[LEVEL]                          ; Add current level offset
+    mov si, LEVEL_DATA                     ; Set level data address
+    mov ax, [LEVEL]
+    mov bx, 0x20
+    mul bx
+    add si,ax                          ; Add current level offset
+
     mov dx,LEVEL_ROWS                       ; Number of rows in the level
     mov di,LEVEL_START_POS                  ; Set level start position
     .draw_row: 
@@ -120,14 +140,14 @@ draw_level:
 draw_treasure:
     mov bx,COLOR_TREASURE                   ; Set sprite color
     mov si,p1x_sprite                       ; Set sprite data address
-    mov word di, [TREASURE_POS]             ; Set sprite position
+    mov word di, TREASURE_START_POS             ; Set sprite position
     call draw_sprite
 
 ; =========================================== CHECK COLLISIONS ==============
 
 check_collisions:
     mov si, [PLAYER_POS]                      ; Get player position
-    add si, 320*4
+    add si, 320*4+4
     mov al, [es:si]                 ; Get pixel color at player position
     cmp al, COLOR_TREASURE            ; Check if it matches flower color
     je .collision_treasure            ; Jump if collision with flower
@@ -136,16 +156,13 @@ check_collisions:
     jmp .collision_done                     ; No collision
 
     .collision_treasure:
-        inc word [LEVEL]                        ; Increase level
-        jmp reset_player 
+        .waint_for_esc:
+            in al, 60h
+            cmp al, 1
+            jne .waint_for_esc
+        jmp restart_game 
         
     .collision_wall:
-        dec byte [LIFE]                     ; Decrease life
-        jnz reset_player                    ; If lifes left, continue game
-        .waint_for_esc:                     ; If no lifes left, wait for ESC
-            in al, 60h                      ; Read keyboard
-            cmp al, 0x01                    ; Check if ESC key is pressed
-            jne .waint_for_esc
         jmp restart_game
         
     .collision_done:
@@ -169,7 +186,14 @@ check_player_timer:
 
     .handle_keyboard:
         in al,60h                               ; Read keyboard
-
+        
+        cmp al,0x1C                             ; Enter pressed
+        jne .no_enter
+            inc word [LEVEL]
+            and word [LEVEL], 0x07              ; Limit to 32 levels
+            mov byte [PLAYER_DIR],0x0f          ; Set second bit to 0
+            jmp .set_timer
+        .no_enter:
         cmp al,0x48                             ; Up pressed
         jne .no_up
             mov byte [PLAYER_DIR],0x00          ; Set second bit to 0 
@@ -190,11 +214,11 @@ check_player_timer:
             mov byte [PLAYER_DIR],0x02          ; Set first bit to 0
             jmp .set_timer
         .no_left:
-            jmp .done
-        
+        jmp .done
+
         .set_timer:
         mov byte [PLAYER_TIMER],0x04
-
+        
     .dec_timer:
         dec byte [PLAYER_TIMER]
         call update_player_pos
@@ -235,11 +259,14 @@ update_player_pos:
     pusha
     mov di,[PLAYER_POS]                     ; Get player position in VGA memory
     mov al,[PLAYER_DIR]                     ; Get player direction to AL
+    cmp al, 0x0f
+    je .done
     mov ah,0                                ; And clear AH
     mov si,ax                               ; Set SI to rotation
     shl si,1                                ; Shift left
     add di,[MLT + si]                       ; Movement Lookup Table
     mov word [PLAYER_POS],di                ; Save new position 
+    .done:
     popa
     ret
 
@@ -314,28 +341,10 @@ db 0x3C,0x66,0x9F,0xBF,0xFF,0x7E,0x3C,0x00  ; Ball sprite
 db 0x00,0x00,0x02,0x01,0x05,0xAB,0x56,0x3C  ; Ball sprite shading
 
 tiles:
-db 0x03,0x0F,0x3F,0xFF,0xFF,0x3F,0x0F,0x03  ; Tile ground left
-db 0xC0,0xF0,0xFC,0xFF,0xFF,0xFC,0xF0,0xC0  ; Tile ground right
+db 0x03,0x0F,0x3F,0xFF,0xFF,0x3F,0x0F,0x03  ; Tile ground left part
+db 0xC0,0xF0,0xFC,0xFF,0xFF,0xFC,0xF0,0xC0  ; Tile ground right part
 db 0x3C,0xFF,0xE7,0xFF,0xFF,0xFF,0xFF,0x3C  ; Tile wall
 db 0x00,0x18,0x66,0x18,0x70,0x70,0x70,0x18  ; Tile wall light
-
-level:
-dw 1111111111111111b
-dw 1000000110000001b
-dw 1001100000011001b
-dw 1001100000011001b
-dw 1000001111000011b
-dw 1000000000000011b
-dw 1000111001110011b
-dw 1001100000011001b
-dw 1001100000011001b
-dw 1100111001110001b
-dw 1100000000000001b
-dw 1100001111000001b
-dw 1001100000011001b
-dw 1001100000011001b
-dw 1000000110000001b
-dw 1111111111111111b
 
 ; =========================================== BOOT SECTOR ======================
 
