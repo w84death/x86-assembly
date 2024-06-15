@@ -86,8 +86,8 @@ draw_bg:
 draw_level_indicator:
     mov cx,[LEVEL]
     inc cx
-    mov bx,COLOR_TILE_WALL
-    mov si,tiles+16
+    mov bx,COLOR_TILE_MOVABLE
+    mov si,tiles+8
     mov di,320*4+132
     .draw_glyph:
         pusha
