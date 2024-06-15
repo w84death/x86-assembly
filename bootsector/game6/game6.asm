@@ -20,7 +20,7 @@ PLAYER_POS equ BASE_MEM+0x03                ; Ship position,2 bytes
 PLAYER_TIMER equ BASE_MEM+0x05              ; Movement timer,2 bytes
 PLAYER_DIR equ BASE_MEM+0x07                ; Ship direction,1 byte
 TREASURE_POS equ BASE_MEM+0x08              ; Flower position,2 bytes
-LEVEL_DATA equ BASE_MEM+0x0A                ; Level data, 512 bytes
+LEVEL_DATA equ BASE_MEM+0x0A                ; Level data,512 bytes
 
 ; =========================================== MAGIC NUMBERS ====================
 
@@ -42,7 +42,7 @@ COLOR_TILE_WALL equ 0x36                    ; Color for shaded wall tile
 COLOR_TILE_WALL_LIGH equ 0x35               ; Color for wall tile
 COLOR_BALL_MAIN equ 0x3d                    ; Color for the player ball
 COLOR_BALL_LIGH equ 0x6c                    ; Color for shading the ball
-COLOR_TREASURE equ 0x0f                     ; Color for the treasure
+COLOR_TREASURE equ 0x5a                     ; Color for the treasure
 
 ; =========================================== BOOTSTRAP ========================
 
@@ -56,24 +56,21 @@ _start:
     pop es                                  ; as target
 
 create_levels:
-    xor di,di
-    mov ax, 0x1212
-    mov bx, 0xabcd
-    mov cx, 0xff
-    .l:
-    
-    add bx, di
-    ror ax, 4
-    xor ax, bx
-    
-    mov word [LEVEL_DATA+di], ax
-    inc di
-    loop .l
+    mov ax,0x1212
+    mov bx,0xabcd
+    mov cx,0xff
+    .fill_line:    
+        add bx,di
+        ror ax,4
+        xor ax,bx
+        mov word [LEVEL_DATA+di],ax
+        inc di
+        loop .fill_line
 
 restart_game:
     mov word [LEVEL],0x00                   ; Starting level
     mov word [PLAYER_POS],PLAYER_START_POS  ; Starting player position
-    mov byte [PLAYER_TIMER], 0x00           ; Reset player timer  
+    mov byte [PLAYER_TIMER],0x00           ; Reset player timer  
         
 ; =========================================== MAIN GAME LOOP ===================
 
@@ -96,15 +93,15 @@ draw_level_indicator:
         pusha
         call draw_sprite
         popa
-        add di, 12
+        add di,12
         loop .draw_glyph
 
 ; =========================================== DRAW LEVEL =======================
 
 draw_level:
-    mov si, LEVEL_DATA                     ; Set level data address
-    mov ax, [LEVEL]
-    mov bx, 0x20
+    mov si,LEVEL_DATA                     ; Set level data address
+    mov ax,[LEVEL]
+    mov bx,0x20
     mul bx
     add si,ax                          ; Add current level offset
 
@@ -120,7 +117,6 @@ draw_level:
                 jmp .draw_the_tile
             .color_non_movable:
                 mov bx,COLOR_TILE_NONMOVABLE
-            
             .draw_the_tile:
             push si
             xor si,si                       ; Set sprite ID to 0
@@ -139,27 +135,33 @@ draw_level:
 ; =========================================== DRAW TREASURE ====================
 
 draw_treasure:
-    mov bx,COLOR_TREASURE                   ; Set sprite color
-    mov si,p1x_sprite                       ; Set sprite data address
-    mov word di, TREASURE_START_POS             ; Set sprite position
+    xor bx,bx
+    mov si,treasure_sprite                       ; Set sprite data address
+    mov word di,TREASURE_START_POS             ; Set sprite position
+    call draw_sprite
+    dec di
+    dec di
+    call draw_sprite
+    inc di
+    mov bx,COLOR_TREASURE
     call draw_sprite
 
 ; =========================================== CHECK COLLISIONS ==============
 
 check_collisions:
-    mov si, [PLAYER_POS]                      ; Get player position
-    add si, 320*4+4
-    mov al, [es:si]                 ; Get pixel color at player position
-    cmp al, COLOR_TREASURE            ; Check if it matches flower color
+    mov si,[PLAYER_POS]                      ; Get player position
+    add si,320*4+4
+    mov al,[es:si]                 ; Get pixel color at player position
+    cmp al,COLOR_TREASURE            ; Check if it matches flower color
     je .collision_treasure            ; Jump if collision with flower
-    cmp al, COLOR_TILE_MOVABLE            ; Check if it matches spider color
+    cmp al,COLOR_TILE_MOVABLE            ; Check if it matches spider color
     jne .collision_wall            ; Jump if collision with spider
     jmp .collision_done                     ; No collision
 
     .collision_treasure:
         .waint_for_esc:
-            in al, 60h
-            cmp al, 1
+            in al,60h
+            cmp al,1
             jne .waint_for_esc
     .collision_wall:
         jmp restart_game
@@ -173,7 +175,7 @@ draw_player:
     mov si,ball_sprites                     ; Set sprite data start address
     mov bx,COLOR_BALL_MAIN                  ; Set color
     call draw_sprite
-    mov di,[PLAYER_POS]                     ; Get player position in VGA memory
+    add si,8
     mov bx,COLOR_BALL_LIGH                  ; Set color
     call draw_sprite
     
@@ -189,7 +191,7 @@ check_player_timer:
         cmp al,0x1C                             ; Enter pressed
         jne .no_enter
             inc word [LEVEL]
-            and word [LEVEL], 0x07              ; Limit to 32 levels
+            and word [LEVEL],0x07              ; Limit to 32 levels
             mov byte [PLAYER_DIR],0x0f          ; Set second bit to 0
             jmp .set_timer
         .no_enter:
@@ -258,7 +260,7 @@ update_player_pos:
     pusha
     mov di,[PLAYER_POS]                     ; Get player position in VGA memory
     mov al,[PLAYER_DIR]                     ; Get player direction to AL
-    cmp al, 0x0f
+    cmp al,0x0f
     je .done
     mov ah,0                                ; And clear AH
     mov si,ax                               ; Set SI to rotation
@@ -272,6 +274,7 @@ update_player_pos:
 ; =========================================== DRAWING SPRITE PROCEDURE =========
 
 draw_sprite:
+    pusha
     mov dx,SPRITE_LINES                     ; Number of lines in the sprite
     .draw_row: 
         mov al,[si]                         ; Get sprite row data
@@ -287,41 +290,31 @@ draw_sprite:
     add di,320-SPRITE_SIZE                  ; Move to the next line
     dec dx                                  ; Decrement row count
     jnz .draw_row                           ; Draw the next row
+    popa
     ret
 
 ; =========================================== DRAWING TILE PROCEDURE ===========
 
 draw_tile: 
     add si,tiles                            ; Set tile data address
-    pusha
     call draw_sprite
-    popa
     add si,8                                ; Move to the next tile
     add di,8                                ; Move position by one sprite
-    pusha
     call draw_sprite
-    popa
-    
     cmp bx,COLOR_TILE_MOVABLE               ; Check if the tile is movable
     je .skip_box
-
         push di
-        
+    
         mov bx,COLOR_TILE_WALL
         add si,8                                ; Move to the next tile sprite
         sub di,320*2+4                          ; Set position (centered)
-        pusha
         call draw_sprite
-        popa
         
         mov bx,COLOR_TILE_WALL_LIGH
         add si,8                                ; Move to the next tile sprite
-        pusha
         call draw_sprite
-        popa
         
         pop di
-    
     .skip_box:
     ret
 
@@ -333,7 +326,10 @@ MLT dw -322,-318,318,322                    ; Movement Lookup Table
                                             ; 2 - down/left
                                             ; 3 - down/right      
 p1x_sprite:
-db 0x00,0xD5,0x75,0xD2,0x95,0x95,0x95,0x00  ; P1X 8 bytes
+; db 0x00,0xD5,0x75,0xD2,0x95,0x95,0x95,0x00  ; P1X 8 bytes
+
+treasure_sprite:
+db 0x3C,0xE7,0xFF,0x7E,0x7E,0x3C,0x18,0x3C  ; Treasure sprite
 
 ball_sprites:
 db 0x3C,0x66,0x9F,0xBF,0xFF,0x7E,0x3C,0x00  ; Ball sprite
