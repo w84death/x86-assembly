@@ -1,7 +1,7 @@
-; GAME4 - PARROT GAME
-; Description: A simple space ship game
+; GAME6 - ISOMETRIC MAYHEM
+; Description: Simple shooter game with isometric graphics
 ; Author: Krzysztof Krystian Jankowski
-; Date: 2024-06-09
+; Date: 2024-06-15
 bits 16                                     ; 16-bit mode          
 org 0x7c00                                  ; Boot sector origin
 cpu 286                                     ; Minimum CPU is Intel 286
@@ -16,8 +16,8 @@ TIMER equ 0x046C                            ; BIOS timer
 BASE_MEM equ 0x7e00                         ; Base memory address
 LIFE equ BASE_MEM+0x00                      ; Number of lifes,1 byte
 LEVEL equ BASE_MEM+0x01                     ; Current level,2 bytes
-PLAYER_POS equ BASE_MEM+0x03                  ; Ship position,2 bytes
-PLAYER_POS_I equ BASE_MEM+0x05                ; Ship position increment,2 bytes
+PLAYER_POS equ BASE_MEM+0x03                ; Ship position,2 bytes
+PLAYER_POS_I equ BASE_MEM+0x05              ; Ship position increment,2 bytes
 PLAYER_DIR equ BASE_MEM+0x07                ; Ship direction,1 byte
 
 ; =========================================== MAGIC NUMBERS ====================
