@@ -37,6 +37,7 @@ COLOR_TILE_MOVABLE equ 0x43                 ; Color for movable tile
 COLOR_TILE_NONMOVABLE equ 0x7d              ; Color for non-movable tile
 COLOR_TILE_WALL equ 0x36                    ; Color for shaded wall tile
 COLOR_TILE_WALL_LIGH equ 0x35               ; Color for wall tile
+COLOR_TANK equ 0xc2                         ; Color for the player tank
 
 ; =========================================== BOOTSTRAP ========================
 
@@ -78,11 +79,11 @@ draw_bg:
 
 ; =========================================== DRAW LOGO ========================
 
-draw_p1x_logo:
-    mov bx,COLOR_LOGO                       ; Set logo color
-    mov si,p1x_sprite                       ; Set sprite data address
-    mov di,320*4+320-12                     ; Set sprite position
-    call draw_sprite
+; draw_p1x_logo:
+;     mov bx,COLOR_LOGO                       ; Set logo color
+;     mov si,p1x_sprite                       ; Set sprite data address
+;     mov di,320*4+320-12                     ; Set sprite position
+;     call draw_sprite
 
 ; =========================================== DRAW LEVEL =======================
 
@@ -119,15 +120,15 @@ draw_level:
 
 ; =========================================== DRAW PLAYER ======================
     
-draw_parrot:
+draw_player:
     mov di,[PLAYER_POS]                     ; Get player position in VGA memory
     mov al,[PLAYER_DIR]                     ; Get player direction to AL
     mov ah,0                                ; And clear AH
     mov bx,8
     mul bx                                  ; Calculate offset for sprite data 
-    mov si,parrot_sprites                   ; Set sprite data start address
+    mov si,tank_sprites                     ; Set sprite data start address
     add si,ax                               ; Add sprite data offset
-    mov bx,0x29                             ; Set color
+    mov bx,COLOR_TANK                       ; Set color
     call draw_sprite
 
 ; =========================================== KEYBOARD INPUT ===================
@@ -263,38 +264,45 @@ MLT dw -322,-318,318,322                    ; Movement Lookup Table
                                             ; 2 - down/left
                                             ; 3 - down/right      
 p1x_sprite:
-db 0x00,0xD5,0x75,0xD2,0x95,0x95,0x95,0x00  ; P1X
+; db 0x00,0xD5,0x75,0xD2,0x95,0x95,0x95,0x00  ; P1X
 
-parrot_sprites:
-db 0x01,0x73,0x57,0x3F,0x1C,0x36,0x74,0xF0  ; Parrot direction 0
-db 0x80,0xCE,0xEA,0xFC,0x38,0x6C,0x2E,0x0F  ; Parrot direction 1
-db 0xF4,0x76,0x3C,0x1C,0x7F,0x57,0x63,0x01  ; Parrot direction 2
-db 0x2F,0x6E,0x3C,0x3C,0xFE,0xEA,0xC6,0x80  ; Parrot direction 3
+; parrot_sprites:
+; db 0x01,0x73,0x57,0x3F,0x1C,0x36,0x74,0xF0  ; Parrot direction 0
+; db 0x80,0xCE,0xEA,0xFC,0x38,0x6C,0x2E,0x0F  ; Parrot direction 1
+; db 0xF4,0x76,0x3C,0x1C,0x7F,0x57,0x63,0x01  ; Parrot direction 2
+; db 0x2F,0x6E,0x3C,0x3C,0xFE,0xEA,0xC6,0x80  ; Parrot direction 3
+
+tank_sprites:
+db 0xC0,0x3C,0x0C,0x7C,0xFE,0x4F,0x37,0x0C  ; Tank direction 0
+db 0x03,0x3C,0x30,0x3E,0x7F,0xF2,0xEC,0x30  ; Tank direction 1
+db 0x1C,0x6C,0x8C,0x3E,0x7F,0xF3,0x6C,0x30  ; Tank direction 2
+db 0x38,0x36,0x31,0x7C,0xFE,0xCF,0x36,0x0C  ; Tank direction 3
 
 tiles:
 db 0x03,0x0F,0x3F,0xFF,0xFF,0x3F,0x0F,0x03  ; Tile ground left
 db 0xC0,0xF0,0xFC,0xFF,0xFF,0xFC,0xF0,0xC0  ; Tile ground right
-db 0x3C,0xFF,0xE7,0xFF,0xFF,0xFF,0xFF,0x3C  ; Tile wall base/shaded
+db 0x3C,0xFF,0xE7,0xFF,0xFF,0xFF,0xFF,0x3C  ; Tile wall
 db 0x00,0x18,0x66,0x18,0x70,0x70,0x70,0x18  ; Tile wall light
+
 ; db 0xC0,0xB0,0x8C,0x83,0xC1,0x31,0x0D,0x43  ; Tile wall horizontal
 ; db 0x03,0x0D,0x31,0xC1,0x83,0x8C,0xB0,0xC0  ; Tile wall vertical
 
 level:
 dw 1111111111111111b
-dw 1000000011111111b
-dw 1001100000000011b
-dw 1001110001100011b
-dw 1000000001100011b
-dw 1000000000000011b
+dw 1000000110000001b
+dw 1001100000011001b
+dw 1001100000011001b
+dw 1000001111000001b
+dw 1000000000000001b
+dw 1000111001110001b
+dw 1001100000011001b
+dw 1001100000011001b
+dw 1100111001110011b
 dw 1100000000000011b
-dw 1100111000001111b
-dw 1100111000001111b
-dw 1100000000000011b
-dw 1100000000000011b
-dw 1111000001100011b
-dw 1111110001100011b
-dw 1100000001100011b
-dw 1100000111111011b
+dw 1100001111000011b
+dw 1001100000011001b
+dw 1001100000011001b
+dw 1000000110000001b
 dw 1111111111111111b
 
 ; =========================================== BOOT SECTOR ======================
