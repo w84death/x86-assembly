@@ -25,8 +25,8 @@ PLAYER_DIR equ BASE_MEM+0x07                ; Ship direction,1 byte
 SCREEN_WIDTH equ 320                        ; 320x200 pixels
 SCREEN_HEIGHT equ 200
 SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2 ; Center
-PLAYER_START_POS equ SCREEN_WIDTH*120+SCREEN_WIDTH/2 ; Player start position
-LEVEL_START_POS equ 160+320*32              ; Level start position    
+PLAYER_START_POS equ SCREEN_WIDTH*108+SCREEN_WIDTH/2-4 ; Player start position
+LEVEL_START_POS equ 168+320*40              ; Level start position    
 SPRITE_SIZE equ 8                           ; 8 pixels per sprite line
 SPRITE_LINES equ 8                          ; 7 lines per sprite  
 LEVEL_COLS equ 16                           ; 16 columns per level
@@ -46,7 +46,7 @@ _start:
     pop es                                  ; as target
 
 restart_game:
-    mov word [LEVEL],0x01                  ; Starting level
+    mov word [LEVEL],0x00                  ; Starting level
     mov byte [LIFE],0x03                   ; Starting lifes
     mov word [PLAYER_POS],PLAYER_START_POS ; Starting player position
 
@@ -72,7 +72,7 @@ draw_bg:
     mov cx,320*200/3                       ; Half of the screen    
     rep stosw                               ; Write to the doublebuffer
 
-; =========================================== DRAW SPRITE ======================
+; =========================================== DRAW LOGO ========================
 
 draw_p1x_logo:
     mov bx,0x00                            ; Set color black
@@ -80,30 +80,11 @@ draw_p1x_logo:
     mov di,320*4+320-12                 ; Set sprite position
     call draw_sprite
 
-    ; ; testing
-    ; mov bx,0x76
-    ; mov si,tiles
-    ; mov di,SCREEN_CENTER
-    ; call draw_sprite
-
-    ; mov si,tiles+8
-    ; mov di,SCREEN_CENTER+8
-    ; call draw_sprite
-
-    ; mov bx,0x69
-    ; mov si,tiles
-    ; mov di,SCREEN_CENTER-8+320*4
-    ; call draw_sprite
-
-    ; mov si,tiles+8
-    ; mov di,SCREEN_CENTER+320*4
-    ; call draw_sprit
-    ; ; end testing
-
 ; =========================================== DRAW LEVEL =======================
 
 draw_level:
     mov si,level                           ; Set level data address
+    add si,[LEVEL]                         ; Add current level offset
     mov dx,LEVEL_ROWS                      ; Number of rows in the level
     mov di,LEVEL_START_POS                 ; Set level start position
     .draw_row: 
@@ -141,11 +122,6 @@ draw_parrot:
     mov di,[PLAYER_POS]                    ; Get player position in VGA memory
     mov al,[PLAYER_DIR]                    ; Get player direction to AL
     mov ah,0                               ; And clear AH
-    mov si,ax                              ; Set SI to rotation
-    shl si,1                               ; Shift left
-    add di,[MLT + si]                      ; Movement Lookup Table
-    ; add di,[MLT + si]                    ; More speed
-    mov word [PLAYER_POS],di               ; Save new position 
     mov bx,8
     mul bx                                 ; Calculate offset for sprite data 
     mov si,parrot_sprites                  ; Set sprite data start address
@@ -163,20 +139,26 @@ handle_keyboard:
 
     cmp al,0x48                            ; Up pressed
     jne .no_up
-        and byte [PLAYER_DIR],0xfd         ; Set second bit to 0         
+        and byte [PLAYER_DIR],0xfd         ; Set second bit to 0 
+        call update_player_pos        
     .no_up:
     cmp al,0x50                            ; Down pressed
     jne .no_down
         or byte [PLAYER_DIR],0x02          ; Set second bit to 1
+        call update_player_pos
     .no_down:   
     cmp al,0x4D                            ; Right pressed
     jne .no_right
         or byte [PLAYER_DIR],0x01          ; Set first bit to 1
+        call update_player_pos
     .no_right:    
     cmp al,0x4B                            ; Left pressed
     jne .no_left
         and byte [PLAYER_DIR],0xfe         ; Set first bit to 0
+        call update_player_pos
     .no_left:
+
+
 
 ; =========================================== VGA BLIT =========================
 
@@ -205,12 +187,33 @@ delay_timer:
         cmp [TIMER],ax                     ; Compare with the current timer
         jl .wait                            ; Loop until equal
 
-
+; move_level:
+;     cmp byte [PLAYER_DIR],0x00
+;     jne .check_inc
+;         sub word [LEVEL], 0x02
+;         jmp .done
+;     .check_inc:
+;     cmp byte [PLAYER_DIR],0x03
+;     jne .done
+;         add word [LEVEL], 0x02
+;     .done:
 
 ; =========================================== END OF GAME LOOP =================
 
 jmp game_loop                               ; Repeat the game loop
 
+
+update_player_pos:
+    pusha
+    mov di,[PLAYER_POS]                    ; Get player position in VGA memory
+    mov al,[PLAYER_DIR]                    ; Get player direction to AL
+    mov ah,0                               ; And clear AH
+    mov si,ax                              ; Set SI to rotation
+    shl si,1                               ; Shift left
+    add di,[MLT + si]                      ; Movement Lookup Table
+    mov word [PLAYER_POS],di               ; Save new position 
+    popa
+    ret
 ; =========================================== DRAWING SPRITE PROCEDURE =========
 
 draw_sprite:
@@ -231,7 +234,7 @@ draw_sprite:
     jnz .draw_row                           ; Draw the next row
     ret
 
-draw_tile:
+draw_tile: 
     add si,tiles
     pusha
     call draw_sprite
@@ -241,6 +244,42 @@ draw_tile:
     pusha
     call draw_sprite
     popa
+    
+
+
+    cmp bx,COLOR_TILE_MOVABLE
+    je .skip_box
+
+    push di
+    
+    mov bx,0x36
+    add si,8
+    add di, -320*4
+    pusha
+    call draw_sprite
+    popa
+    
+    add si,8
+    add di, -8
+    pusha
+    call draw_sprite
+    popa
+    
+    mov bx, 0x4c
+    add di, 320*4+8
+    pusha
+    call draw_sprite
+    popa
+
+    add si,-8
+    add di, -8
+    pusha
+    call draw_sprite
+    popa
+
+    pop di
+    
+    .skip_box:
     ret
 
 ; =========================================== DATA =============================
@@ -266,22 +305,23 @@ db 0xC0,0xB0,0x8C,0x83,0xC1,0x31,0x0D,0x43  ; Tile wall horizontal
 db 0x03,0x0D,0x31,0xC1,0x83,0x8C,0xB0,0xC0  ; Tile wall vertical
 
 level:
-dw 0000000011111111b
-dw 0000000011111111b
-dw 0000000000000011b
-dw 0000000001100011b
-dw 0000000001100011b
-dw 0000000000000011b
-dw 0000000000000011b
+dw 1111111111111111b
+dw 1000000011111111b
+dw 1000000000000011b
+dw 1000000001100011b
+dw 1000000001100011b
+dw 1000000000000011b
+dw 1100000000000011b
+dw 1111111000000011b
+dw 1111111000000011b
 dw 1111000000000011b
 dw 1111000000000011b
-dw 1111000000000011b
-dw 1111000000000011b
-dw 1111000000000011b
-dw 1111000000000011b
-dw 1111000000000011b
-dw 1111000000000011b
-dw 1111000000000011b
+dw 1111000001100011b
+dw 1111000001100011b
+dw 1100000001100011b
+dw 1100000001100011b
+dw 1111111111111111b
+
 
 ; =========================================== BOOT SECTOR ======================
 times 507 - ($ - $$) db 0                   ; Pad remaining bytes
