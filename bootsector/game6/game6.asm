@@ -14,40 +14,41 @@ SCREEN_BUFFER_SIZE equ 0xFA00               ; Size of the VGA buffer size
 TIMER equ 0x046C                            ; BIOS timer
 
 BASE_MEM equ 0x7e00                         ; Base memory address
-LIFE equ BASE_MEM+0x00                      ; Number of lifes, 1 byte
-LEVEL equ BASE_MEM+0x01                     ; Current level, 2 bytes
-PLAYER_POS equ BASE_MEM+0x03                  ; Ship position, 2 bytes
-PLAYER_POS_I equ BASE_MEM+0x05                ; Ship position increment, 2 bytes
-PLAYER_DIR equ BASE_MEM+0x07                ; Ship direction, 1 byte
+LIFE equ BASE_MEM+0x00                      ; Number of lifes,1 byte
+LEVEL equ BASE_MEM+0x01                     ; Current level,2 bytes
+PLAYER_POS equ BASE_MEM+0x03                  ; Ship position,2 bytes
+PLAYER_POS_I equ BASE_MEM+0x05                ; Ship position increment,2 bytes
+PLAYER_DIR equ BASE_MEM+0x07                ; Ship direction,1 byte
 
 ; =========================================== MAGIC NUMBERS ====================
 
 SCREEN_WIDTH equ 320                        ; 320x200 pixels
 SCREEN_HEIGHT equ 200
 SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2 ; Center
-PLAYER_START_POS equ SCREEN_WIDTH*180+SCREEN_WIDTH/2          ; Player start position
-
+PLAYER_START_POS equ SCREEN_WIDTH*120+SCREEN_WIDTH/2 ; Player start position
+LEVEL_START_POS equ 160+320*32              ; Level start position    
 SPRITE_SIZE equ 8                           ; 8 pixels per sprite line
 SPRITE_LINES equ 8                          ; 7 lines per sprite  
+LEVEL_COLS equ 16                           ; 16 columns per level
+LEVEL_ROWS equ 16                           ; 16 rows per level
+COLOR_TILE_MOVABLE equ 0x47                 ; Color for movable tile
+COLOR_TILE_NONMOVABLE equ 0x7d              ; Color for non-movable tile
 
 ; =========================================== BOOTSTRAP ========================
 
 _start:
-    xor ax, ax                              ; Clear AX
-    mov ds, ax                              ; Set DS to 0
-    mov ax, 0x13                            ; Init VGA 320x200x256
+    xor ax,ax                              ; Clear AX
+    mov ds,ax                              ; Set DS to 0
+    mov ax,0x13                            ; Init VGA 320x200x256
     int 0x10                                ; Video BIOS interrupt  
     
     push DBUFFER_MEMORY_ADR                 ; Set doublebuffer memory
     pop es                                  ; as target
 
-
-
-
 restart_game:
-    mov word [LEVEL], 0x01                  ; Starting level
-    mov byte [LIFE], 0x03                   ; Starting lifes
-    mov word [PLAYER_POS], PLAYER_START_POS ; Starting player position
+    mov word [LEVEL],0x01                  ; Starting level
+    mov byte [LIFE],0x03                   ; Starting lifes
+    mov word [PLAYER_POS],PLAYER_START_POS ; Starting player position
 
 ; =========================================== MAIN GAME LOOP ===================
 
@@ -57,64 +58,99 @@ game_loop:
 ; =========================================== DRAW BACKGROUND ==================
 
 draw_bg:
-    mov ax, 0x4040                          ; Set color 0x10
-    mov dx, 12                              ; We have 8 bars
+    mov ax,0x4040                          ; Set color 0x10
+    mov dx,12                              ; We have 8 bars
     .draw_bars:
-        mov cx, 320*200/64                  ; One bar of 320x200
+        mov cx,320*200/64                  ; One bar of 320x200
         rep stosw                           ; Write to the doublebuffer
         inc ax                              ; Increment color index for next bar
-        xchg al, ah                         ; Swap colors 
+        xchg al,ah                         ; Swap colors 
         dec dx                              ; Decrement bar counter
         jnz .draw_bars                      ; Repeat for all bars
 
 
-    mov cx, 320*200/3                       ; Half of the screen    
+    mov cx,320*200/3                       ; Half of the screen    
     rep stosw                               ; Write to the doublebuffer
 
 ; =========================================== DRAW SPRITE ======================
 
 draw_p1x_logo:
-    mov bx, 0x00                            ; Set color black
-    mov si, p1x_sprite                      ; Set sprite data address
-    mov di, SCREEN_CENTER-4                 ; Set sprite position
+    mov bx,0x00                            ; Set color black
+    mov si,p1x_sprite                      ; Set sprite data address
+    mov di,320*4+320-12                 ; Set sprite position
     call draw_sprite
 
-    ; testing
-    mov bx, 0x2a
-    mov si, parrot_sprites
-    mov di, SCREEN_CENTER+16
-    call draw_sprite
+    ; ; testing
+    ; mov bx,0x76
+    ; mov si,tiles
+    ; mov di,SCREEN_CENTER
+    ; call draw_sprite
 
-    mov bx, 0x2b
-    mov si, parrot_sprites+8
-    mov di, SCREEN_CENTER+28
-    call draw_sprite
+    ; mov si,tiles+8
+    ; mov di,SCREEN_CENTER+8
+    ; call draw_sprite
 
-    mov bx, 0x28
-    mov si, parrot_sprites+16
-    mov di, SCREEN_CENTER+40
-    call draw_sprite
+    ; mov bx,0x69
+    ; mov si,tiles
+    ; mov di,SCREEN_CENTER-8+320*4
+    ; call draw_sprite
 
-    mov bx, 0x29
-    mov si, parrot_sprites+24
-    mov di, SCREEN_CENTER+52
-    call draw_sprite
-    ; end testing
+    ; mov si,tiles+8
+    ; mov di,SCREEN_CENTER+320*4
+    ; call draw_sprit
+    ; ; end testing
 
+; =========================================== DRAW LEVEL =======================
+
+draw_level:
+    mov si,level                           ; Set level data address
+    mov dx,LEVEL_ROWS                      ; Number of rows in the level
+    mov di,LEVEL_START_POS                 ; Set level start position
+    .draw_row: 
+        mov ax,[si]                        ; Get level row data
+        mov cx,LEVEL_COLS                  ; 16 bits per row
+        .draw_tile_box:
+            shl ax,1                       ; Shift left to get the tile out
+            jc .color_non_movable     ; If carry flag is 0, draw ground
+                mov bx,COLOR_TILE_MOVABLE
+                jmp .draw_the_tile
+            .color_non_movable:
+                mov bx,COLOR_TILE_NONMOVABLE
+            
+            .draw_the_tile:
+            push si
+            xor si,si                       ; Set sprite ID to 0
+            add di, 320*4-17       
+            call draw_tile
+            pop si
+
+            inc di                          ; Move to the next tile position
+            loop .draw_tile_box             
+        inc si
+        inc si
+    add di,-320*60+136                      ; Move to the next row
+    dec dx                                  ; Decrement row count
+    jnz .draw_row                           ; Draw the next row
+
+
+
+
+; =========================================== DRAW PLAYER ======================
+    
 draw_parrot:
-    mov di, [PLAYER_POS]                    ; Get player position in VGA memory
-    mov al, [PLAYER_DIR]                    ; Get player direction to AL
-    mov ah, 0                               ; And clear AH
-    mov si, ax                              ; Set SI to rotation
-    shl si, 1                               ; Shift left
-    add di, [MLT + si]                      ; Movement Lookup Table
-    add di, [MLT + si]                      ; Movement Lookup Table
-    mov word [PLAYER_POS], di               ; Save new position 
-    mov bx, 8
-    mul bx                                  ; Calculate offset for sprite data 
-    mov si, parrot_sprites                  ; Set sprite data start address
-    add si, ax                              ; Add sprite data offset
-    mov bx, 0x29                            ; Set color
+    mov di,[PLAYER_POS]                    ; Get player position in VGA memory
+    mov al,[PLAYER_DIR]                    ; Get player direction to AL
+    mov ah,0                               ; And clear AH
+    mov si,ax                              ; Set SI to rotation
+    shl si,1                               ; Shift left
+    add di,[MLT + si]                      ; Movement Lookup Table
+    ; add di,[MLT + si]                    ; More speed
+    mov word [PLAYER_POS],di               ; Save new position 
+    mov bx,8
+    mul bx                                 ; Calculate offset for sprite data 
+    mov si,parrot_sprites                  ; Set sprite data start address
+    add si,ax                              ; Add sprite data offset
+    mov bx,0x29                            ; Set color
     call draw_sprite
 
 
@@ -123,23 +159,23 @@ draw_parrot:
 ; =========================================== KEYBOARD INPUT ===================
 
 handle_keyboard:
-    in al, 60h                              ; Read keyboard
+    in al,60h                              ; Read keyboard
 
-    cmp al, 0x48                            ; Up pressed
+    cmp al,0x48                            ; Up pressed
     jne .no_up
-        and byte [PLAYER_DIR], 0xfd         ; Set second bit to 0         
+        and byte [PLAYER_DIR],0xfd         ; Set second bit to 0         
     .no_up:
-    cmp al, 0x50                            ; Down pressed
+    cmp al,0x50                            ; Down pressed
     jne .no_down
-        or byte [PLAYER_DIR], 0x02          ; Set second bit to 1
+        or byte [PLAYER_DIR],0x02          ; Set second bit to 1
     .no_down:   
-    cmp al, 0x4D                            ; Right pressed
+    cmp al,0x4D                            ; Right pressed
     jne .no_right
-        or byte [PLAYER_DIR], 0x01          ; Set first bit to 1
+        or byte [PLAYER_DIR],0x01          ; Set first bit to 1
     .no_right:    
-    cmp al, 0x4B                            ; Left pressed
+    cmp al,0x4B                            ; Left pressed
     jne .no_left
-        and byte [PLAYER_DIR], 0xfe         ; Set first bit to 0
+        and byte [PLAYER_DIR],0xfe         ; Set first bit to 0
     .no_left:
 
 ; =========================================== VGA BLIT =========================
@@ -152,9 +188,9 @@ vga_blit:
     pop es                                  ; as target
     push DBUFFER_MEMORY_ADR                 ; Set doublebuffer memory
     pop ds                                  ; as source
-    mov cx, 0x7D00                          ; Half of 320x200 pixels
-    xor si, si                              ; Clear SI
-    xor di, di                              ; Clear DI
+    mov cx,0x7D00                          ; Half of 320x200 pixels
+    xor si,si                              ; Clear SI
+    xor di,di                              ; Clear DI
     rep movsw                               ; Push words (2x pixels)
 
     pop ds
@@ -163,10 +199,10 @@ vga_blit:
 ; =========================================== DELAY CYCLE ======================
 
 delay_timer:
-    mov ax, [TIMER]                         ; Get current timer value
+    mov ax,[TIMER]                         ; Get current timer value
     inc ax                                  ; Increment it by 1 cycle (42ms)
     .wait:
-        cmp [TIMER], ax                     ; Compare with the current timer
+        cmp [TIMER],ax                     ; Compare with the current timer
         jl .wait                            ; Loop until equal
 
 
@@ -178,27 +214,38 @@ jmp game_loop                               ; Repeat the game loop
 ; =========================================== DRAWING SPRITE PROCEDURE =========
 
 draw_sprite:
-    mov dx, SPRITE_LINES                    ; Number of lines in the sprite
+    mov dx,SPRITE_LINES                    ; Number of lines in the sprite
     .draw_row: 
-        mov al, [si]                        ; Get sprite row data
-        mov cx, SPRITE_SIZE                 ; 8 bits per row
+        mov al,[si]                        ; Get sprite row data
+        mov cx,SPRITE_SIZE                 ; 8 bits per row
         .draw_pixel:
-            shl al, 1                       ; Shift left to get the pixel out
-            jnc .skip_pixel                 ; If carry flag is 0, skip
-            mov [es:di], bl                 ; Carry flag is 1, set the pixel
+            shl al,1                       ; Shift left to get the pixel out
+            jnc .skip_pixel                 ; If carry flag is 0,skip
+            mov [es:di],bl                 ; Carry flag is 1,set the pixel
         .skip_pixel:
             inc di                          ; Move to the next pixel position
             loop .draw_pixel                ; Repeat for all 8 pixels in the row
         inc si
-    add di, 320-SPRITE_SIZE                 ; Move to the next line
+    add di,320-SPRITE_SIZE                 ; Move to the next line
     dec dx                                  ; Decrement row count
     jnz .draw_row                           ; Draw the next row
     ret
 
+draw_tile:
+    add si,tiles
+    pusha
+    call draw_sprite
+    popa
+    add si,8
+    add di,8
+    pusha
+    call draw_sprite
+    popa
+    ret
 
 ; =========================================== DATA =============================
 
-MLT dw -321, -319, 319, 321                 ; Movement Lookup Table 
+MLT dw -322,-318,318,322                 ; Movement Lookup Table 
                                             ; 0 - up/left
                                             ; 1 - up/right
                                             ; 2 - down/left
@@ -212,9 +259,29 @@ db 0x80,0xCE,0xEA,0xFC,0x38,0x6C,0x2E,0x0F  ; Parrot direction 1
 db 0xF4,0x76,0x3C,0x1C,0x7F,0x57,0x63,0x01  ; Parrot direction 2
 db 0x2F,0x6E,0x3C,0x3C,0xFE,0xEA,0xC6,0x80  ; Parrot direction 3
 
-food_sprites:
+tiles:
+db 0x03,0x0F,0x3F,0xFF,0xFF,0x3F,0x0F,0x03  ; Tile ground left
+db 0xC0,0xF0,0xFC,0xFF,0xFF,0xFC,0xF0,0xC0  ; Tile ground right
+db 0xC0,0xB0,0x8C,0x83,0xC1,0x31,0x0D,0x43  ; Tile wall horizontal
+db 0x03,0x0D,0x31,0xC1,0x83,0x8C,0xB0,0xC0  ; Tile wall vertical
 
-arrows_sprites:
+level:
+dw 0000000011111111b
+dw 0000000011111111b
+dw 0000000000000011b
+dw 0000000001100011b
+dw 0000000001100011b
+dw 0000000000000011b
+dw 0000000000000011b
+dw 1111000000000011b
+dw 1111000000000011b
+dw 1111000000000011b
+dw 1111000000000011b
+dw 1111000000000011b
+dw 1111000000000011b
+dw 1111000000000011b
+dw 1111000000000011b
+dw 1111000000000011b
 
 ; =========================================== BOOT SECTOR ======================
 times 507 - ($ - $$) db 0                   ; Pad remaining bytes
