@@ -14,13 +14,12 @@ SCREEN_BUFFER_SIZE equ 0xFA00               ; Size of the VGA buffer size
 TIMER equ 0x046C                            ; BIOS timer
 
 BASE_MEM equ 0x7e00                         ; Base memory address
-LIFE equ BASE_MEM+0x00                      ; Number of lifes,1 byte
+; LIFE equ BASE_MEM+0x00                      ; Number of lifes,1 byte
 LEVEL equ BASE_MEM+0x01                     ; Current level,2 bytes
 PLAYER_POS equ BASE_MEM+0x03                ; Ship position,2 bytes
 PLAYER_TIMER equ BASE_MEM+0x05              ; Movement timer,2 bytes
 PLAYER_DIR equ BASE_MEM+0x07                ; Ship direction,1 byte
-TREASURE_POS equ BASE_MEM+0x08              ; Flower position,2 bytes
-LEVEL_DATA equ BASE_MEM+0x0A                ; Level data,512 bytes
+LEVEL_DATA equ BASE_MEM+0x08                ; Level data,512 bytes
 
 ; =========================================== MAGIC NUMBERS ====================
 
@@ -34,14 +33,15 @@ SPRITE_SIZE equ 8                           ; 8 pixels per sprite line
 SPRITE_LINES equ 8                          ; 7 lines per sprite  
 LEVEL_COLS equ 16                           ; 16 columns per level
 LEVEL_ROWS equ 16                           ; 16 rows per level
-COLOR_BACKGROUND equ 0x4040                 ; Color for background
+COLOR_BACKGROUND equ 0x999b                 ; Color for background
 COLOR_LOGO equ 0x0f                         ; Color for logo
 COLOR_TILE_MOVABLE equ 0x58                 ; Color for movable tile
-COLOR_TILE_NONMOVABLE equ 0x7d              ; Color for non-movable tile
+COLOR_TILE_NONMOVABLE equ 0x7e              ; Color for non-movable tile
 COLOR_TILE_WALL equ 0x36                    ; Color for shaded wall tile
 COLOR_TILE_WALL_LIGH equ 0x35               ; Color for wall tile
 COLOR_BALL_MAIN equ 0x3d                    ; Color for the player ball
 COLOR_BALL_LIGH equ 0x6c                    ; Color for shading the ball
+COLOR_BALL_DEAD equ 0x30                    ; Color for dead ball
 COLOR_TREASURE equ 0x5a                     ; Color for the treasure
 
 ; =========================================== BOOTSTRAP ========================
@@ -55,8 +55,9 @@ _start:
     push DBUFFER_MEMORY_ADR                 ; Set doublebuffer memory
     pop es                                  ; as target
 
+
 create_levels:
-    mov ax,0x1212
+    mov ax,0x1337
     mov bx,0xabcd
     mov cx,0xff
     .fill_line:    
@@ -83,18 +84,16 @@ draw_bg:
     mov cx,SCREEN_BUFFER_SIZE              ; Set buffer size
     rep stosw
 
-draw_level_indicator:
-    mov cx,[LEVEL]
-    inc cx
-    mov bx,COLOR_TILE_MOVABLE
-    mov si,tiles+8
-    mov di,320*4+132
-    .draw_glyph:
-        pusha
-        call draw_sprite
-        popa
-        add di,12
-        loop .draw_glyph
+; draw_level_indicator:
+;     mov cx,[LEVEL]
+;     inc cx
+;     mov bx,COLOR_TILE_MOVABLE
+;     mov si,tiles+8
+;     mov di,320*4+160-48
+;     .draw_glyph:
+;         call draw_sprite
+;         add di,12
+;         loop .draw_glyph
 
 ; =========================================== DRAW LEVEL =======================
 
@@ -150,34 +149,32 @@ draw_treasure:
 
 check_collisions:
     mov si,[PLAYER_POS]                      ; Get player position
-    add si,320*4+4
+    add si,320*4+5
     mov al,[es:si]                 ; Get pixel color at player position
-    cmp al,COLOR_TREASURE            ; Check if it matches flower color
-    je .collision_treasure            ; Jump if collision with flower
-    cmp al,COLOR_TILE_MOVABLE            ; Check if it matches spider color
-    jne .collision_wall            ; Jump if collision with spider
+    cmp al,COLOR_TREASURE            ; Check if it matches treasure color
+    je .collision_treasure            ; Jump if collision with treasure
+    cmp al,COLOR_TILE_MOVABLE            ; Check if it matches movable color
+    jne .collision_wall            ; Jump if collision with non=movable
     jmp .collision_done                     ; No collision
 
-    .collision_treasure:
-        .waint_for_esc:
-            in al,60h
-            cmp al,1
-            jne .waint_for_esc
-    .collision_wall:
-        jmp restart_game
-        
-    .collision_done:
-
-; =========================================== DRAW PLAYER ======================
     
-draw_player:
-    mov di,[PLAYER_POS]                     ; Get player position in VGA memory
-    mov si,ball_sprites                     ; Set sprite data start address
-    mov bx,COLOR_BALL_MAIN                  ; Set color
-    call draw_sprite
-    add si,8
-    mov bx,COLOR_BALL_LIGH                  ; Set color
-    call draw_sprite
+    .collision_wall:
+        mov ax, COLOR_BALL_DEAD
+        
+        call draw_player
+    .collision_treasure:
+        call vga_blit
+        .waint_for_esc:                     ; If game snded, wait for ESC key
+            in al, 60h                      ; Read keyboard
+            cmp al, 0x01                    ; Check if ESC key is pressed
+            jne .waint_for_esc
+        jmp restart_game      
+    .collision_done:
+    
+; =========================================== DRAW PLAYER ======================
+
+xor ax,ax
+call draw_player
     
 ; =========================================== KEYBOARD INPUT ===================
 
@@ -191,7 +188,7 @@ check_player_timer:
         cmp al,0x1C                             ; Enter pressed
         jne .no_enter
             inc word [LEVEL]
-            and word [LEVEL],0x07              ; Limit to 32 levels
+            and word [LEVEL],0x03              ; Limit to 32 levels
             mov byte [PLAYER_DIR],0x0f          ; Set second bit to 0
             jmp .set_timer
         .no_enter:
@@ -225,23 +222,9 @@ check_player_timer:
         call update_player_pos
     .done:
 
-; =========================================== VGA BLIT =========================
 
-vga_blit:
-    push es
-    push ds
 
-    push VGA_MEMORY_ADR                     ; Set VGA memory
-    pop es                                  ; as target
-    push DBUFFER_MEMORY_ADR                 ; Set doublebuffer memory
-    pop ds                                  ; as source
-    mov cx,0x7D00                           ; Half of 320x200 pixels
-    xor si,si                               ; Clear SI
-    xor di,di                               ; Clear DI
-    rep movsw                               ; Push words (2x pixels)
-
-    pop ds
-    pop es
+call vga_blit
 
 ; =========================================== DELAY CYCLE ======================
 
@@ -271,6 +254,35 @@ update_player_pos:
     popa
     ret
 
+draw_player:
+    mov di,[PLAYER_POS]                     ; Get player position in VGA memory
+    mov si,ball_sprites                     ; Set sprite data start address
+    mov bx,COLOR_BALL_MAIN                  ; Set color
+    add  bx, ax
+    call draw_sprite
+    add si,8
+    mov bx,COLOR_BALL_LIGH                  ; Set color
+    call draw_sprite
+    ret
+
+; =========================================== VGA BLIT =========================
+
+vga_blit:
+    push es
+    push ds
+
+    push VGA_MEMORY_ADR                     ; Set VGA memory
+    pop es                                  ; as target
+    push DBUFFER_MEMORY_ADR                 ; Set doublebuffer memory
+    pop ds                                  ; as source
+    mov cx,0x7D00                           ; Half of 320x200 pixels
+    xor si,si                               ; Clear SI
+    xor di,di                               ; Clear DI
+    rep movsw                               ; Push words (2x pixels)
+
+    pop ds
+    pop es
+    ret
 ; =========================================== DRAWING SPRITE PROCEDURE =========
 
 draw_sprite:
@@ -333,7 +345,17 @@ db 0x3C,0xE7,0xFF,0x7E,0x7E,0x3C,0x18,0x3C  ; Treasure sprite
 
 ball_sprites:
 db 0x3C,0x66,0x9F,0xBF,0xFF,0x7E,0x3C,0x00  ; Ball sprite
-db 0x00,0x00,0x02,0x01,0x05,0xAB,0x56,0x3C  ; Ball sprite shading
+; db 0x00,0x00,0x02,0x01,0x05,0xAB,0x56,0x3C  ; Ball sprite shading
+
+db 00000000b
+db 00101010b
+db 00000001b
+db 00100101b
+db 10011011b
+db 01000110b
+db 00111100b
+db 00000000b
+
 
 tiles:
 db 0x03,0x0F,0x3F,0xFF,0xFF,0x3F,0x0F,0x03  ; Tile ground left part
