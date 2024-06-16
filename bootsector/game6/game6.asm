@@ -80,16 +80,15 @@ game_loop:
 ; =========================================== DRAW BACKGROUND ==================
 
 draw_bg:
-    mov ax,COLOR_BACKGROUND                 ; Set color 0x10
-    mov cx,SCREEN_BUFFER_SIZE              ; Set buffer size
-    rep stosw
+    mov ax,COLOR_BACKGROUND                 ; Set background color (2 bytes)
+    mov cx,SCREEN_BUFFER_SIZE               ; Set buffer size to fullscreen
+    rep stosw                               ; Fill the buffer with color
 
 draw_level_indicator:
     mov cx,[LEVEL]
     inc cx
-    ; mov bx,COLOR_TILE_MOVABLE
+    mov bx,COLOR_TILE_MOVABLE
     mov si,tiles+8
-    ; mov di,320*4+160-48
     .draw_glyph:
         call draw_sprite
         add di,12
