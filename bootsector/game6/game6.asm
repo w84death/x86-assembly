@@ -1,10 +1,25 @@
-; GAME6 - ISOMETRIC MAYHEM
-; Description: Simple shooter game with isometric graphics
+; GAME6 - BIT OF A TREASURE
+; Description: 
+;   Logic game with isometric perspective. 
+;   Collect the treasure and avoid the walls.
+;   Swap level designs to find the best path.
+;
+; Controls: 
+;   Arrow keys - move the player
+;   Enter - toggle level designs (4 in total)
+;   ESC - restart the game after failed move
+;
+;   The game is written in x86 assembly language and runs in 16-bit real mode.
+;   The game uses VGA 320x200x256 colors mode, doublebuffering.
+;   Minimum CPU is Intel 386.
+;
 ; Author: Krzysztof Krystian Jankowski
-; Date: 2024-06-15
+; Date: 2024-06/15 -> 06/16
+; License: MIT
+
 bits 16                                     ; 16-bit mode          
 org 0x7c00                                  ; Boot sector origin
-cpu 386                                     ; Minimum CPU is Intel 286
+cpu 386                                     ; Minimum CPU is Intel 386
 
 ; =========================================== MEMORY ===========================
 
@@ -55,25 +70,28 @@ _start:
     push DBUFFER_MEMORY_ADR                 ; Set doublebuffer memory
     pop es                                  ; as target
 
+; =========================================== LEVEL DESIGNS ====================
 
 create_levels:
-    mov ax,0x1337
-    mov bx,0xabcd
-    mov cx,0x80
+    mov ax,0x1337                           ; Seed for random number
+    mov bx,0xabcd                           ; Second seed
+    mov cx,0x80                             ; Number of level lines (64)
     .fill_line:    
-        add bx,di
-        ror ax,4
-        xor ax,bx
-        mov word [LEVEL_DATA+di],ax
-        inc di
+        add bx,di                           ; Change second seed with line number
+        ror ax,4                            ; Rotate first seed
+        xor ax,bx                           ; XOR with second seed
+        mov word [LEVEL_DATA+di],ax         ; Store the procedural level line 
+        inc di                              ; Move to the next line
         loop .fill_line
 
+; =========================================== GAME LOOP ========================
+
 restart_game:
-    mov word [LEVEL],0x00                   ; Starting level
-    mov word [PLAYER_POS],PLAYER_START_POS  ; Starting player position
-    mov byte [PLAYER_TIMER],0x00           ; Reset player timer  
+    mov word [LEVEL],0x00                   ; Reset level
+    mov word [PLAYER_POS],PLAYER_START_POS  ; Reset player position
+    mov byte [PLAYER_TIMER],0x00            ; Reset player timer  
         
-; =========================================== MAIN GAME LOOP ===================
+; =========================================== REAL-TIME GAME LOOP ==============
 
 game_loop:
 
@@ -85,14 +103,14 @@ draw_bg:
     rep stosw                               ; Fill the buffer with color
 
 draw_level_indicator:
-    mov cx,[LEVEL]
-    inc cx
-    mov bx,COLOR_TILE_MOVABLE
-    mov si,tiles+8
-    .draw_glyph:
+    mov cx,[LEVEL]                          ; Get current level number
+    inc cx                                  ; Increment by 1 to avoid 0
+    mov bx,COLOR_TILE_MOVABLE               ; Set sprite color
+    mov si,tiles+8                          ; Set sprite data addr (right tile)
+    .draw_icon:
         call draw_sprite
-        add di,12
-        loop .draw_glyph
+        add di,12                           ; Move 12px right for next icon
+        loop .draw_icon
 
 ; =========================================== DRAW LEVEL =======================
 
@@ -110,10 +128,10 @@ draw_level:
         .draw_tile_box:
             shl ax,1                        ; Shift left to get the tile out
             jc .color_non_movable           ; If carry flag is 0,draw ground
-                mov bx,COLOR_TILE_MOVABLE
-                jmp .draw_the_tile
+                mov bx,COLOR_TILE_MOVABLE   ; Set sprite color
+                jmp .draw_the_tile          ; Skip to draw the tile
             .color_non_movable:
-                mov bx,COLOR_TILE_NONMOVABLE
+                mov bx,COLOR_TILE_NONMOVABLE; Set sprite color
             .draw_the_tile:
             push si
             xor si,si                       ; Set sprite ID to 0
@@ -156,13 +174,13 @@ check_collisions:
     jmp .collision_done                     ; No collision
     
     .collision_wall:
-        mov ax,COLOR_BALL_DEAD             ; Set color to dead ball
+        mov ax,COLOR_BALL_DEAD              ; Set color to dead ball
         call draw_player                    ; Draw dead ball Do not draw ball...
     .collision_treasure:                    ; ...after finding treasure
         call vga_blit                       ; Copy doublebuffer to VGA
         .waint_for_esc:                     ; If game snded,wait for ESC key
-            in al,60h                      ; Read keyboard
-            cmp al,0x01                    ; Check if ESC key is pressed
+            in al,60h                       ; Read keyboard
+            cmp al,0x01                     ; Check if ESC key is pressed
             jne .waint_for_esc
         jmp restart_game
     .collision_done:
@@ -175,7 +193,7 @@ call draw_player
 ; =========================================== KEYBOARD INPUT ===================
 
 check_player_timer:
-    cmp byte [PLAYER_TIMER],0x00               ; Check if player can move
+    cmp byte [PLAYER_TIMER],0x00            ; Check if player can move
     jne .dec_timer
     
     .handle_keyboard:        
@@ -183,40 +201,41 @@ check_player_timer:
         mov bl,0x0f                         ; Set default direction to stopped
         cmp al,0x1C                         ; Enter pressed
         jne .no_enter
-            inc word [LEVEL]
-            and word [LEVEL],0x03                   
+            inc word [LEVEL]                ; Increase level desing number
+            and word [LEVEL],0x03           ; Loop 0..3
+            mov bl,0xff                     ; Set direction to stopped
         .no_enter:
-        cmp al,0x48                             ; Up pressed
+        cmp al,0x48                         ; Up pressed
         jne .no_up
-            xor bl,bl
+            xor bl,bl                       ; Set direction to 0
         .no_up:
-        cmp al,0x50                             ; Down pressed
+        cmp al,0x50                         ; Down pressed
         jne .no_down
-            mov bl,0x03
+        mov bl,0x03                         ; Set direction to 3
         .no_down:   
-        cmp al,0x4D                             ; Right pressed
+        cmp al,0x4D                         ; Right pressed
         jne .no_right
-            mov bl,0x01
+            mov bl,0x01                     ; Set direction to 1
         .no_right:    
-        cmp al,0x4B                             ; Left pressed
+        cmp al,0x4B                         ; Left pressed
         jne .no_left
-            mov bl,0x02
+            mov bl,0x02                     ; Set direction to 2
         .no_left:
-        cmp bl, 0x0f
-        jz .done
+        cmp bl, 0x0f                        ; Check if nothing was pressed
+        jz .done                            ; Skip if nothing was pressed
 
         .set_timer:
-            mov byte [PLAYER_DIR], bl
-            mov byte [PLAYER_TIMER],0x04
+            mov byte [PLAYER_DIR], bl       ; Save player direction
+            mov byte [PLAYER_TIMER],0x04    ; Sat player timer for moving
 
     .dec_timer:
-        dec byte [PLAYER_TIMER]
-        call update_player_pos
+        dec byte [PLAYER_TIMER]             ; Decrement player timer
+        call update_player_pos              ; Update player position    
     .done:
 
 ; =========================================== VGA BLIT =========================
 
-call vga_blit
+call vga_blit                               ; Update screen
 
 ; =========================================== DELAY CYCLE ======================
 
@@ -233,7 +252,6 @@ jmp game_loop                               ; Repeat the game loop
 
 
 
-
 ; =========================================== PROCEDURES ======================
 
 
@@ -244,7 +262,7 @@ update_player_pos:
     pusha
     mov di,[PLAYER_POS]                     ; Get player position in VGA memory
     mov al,[PLAYER_DIR]                     ; Get player direction to AL
-    cmp al,0x0f                             ; Check if set to stopped
+    cmp al,0xff                             ; Check if set to stopped
     je .done
     mov ah,0                                ; And clear AH
     mov si,ax                               ; Set SI to rotation
@@ -255,7 +273,7 @@ update_player_pos:
     popa
     ret
 
-; =========================================== DRAW PLAYER ======================
+; =========================================== DRAW PLAYER PROCEDURE ============
 
 draw_player:
     mov di,[PLAYER_POS]                     ; Get player position in VGA memory
@@ -268,7 +286,7 @@ draw_player:
     call draw_sprite
     ret
 
-; =========================================== VGA BLIT =========================
+; =========================================== VGA BLIT PROCEDURE ===============
 
 vga_blit:
     push es
