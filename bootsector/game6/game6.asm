@@ -38,18 +38,19 @@ LEVEL_DATA equ BASE_MEM+0x08                ; Level data,512 bytes
 
 ; =========================================== MAGIC NUMBERS ====================
 
-SCREEN_WIDTH equ 320                        ; 320x200 pixels
-SCREEN_HEIGHT equ 200
+SCREEN_WIDTH equ 320                        ; VGA 13h Resolution:
+SCREEN_HEIGHT equ 200                       ; 320x200 pixels
 SCREEN_CENTER equ SCREEN_WIDTH*SCREEN_HEIGHT/2+SCREEN_WIDTH/2 ; Center
+
 LEVEL_START_POS equ 168+320*40              ; Level start position    
-PLAYER_START_POS equ LEVEL_START_POS+320*10-14 ; Player start position
-TREASURE_START_POS equ LEVEL_START_POS+320*114-14 ; Treasure start position
+PLAYER_START_POS equ LEVEL_START_POS+320*10-14      ; Player start position
+TREASURE_START_POS equ LEVEL_START_POS+320*114-14   ; Treasure start position
 SPRITE_SIZE equ 8                           ; 8 pixels per sprite line
-SPRITE_LINES equ 8                          ; 7 lines per sprite  
+SPRITE_LINES equ 8                          ; 8 lines per sprite  
 LEVEL_COLS equ 16                           ; 16 columns per level
 LEVEL_ROWS equ 16                           ; 16 rows per level
+
 COLOR_BACKGROUND equ 0x999b                 ; Color for background
-COLOR_LOGO equ 0x0f                         ; Color for logo
 COLOR_TILE_MOVABLE equ 0x58                 ; Color for movable tile
 COLOR_TILE_NONMOVABLE equ 0x7e              ; Color for non-movable tile
 COLOR_TILE_WALL equ 0x36                    ; Color for shaded wall tile
@@ -359,9 +360,7 @@ MLT dw -322,-318,318,322                    ; Movement Lookup Table
                                             ; 1 - up/right
                                             ; 2 - down/left
                                             ; 3 - down/right      
-; p1x_sprite:
-; db 0x00,0xD5,0x75,0xD2,0x95,0x95,0x95,0x00  ; P1X 8 bytes
-
+                                            
 treasure_sprite:
 db 0x3C,0xE7,0xFF,0x7E,0x7E,0x3C,0x18,0x3C  ; Treasure sprite
 
