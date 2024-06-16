@@ -3,6 +3,9 @@
 ## Overview
 The game involves navigating a player character through a level to collect a treasure while avoiding collisions with non-movable tiles. The game features simple but effective isometric graphics to create a pseudo-3D effect.
 
+## Gameplay
+Collect the treasure and avoid the walls. Swap level designs to find the best path.
+
 ## Screenshot
 
 ![Game Screenshot](game6.PNG)
