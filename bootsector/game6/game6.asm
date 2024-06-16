@@ -1,17 +1,16 @@
 ; GAME6 - BIT OF A TREASURE
-; Description: 
-;   Logic game with isometric perspective. 
-;   Collect the treasure and avoid the walls.
-;   Swap level designs to find the best path.
+; 
+; Navigate the challenging Binary Mazes in an isometric perspective to find 
+; the Golden Byte, swapping level designs and avoiding traps in this logic 
+; puzzle adventure.
 ;
-; Controls: 
+; Controls:
+; 
 ;   Arrow keys - move the player
 ;   Enter - toggle level designs (4 in total)
 ;   ESC - restart the game after failed move
 ;
-;   The game is written in x86 assembly language and runs in 16-bit real mode.
-;   The game uses VGA 320x200x256 colors mode, doublebuffering.
-;   Minimum CPU is Intel 386.
+; Minimum CPU is Intel 386.
 ;
 ; Author: Krzysztof Krystian Jankowski
 ; Date: 2024-06/15 -> 06/16
@@ -360,7 +359,7 @@ MLT dw -322,-318,318,322                    ; Movement Lookup Table
                                             ; 1 - up/right
                                             ; 2 - down/left
                                             ; 3 - down/right      
-                                            
+
 treasure_sprite:
 db 0x3C,0xE7,0xFF,0x7E,0x7E,0x3C,0x18,0x3C  ; Treasure sprite
 
