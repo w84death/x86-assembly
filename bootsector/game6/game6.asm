@@ -4,7 +4,7 @@
 ; Date: 2024-06-15
 bits 16                                     ; 16-bit mode          
 org 0x7c00                                  ; Boot sector origin
-cpu 286                                     ; Minimum CPU is Intel 286
+cpu 386                                     ; Minimum CPU is Intel 286
 
 ; =========================================== MEMORY ===========================
 
@@ -59,7 +59,7 @@ _start:
 create_levels:
     mov ax,0x1337
     mov bx,0xabcd
-    mov cx,0xff
+    mov cx,0x80
     .fill_line:    
         add bx,di
         ror ax,4
@@ -85,15 +85,15 @@ draw_bg:
     rep stosw
 
 draw_level_indicator:
-    ; mov cx,[LEVEL]
-    ; inc cx
+    mov cx,[LEVEL]
+    inc cx
     ; mov bx,COLOR_TILE_MOVABLE
-    ; mov si,tiles+8
+    mov si,tiles+8
     ; mov di,320*4+160-48
-    ; .draw_glyph:
-    ;     call draw_sprite
-    ;     add di,12
-    ;     loop .draw_glyph
+    .draw_glyph:
+        call draw_sprite
+        add di,12
+        loop .draw_glyph
 
 ; =========================================== DRAW LEVEL =======================
 
@@ -178,42 +178,38 @@ call draw_player
 check_player_timer:
     cmp byte [PLAYER_TIMER],0x00               ; Check if player can move
     jne .dec_timer
-
-    .handle_keyboard:
-        in al,60h                               ; Read keyboard
-        
-        cmp al,0x1C                             ; Enter pressed
+    
+    .handle_keyboard:        
+        in al,60h                           ; Read keyboard
+        mov bl,0x0f                         ; Set default direction to stopped
+        cmp al,0x1C                         ; Enter pressed
         jne .no_enter
             inc word [LEVEL]
-            and word [LEVEL],0x03              ; Limit to 32 levels
-            mov byte [PLAYER_DIR],0x0f          ; Set second bit to 0
-            jmp .set_timer
+            and word [LEVEL],0x03                   
         .no_enter:
         cmp al,0x48                             ; Up pressed
         jne .no_up
-            mov byte [PLAYER_DIR],0x00          ; Set second bit to 0 
-            jmp .set_timer
+            xor bl,bl
         .no_up:
         cmp al,0x50                             ; Down pressed
         jne .no_down
-            mov byte [PLAYER_DIR],0x03           ; Set second bit to 1
-            jmp .set_timer
+            mov bl,0x03
         .no_down:   
         cmp al,0x4D                             ; Right pressed
         jne .no_right
-            mov byte [PLAYER_DIR],0x01           ; Set first bit to 1
-            jmp .set_timer
+            mov bl,0x01
         .no_right:    
         cmp al,0x4B                             ; Left pressed
         jne .no_left
-            mov byte [PLAYER_DIR],0x02          ; Set first bit to 0
-            jmp .set_timer
+            mov bl,0x02
         .no_left:
-        jmp .done
+        cmp bl, 0x0f
+        jz .done
 
         .set_timer:
-        mov byte [PLAYER_TIMER],0x04
-        
+            mov byte [PLAYER_DIR], bl
+            mov byte [PLAYER_TIMER],0x04
+
     .dec_timer:
         dec byte [PLAYER_TIMER]
         call update_player_pos
@@ -249,7 +245,7 @@ update_player_pos:
     pusha
     mov di,[PLAYER_POS]                     ; Get player position in VGA memory
     mov al,[PLAYER_DIR]                     ; Get player direction to AL
-    cmp al,0x0f
+    cmp al,0x0f                             ; Check if set to stopped
     je .done
     mov ah,0                                ; And clear AH
     mov si,ax                               ; Set SI to rotation
@@ -266,10 +262,10 @@ draw_player:
     mov di,[PLAYER_POS]                     ; Get player position in VGA memory
     mov si,ball_sprites                     ; Set sprite data start address
     mov bx,COLOR_BALL_MAIN                  ; Set color
-    add  bx,ax
+    add  bx,ax                              ; Add alternative (dead) color
     call draw_sprite
-    add si,8
-    mov bx,COLOR_BALL_LIGH                  ; Set color
+    add si,8                                ; Move to the next sprite (shading)
+    mov bx,COLOR_BALL_LIGH                  ; Set shading color
     call draw_sprite
     ret
 
