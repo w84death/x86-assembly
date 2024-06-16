@@ -84,26 +84,25 @@ draw_bg:
     mov cx,SCREEN_BUFFER_SIZE              ; Set buffer size
     rep stosw
 
-; draw_level_indicator:
-;     mov cx,[LEVEL]
-;     inc cx
-;     mov bx,COLOR_TILE_MOVABLE
-;     mov si,tiles+8
-;     mov di,320*4+160-48
-;     .draw_glyph:
-;         call draw_sprite
-;         add di,12
-;         loop .draw_glyph
+draw_level_indicator:
+    ; mov cx,[LEVEL]
+    ; inc cx
+    ; mov bx,COLOR_TILE_MOVABLE
+    ; mov si,tiles+8
+    ; mov di,320*4+160-48
+    ; .draw_glyph:
+    ;     call draw_sprite
+    ;     add di,12
+    ;     loop .draw_glyph
 
 ; =========================================== DRAW LEVEL =======================
 
 draw_level:
-    mov si,LEVEL_DATA                     ; Set level data address
-    mov ax,[LEVEL]
-    mov bx,0x20
-    mul bx
-    add si,ax                          ; Add current level offset
-
+    mov si,LEVEL_DATA                       ; Set level data address
+    mov ax,[LEVEL]                          ; Get current level for offset
+    mov bx,0x20                             ; Level data offset
+    mul bx                                  ; Multiply by offset
+    add si,ax                               ; Add current level offset
     mov dx,LEVEL_ROWS                       ; Number of rows in the level
     mov di,LEVEL_START_POS                  ; Set level start position
     .draw_row: 
@@ -119,61 +118,59 @@ draw_level:
             .draw_the_tile:
             push si
             xor si,si                       ; Set sprite ID to 0
-            add di,320*4-17       
+            add di,320*4-17                 ; Isometric offset
             call draw_tile
             pop si
 
             inc di                          ; Move to the next tile position
             loop .draw_tile_box             
         inc si
-        inc si
-    add di,-320*60+136                      ; Move to the next row
+        inc si                              ; Shift source by 2 bytes
+    add di,-320*60+136                      ; Move to the next row,iso offset
     dec dx                                  ; Decrement row count
     jnz .draw_row                           ; Draw the next row
 
 ; =========================================== DRAW TREASURE ====================
 
 draw_treasure:
-    xor bx,bx
-    mov si,treasure_sprite                       ; Set sprite data address
-    mov word di,TREASURE_START_POS             ; Set sprite position
-    call draw_sprite
+    xor bx,bx                               ; Set color to black
+    mov si,treasure_sprite                  ; Set sprite data address
+    mov word di,TREASURE_START_POS          ; Set sprite position
+    call draw_sprite                        ; Draw rigth silhouette
     dec di
-    dec di
-    call draw_sprite
-    inc di
-    mov bx,COLOR_TREASURE
-    call draw_sprite
+    dec di                                  ; Move 2px left        
+    call draw_sprite                        ; Draw left silhouette
+    inc di                                  ; Move 1px right (centered)
+    mov bx,COLOR_TREASURE                   ; Set color to treasure
+    call draw_sprite                        ; Draw treasure
 
 ; =========================================== CHECK COLLISIONS ==============
 
 check_collisions:
-    mov si,[PLAYER_POS]                      ; Get player position
-    add si,320*4+5
-    mov al,[es:si]                 ; Get pixel color at player position
-    cmp al,COLOR_TREASURE            ; Check if it matches treasure color
-    je .collision_treasure            ; Jump if collision with treasure
-    cmp al,COLOR_TILE_MOVABLE            ; Check if it matches movable color
-    jne .collision_wall            ; Jump if collision with non=movable
+    mov si,[PLAYER_POS]                     ; Get player position
+    add si,320*4+5                          ; Move raycast to center
+    mov al,[es:si]                          ; Get pixel color at raycast
+    cmp al,COLOR_TREASURE                   ; Check if it matches treasure color
+    je .collision_treasure                  ; Jump if collision with treasure
+    cmp al,COLOR_TILE_MOVABLE               ; Check if it matches movable color
+    jne .collision_wall                     ; Jump if collision with non-movable
     jmp .collision_done                     ; No collision
-
     
     .collision_wall:
-        mov ax, COLOR_BALL_DEAD
-        
-        call draw_player
-    .collision_treasure:
-        call vga_blit
-        .waint_for_esc:                     ; If game snded, wait for ESC key
-            in al, 60h                      ; Read keyboard
-            cmp al, 0x01                    ; Check if ESC key is pressed
+        mov ax,COLOR_BALL_DEAD             ; Set color to dead ball
+        call draw_player                    ; Draw dead ball Do not draw ball...
+    .collision_treasure:                    ; ...after finding treasure
+        call vga_blit                       ; Copy doublebuffer to VGA
+        .waint_for_esc:                     ; If game snded,wait for ESC key
+            in al,60h                      ; Read keyboard
+            cmp al,0x01                    ; Check if ESC key is pressed
             jne .waint_for_esc
-        jmp restart_game      
+        jmp restart_game
     .collision_done:
     
 ; =========================================== DRAW PLAYER ======================
 
-xor ax,ax
+xor ax,ax                                   ; Set dead color to 0
 call draw_player
     
 ; =========================================== KEYBOARD INPUT ===================
@@ -222,7 +219,7 @@ check_player_timer:
         call update_player_pos
     .done:
 
-
+; =========================================== VGA BLIT =========================
 
 call vga_blit
 
@@ -239,6 +236,15 @@ delay_timer:
 
 jmp game_loop                               ; Repeat the game loop
 
+
+
+
+; =========================================== PROCEDURES ======================
+
+
+
+; =========================================== UPDATE PLAYER POSITION =========
+
 update_player_pos:
     pusha
     mov di,[PLAYER_POS]                     ; Get player position in VGA memory
@@ -254,11 +260,13 @@ update_player_pos:
     popa
     ret
 
+; =========================================== DRAW PLAYER ======================
+
 draw_player:
     mov di,[PLAYER_POS]                     ; Get player position in VGA memory
     mov si,ball_sprites                     ; Set sprite data start address
     mov bx,COLOR_BALL_MAIN                  ; Set color
-    add  bx, ax
+    add  bx,ax
     call draw_sprite
     add si,8
     mov bx,COLOR_BALL_LIGH                  ; Set color
@@ -283,6 +291,7 @@ vga_blit:
     pop ds
     pop es
     ret
+
 ; =========================================== DRAWING SPRITE PROCEDURE =========
 
 draw_sprite:
@@ -337,7 +346,7 @@ MLT dw -322,-318,318,322                    ; Movement Lookup Table
                                             ; 1 - up/right
                                             ; 2 - down/left
                                             ; 3 - down/right      
-p1x_sprite:
+; p1x_sprite:
 ; db 0x00,0xD5,0x75,0xD2,0x95,0x95,0x95,0x00  ; P1X 8 bytes
 
 treasure_sprite:
@@ -345,17 +354,7 @@ db 0x3C,0xE7,0xFF,0x7E,0x7E,0x3C,0x18,0x3C  ; Treasure sprite
 
 ball_sprites:
 db 0x3C,0x66,0x9F,0xBF,0xFF,0x7E,0x3C,0x00  ; Ball sprite
-; db 0x00,0x00,0x02,0x01,0x05,0xAB,0x56,0x3C  ; Ball sprite shading
-
-db 00000000b
-db 00101010b
-db 00000001b
-db 00100101b
-db 10011011b
-db 01000110b
-db 00111100b
-db 00000000b
-
+db 0x00,0x2A,0x01,0x25,0x9B,0x46,0x3C,0x00  ; Ball sprite shading
 
 tiles:
 db 0x03,0x0F,0x3F,0xFF,0xFF,0x3F,0x0F,0x03  ; Tile ground left part
