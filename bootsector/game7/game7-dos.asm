@@ -1,4 +1,4 @@
-org 0x7c00
+org 0x100
 use16
 
 VGA_MEMORY_ADR equ 0xA000                   ; VGA memory address
@@ -328,6 +328,6 @@ db 10000000b
 
 
 
-times 507-($-$$) db 0
+;times 510-($-$$) db 0
 db "P1X"
-dw 0xAA55
+;dw 0xAA55
