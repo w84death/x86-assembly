@@ -32,6 +32,10 @@ start:
     mov dx,319
     int 33h
 
+    ; hide cursor
+    mov ax, 2    ; Function 2 - Hide mouse cursor
+    int 33h      ; Call mouse interrupt
+
 restart_game:
     mov byte [STATE_ADR],STATE_ON
     mov byte [HEALTH_ADR],0x0a
@@ -214,11 +218,15 @@ draw_hits_counter:
 ; =========================================== DELAY CYCLE ======================
 
 delay:
-    mov dx, 0x3da
-    .wait:
-    in al, dx
-    test al, 0x8
-    jz .wait
+    push es
+    push 0x0040
+    pop es
+    mov bx, [es:0x006C]  ; Load the current tick count into BX
+wait_for_tick:
+    mov ax, [es:0x006C]  ; Load the current tick count
+    sub ax, bx           ; Calculate elapsed ticks
+    jz wait_for_tick     ; If not enough time has passed, keep waiting
+    pop es
 
 
 ; =========================================== ESC OR LOOP =====================
