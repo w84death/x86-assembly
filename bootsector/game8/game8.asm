@@ -1,3 +1,13 @@
+; GAME8 - UNNAMED
+; DOS VERSION
+;
+; Description:
+;   Some shootemup
+;
+;
+; Author: Krzysztof Krystian Jankowski
+; Date: 2024-07/23
+; License: MIT
 
 org 0x100
 use16
@@ -14,94 +24,62 @@ start:
     push DBUFFER_MEMORY_ADR                 ; Set doublebuffer memory
     pop es                                  ; as target
 
-
-
 game_loop:
 
-    inc bp
-
-    xor di,di
-    xor si,si
+    xor di,di                   ; Clear destination address
+    xor si,si                   ; Clear source address
 
 draw_bg:
-    mov ax,0x1112                 ; Set background color (2 bytes)
-    mov cx, 0xFA00               ; Set buffer size to fullscreen
-    rep stosw                               ; Fill the buffer with color
+    mov ax,0x1112               ; Set background color (2 bytes)
+    mov cx,SCREEN_BUFFER_SIZE   ; Set buffer size to fullscreen
+    rep stosw                   ; Fill the buffer with color
 
 
-
-draw_ship:
-
-    mov si, ShipSpr         ; source -> sprite data
-    mov di, 320*96+160   ; destination -> dbuffer position
-    mov dx, 0
-    mov cx, 0x0C        ; lines in sprite
-    call draw_sprite
-    mov di, 320*96+160+15   ; destination -> dbuffer position
-    inc dx
-    mov cx, 0x0C        ; lines in sprite
-    call draw_sprite
+draw_sprites:
+    xor ax,ax
+    mov si, BoosterSpr
+    mov di, 320*102+160-10
+    call draw_msprite
 
     mov si, BoosterSpr
-    mov di, 320*100+160-12
-    mov dx, 0
-    mov cx, 0x08
-    call draw_sprite
-    mov di, 320*100+160+15-12
-    inc dx
-    mov cx, 0x08
-    call draw_sprite
+    mov di, 320*102+160+10
+    call draw_msprite
 
-    mov si, BoosterSpr
-    mov di, 320*100+160+12
-    mov dx, 0
-    mov cx, 0x08
-    call draw_sprite
-    mov di, 320*100+160+15+12
-    inc dx
-    mov cx, 0x08
-    call draw_sprite
+    mov si, ShipSpr
+    mov di, 320*96+160
+    mov ax, 0x0C
+    call draw_msprite
+    xor ax,ax
 
+    mov si, Bullet1Spr
+    mov di, 320*80+160+11
+    mov ax, 0x05
+    call draw_sprite
+    xor ax,ax
+
+    mov si, Power1Spr
+    mov di, 320*90+110
+    call draw_msprite
+
+    mov si, Power2Spr
+    mov di, 320*90+210
+    call draw_msprite
 
     mov si, Enemy1Spr
     mov di, 320*60+160
-    mov dx, 0
-    mov cx, 0x08
-    call draw_sprite
-    mov di, 320*60+160+15
-    inc dx
-    mov cx, 0x08
-    call draw_sprite
+    call draw_msprite
 
     mov si, Enemy2Spr
     mov di, 320*60+140
-    mov dx, 0
-    mov cx, 0x08
-    call draw_sprite
-    mov di, 320*60+140+15
-    inc dx
-    mov cx, 0x08
-    call draw_sprite
+    call draw_msprite
 
     mov si, Enemy3Spr
     mov di, 320*60+180
-    mov dx, 0
-    mov cx, 0x08
-    call draw_sprite
-    mov di, 320*60+180+15
-    inc dx
-    mov cx, 0x08
-    call draw_sprite
+    call draw_msprite
 
     mov si, Enemy4Spr
     mov di, 320*60+200
-    mov dx, 0
-    mov cx, 0x08
-    call draw_sprite
-    mov di, 320*60+200+15
-    inc dx
-    mov cx, 0x08
-    call draw_sprite
+    call draw_msprite
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 
@@ -148,42 +126,60 @@ wait_for_tick:
     ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
+draw_msprite:
+  push di               ; Save destination position
+  xor dx,dx             ; Clear mirroring (left side)
+  call draw_sprite
+  inc dx                ; Enable mirroring (right side)
+  pop di                ; Restore destination position
+  add di, 15            ; Adjust mirrored position
+  call draw_sprite
+  ret
 
 draw_sprite:
     pusha
+    mov cx, [si]        ; Get the start color of the palette
+    mov bp, cx          ; Save in bp
+    inc si
+    inc si              ; Mov si to the sprite data
+    mov cx, 0x8         ; Set default sprite lines
+    cmp ax, 0x0         ; Check if user set custom lines number
+    jz .default         ; Keep default if not
+    mov cx, ax          ; Update lines to custom
+    .default:
     .plot_line:
-        push cx
-        mov ax, [si]    ; get word line
-        mov cx, 0x08    ; 8 pixels in line
+        push cx           ; Save lines couter
+        mov ax, [si]      ; Get sprite line
+        mov cx, 0x08      ; 8 pixels in line
         .draw_pixel:
-            xor bx,bx
-            shl ax,1    ; cut left bit
-            adc bx,0    ; get first bit
-            shl bx,1    ; mov to represent 2 or 0
-            shl ax,1    ; cut left bit
-            adc bx,0    ; get second bit (0,1)
+            xor bx,bx        ; Clear bx
+            shl ax,1         ; Cut left bit
+            adc bx,0         ; Get first bit
+            shl bx,1         ; Mov to represent 2 or 0
+            shl ax,1         ; Cut left bit
+            adc bx,0         ; Get second bit (0,1)
             cmp bx, 0
             jz .skip_pixel
-            imul bx, 0x04 ; poors man palette
-            add bx, 0x12  ; grays 12,16,1a,1e
+            imul bx, 0x04    ; Poors man palette
+            add bx, bp       ; Palette colors shift by 12,16,1a,1e
 
-            mov [es:di], bl
-            .skip_pixel:
-            inc di
-            cmp dx, 0
-            jz .rev
-            dec di
-            dec di
+            mov [es:di], bl  ; Write pixel color
+            .skip_pixel:     ; Or skip this pixel - alpha color
+            inc di           ; Move destination to next pixel (+1)
+            cmp dx, 0        ; Check if mirroring enabled
+            jz .rev          ; Jump if not
+            dec di           ; Remove previous shift (now it's 0)
+            dec di           ; Move destination 1px left (-1)
             .rev:
             loop .draw_pixel
-        inc si
-        inc si
-        add di, 312
-        cmp dx, 0
+        inc si               ; Move to the next
+        inc si               ; Sprite line data
+        add di, 312          ; And next line in destination
+        cmp dx, 0            ; Mirror check
         jz .rev2
-        add di, 16
+        add di, 16           ; If mirrored adjust next line position
         .rev2:
-    pop cx
+    pop cx                   ; Restore line counter
     loop .plot_line
     popa
     ret
@@ -192,6 +188,7 @@ draw_sprite:
 ; =========================================== SPRITE DATA ======================
 
 ShipSpr:
+dw 0x12
 dw 0000000000001011b
 dw 0000010001111110b
 dw 0100100011101011b
@@ -205,6 +202,7 @@ dw 0110010110100101b
 dw 0001101010011001b
 dw 0000000001010110b
 BoosterSpr:
+dw 0x10
 dw 0000000000001010b
 dw 0000000000101011b
 dw 0000000010011010b
@@ -214,6 +212,7 @@ dw 0001111010100101b
 dw 0001010000011001b
 dw 0000000000000110b
 Enemy1Spr:
+dw 0x47
 dw 0000001100000010b
 dw 0000000111000001b
 dw 0001000010100110b
@@ -223,6 +222,7 @@ dw 0000000011010111b
 dw 0000001000000010b
 dw 0000010000000000b
 Enemy2Spr:
+dw 0x20
 dw 0111111101000000b
 dw 0001101011110000b
 dw 0000000110100010b
@@ -232,6 +232,7 @@ dw 0001010000011101b
 dw 0000000110100110b
 dw 0001101001000010b
 Enemy3Spr:
+dw 0x23
 dw 1011111101000001b
 dw 1101010110000110b
 dw 1101101010011011b
@@ -241,6 +242,7 @@ dw 0000100100111101b
 dw 0010001001010110b
 dw 0010011000001000b
 Enemy4Spr:
+dw 0x55
 dw 1100000000001100b
 dw 0010000000001000b
 dw 0000100000010101b
@@ -250,6 +252,7 @@ dw 1111101010100010b
 dw 0110111111111111b
 dw 0000000101101010b
 Power1Spr:
+dw 0x13
 dw 1011000000000000b
 dw 1100001111111001b
 dw 0000111010100111b
@@ -259,6 +262,7 @@ dw 0000111001010101b
 dw 1100001010111011b
 dw 1011000000000000b
 Power2Spr:
+dw 0x13
 dw 1011000000000011b
 dw 1100001111100111b
 dw 0000111010101101b
@@ -267,6 +271,14 @@ dw 0000110101011101b
 dw 0000110101010111b
 dw 1100001010100111b
 dw 1011000000000010b
+Bullet1Spr:
+dw 0x12
+dw 0000001010000000b
+dw 0000001111000000b
+dw 0000011111010000b
+dw 0001100101100100b
+dw 0000010000010000b
+
 
 Logo:
 db "P1X"
