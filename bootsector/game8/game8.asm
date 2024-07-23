@@ -29,24 +29,37 @@ draw_bg:
     rep stosw                               ; Fill the buffer with color
 
 
-fake_movment:
-    mov ax, bp
-    and ax, 0xff
-    push ax
 
 draw_ship:
 
     mov si, ShipSpr         ; source -> sprite data
-    mov di, 320*96+10   ; destination -> dbuffer position
-    add di, ax
+    mov di, 320*96+160   ; destination -> dbuffer position
     mov dx, 0
     mov cx, 0x0C        ; lines in sprite
     call draw_sprite
-    mov di, 320*96+10+15   ; destination -> dbuffer position
-    pop ax
-    add di, ax
+    mov di, 320*96+160+15   ; destination -> dbuffer position
     inc dx
     mov cx, 0x0C        ; lines in sprite
+    call draw_sprite
+
+    mov si, BoosterSpr
+    mov di, 320*104+160-12
+    mov dx, 0
+    mov cx, 0x08
+    call draw_sprite
+    mov di, 320*104+160+15-12
+    inc dx
+    mov cx, 0x08
+    call draw_sprite
+
+    mov si, BoosterSpr
+    mov di, 320*104+160+12
+    mov dx, 0
+    mov cx, 0x08
+    call draw_sprite
+    mov di, 320*104+160+15+12
+    inc dx
+    mov cx, 0x08
     call draw_sprite
 
 ; =========================================== VGA BLIT PROCEDURE ===============
@@ -147,6 +160,15 @@ dw 1011101011011001b
 dw 0110010110100101b
 dw 0001101010011001b
 dw 0000000001010110b
+BoosterSpr:
+dw 0000000000001010b
+dw 0000000000101011b
+dw 0000000010011010b
+dw 0000000111011011b
+dw 0000011110011101b
+dw 0001111010100101b
+dw 0001010000011001b
+dw 0000000000000110b
 
 
 Logo:
