@@ -24,7 +24,7 @@ game_loop:
     xor si,si
 
 draw_bg:
-    mov ax,0x1010                 ; Set background color (2 bytes)
+    mov ax,0x1112                 ; Set background color (2 bytes)
     mov cx, 0xFA00               ; Set buffer size to fullscreen
     rep stosw                               ; Fill the buffer with color
 
@@ -43,21 +43,62 @@ draw_ship:
     call draw_sprite
 
     mov si, BoosterSpr
-    mov di, 320*104+160-12
+    mov di, 320*100+160-12
     mov dx, 0
     mov cx, 0x08
     call draw_sprite
-    mov di, 320*104+160+15-12
+    mov di, 320*100+160+15-12
     inc dx
     mov cx, 0x08
     call draw_sprite
 
     mov si, BoosterSpr
-    mov di, 320*104+160+12
+    mov di, 320*100+160+12
     mov dx, 0
     mov cx, 0x08
     call draw_sprite
-    mov di, 320*104+160+15+12
+    mov di, 320*100+160+15+12
+    inc dx
+    mov cx, 0x08
+    call draw_sprite
+
+
+    mov si, Enemy1Spr
+    mov di, 320*60+160
+    mov dx, 0
+    mov cx, 0x08
+    call draw_sprite
+    mov di, 320*60+160+15
+    inc dx
+    mov cx, 0x08
+    call draw_sprite
+
+    mov si, Enemy2Spr
+    mov di, 320*60+140
+    mov dx, 0
+    mov cx, 0x08
+    call draw_sprite
+    mov di, 320*60+140+15
+    inc dx
+    mov cx, 0x08
+    call draw_sprite
+
+    mov si, Enemy3Spr
+    mov di, 320*60+180
+    mov dx, 0
+    mov cx, 0x08
+    call draw_sprite
+    mov di, 320*60+180+15
+    inc dx
+    mov cx, 0x08
+    call draw_sprite
+
+    mov si, Enemy4Spr
+    mov di, 320*60+200
+    mov dx, 0
+    mov cx, 0x08
+    call draw_sprite
+    mov di, 320*60+200+15
     inc dx
     mov cx, 0x08
     call draw_sprite
@@ -106,6 +147,7 @@ wait_for_tick:
     int 0x10
     ret
 
+; =========================================== DRAW SPRITE PROCEDURE ============
 
 draw_sprite:
     pusha
@@ -146,7 +188,9 @@ draw_sprite:
     popa
     ret
 
-; 8x16 left site, mirrored
+
+; =========================================== SPRITE DATA ======================
+
 ShipSpr:
 dw 0000000000001011b
 dw 0000010001111110b
@@ -169,7 +213,60 @@ dw 0000011110011101b
 dw 0001111010100101b
 dw 0001010000011001b
 dw 0000000000000110b
-
+Enemy1Spr:
+dw 0000001100000010b
+dw 0000000111000001b
+dw 0001000010100110b
+dw 1000010101110110b
+dw 0011100000101001b
+dw 0000000011010111b
+dw 0000001000000010b
+dw 0000010000000000b
+Enemy2Spr:
+dw 0111111101000000b
+dw 0001101011110000b
+dw 0000000110100010b
+dw 0001010000101011b
+dw 0000101110010110b
+dw 0001010000011101b
+dw 0000000110100110b
+dw 0001101001000010b
+Enemy3Spr:
+dw 1011111101000001b
+dw 1101010110000110b
+dw 1101101010011011b
+dw 0110101011011011b
+dw 0001010101100110b
+dw 0000100100111101b
+dw 0010001001010110b
+dw 0010011000001000b
+Enemy4Spr:
+dw 1100000000001100b
+dw 0010000000001000b
+dw 0000100000010101b
+dw 0000000110101010b
+dw 0010111001011101b
+dw 1111101010100010b
+dw 0110111111111111b
+dw 0000000101101010b
+Power1Spr:
+dw 1011000000000000b
+dw 1100001111111001b
+dw 0000111010100111b
+dw 0000101111011111b
+dw 0000110101010111b
+dw 0000111001010101b
+dw 1100001010111011b
+dw 1011000000000000b
+Power2Spr:
+dw 1011000000000011b
+dw 1100001111100111b
+dw 0000111010101101b
+dw 0000101101110101b
+dw 0000110101011101b
+dw 0000110101010111b
+dw 1100001010100111b
+dw 1011000000000010b
 
 Logo:
 db "P1X"
