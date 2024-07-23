@@ -23,27 +23,14 @@ game_loop:
     xor di,di
     xor si,si
 
-bg:
-    mov dx, 0xC8
-    mov bx, bp
-    neg bx
-    .l:
-    inc bx
-    and bx, 0x0f
-
-    mov ax, bx
-    and ax,0x0c
-
-    mov cx,0xA0
-    rep stosw
-
-    dec dx
-    jnz .l
+draw_bg:
+    mov ax,0x1010                 ; Set background color (2 bytes)
+    mov cx, 0xFA00               ; Set buffer size to fullscreen
+    rep stosw                               ; Fill the buffer with color
 
 
+fake_movment:
     mov ax, bp
-    add ax, bp
-    
     and ax, 0xff
     push ax
 
