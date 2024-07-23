@@ -1,3 +1,4 @@
+
 org 0x100
 use16
 
@@ -14,73 +15,52 @@ start:
     pop es                                  ; as target
 
 
-mov cx,SCREEN_BUFFER_SIZE/2
-mov ax, 0x2b2c
-rep stosw
-
-field:
-    mov di, 128
-    mov ax, 0x5c5c
-    mov cx, 200
-    .loop:
-        push cx
-        mov cx, 32
-        rep stosw
-        pop cx
-        add di, 320-64
-        loop .loop
-
-read_level:
-    mov di, 320*8+128
-    mov si, level_blueprints
-    mov cx, 0x18
-    .line:
-    push cx
-    push si
-    rdtsc
-    and ax,0x05
-    add si, ax
-    mov byte bl, [si]
-    rdtsc
-    and ax, 0x0f
-    mov cl,al
-    rol bx,cl
-    mov cx, 0x8
-    .draw_blueprint:
-        shl bl,1                        ; Shift left to get the pixel out
-        jnc .skip_block                 ; If carry flag is 0,skip
-            mov al,0x2a
-            push cx
-            mov cx,0x8
-            rep stosb
-            pop cx
-            loop .draw_blueprint
-        .skip_block:
-            add di,8
-            loop .draw_blueprint
-
-      add di, 320*8-64
-      pop si
-      pop cx
-      loop .line
-
 
 game_loop:
 
+    inc bp
 
-shifter:
-;    mov cx, 199
-;    mov si, 320*198
-;    mov di, 320*199
-;    .l:
-;    push cx
-;    mov cx, 160
-;    rep movsw
-;    pop cx
+    xor di,di
+    xor si,si
 
-; sub si, 320
-; sub di, 320
-; loop .l
+bg:
+    mov dx, 0xC8
+    mov bx, bp
+    neg bx
+    .l:
+    inc bx
+    and bx, 0x0f
+
+    mov ax, bx
+    and ax,0x0c
+
+    mov cx,0xA0
+    rep stosw
+
+    dec dx
+    jnz .l
+
+
+    mov ax, bp
+    add ax, bp
+    
+    and ax, 0xff
+    push ax
+
+draw_ship:
+
+    mov si, ShipSpr         ; source -> sprite data
+    mov di, 320*96+10   ; destination -> dbuffer position
+    add di, ax
+    mov dx, 0
+    mov cx, 0x0C        ; lines in sprite
+    call draw_sprite
+    mov di, 320*96+10+15   ; destination -> dbuffer position
+    pop ax
+    add di, ax
+    inc dx
+    mov cx, 0x0C        ; lines in sprite
+    call draw_sprite
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 
@@ -103,11 +83,16 @@ vga_blit:
 ; =========================================== DELAY CYCLE ======================
 
 delay:
-    mov dx, 0x3da
-    .wait:
-    in al, dx
-    test al, 0x8
-    jz .wait
+    push es
+    push 0x0040
+    pop es
+    mov bx, [es:0x006C]  ; Load the current tick count into BX
+wait_for_tick:
+    mov ax, [es:0x006C]  ; Load the current tick count
+    sub ax, bx           ; Calculate elapsed ticks
+    jz wait_for_tick     ; If not enough time has passed, keep waiting
+    pop es
+
 
 ; =========================================== ESC OR LOOP =====================
 
@@ -122,13 +107,60 @@ delay:
     ret
 
 
-level_blueprints:
-db 00000000b
-db 10000000b
-db 10001000b
-db 11001100b
-db 11110000b
-db 01111110b
+draw_sprite:
+    pusha
+    .plot_line:
+        push cx
+        mov ax, [si]    ; get word line
+        mov cx, 0x08    ; 8 pixels in line
+        .draw_pixel:
+            xor bx,bx
+            shl ax,1    ; cut left bit
+            adc bx,0    ; get first bit
+            shl bx,1    ; mov to represent 2 or 0
+            shl ax,1    ; cut left bit
+            adc bx,0    ; get second bit (0,1)
+            cmp bx, 0
+            jz .skip_pixel
+            imul bx, 0x04 ; poors man palette
+            add bx, 0x12  ; grays 12,16,1a,1e
+
+            mov [es:di], bl
+            .skip_pixel:
+            inc di
+            cmp dx, 0
+            jz .rev
+            dec di
+            dec di
+            .rev:
+            loop .draw_pixel
+        inc si
+        inc si
+        add di, 312
+        cmp dx, 0
+        jz .rev2
+        add di, 16
+        .rev2:
+    pop cx
+    loop .plot_line
+    popa
+    ret
+
+; 8x16 left site, mirrored
+ShipSpr:
+dw 0000000000001011b
+dw 0000010001111110b
+dw 0100100011101011b
+dw 0100100110011111b
+dw 1001011110100101b
+dw 0101111010010110b
+dw 0111101001011011b
+dw 1101110101111010b
+dw 1011101011011001b
+dw 0110010110100101b
+dw 0001101010011001b
+dw 0000000001010110b
 
 
+Logo:
 db "P1X"
