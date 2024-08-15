@@ -231,6 +231,21 @@ draw_msprite:
   call draw_sprite
   ret
 
+; Drawing Sprite
+
+; DI - positon (linear)
+; SI - sprite data addr
+;    2 bit height (lines)
+;    2 bit color palette
+;    2-bit per pixel data
+;
+; DX - settings
+;    - 00 - normal
+;    - 01 - mirrored x
+;    - 10 - mirrored y
+;    - 11 - mirrored X&Y
+
+
 draw_sprite:
     pusha
     mov cx, [si]        ; Get the sprite lines
@@ -239,6 +254,9 @@ draw_sprite:
     mov bp, [si]        ; Get the start color of the palette
     inc si
     inc si              ; Mov si to the sprite data
+
+    ; check DX, go to the end of si (si+cx*2)
+
     .default:
     .plot_line:
         push cx           ; Save lines couter
@@ -261,19 +279,24 @@ draw_sprite:
             mov [es:di], bl  ; Write pixel color
             .skip_pixel:     ; Or skip this pixel - alpha color
             inc di           ; Move destination to next pixel (+1)
-            cmp dx, 0        ; Check if mirroring enabled
-            jz .rev          ; Jump if not
+            cmp dx, 0        ; Check if mirroring X enabled
+            jz .revX          ; Jump if not
             dec di           ; Remove previous shift (now it's 0)
             dec di           ; Move destination 1px left (-1)
-            .rev:
+            .revX:
             loop .draw_pixel
+
         inc si               ; Move to the next
         inc si               ; Sprite line data
+
+        ; check DX, si -4 if mirror Y
+
         add di, 312          ; And next line in destination
-        cmp dx, 0            ; Mirror check
-        jz .rev2
+
+        cmp dx, 0            ; Mirror X check
+        jz .revX2
         add di, 16           ; If mirrored adjust next line position
-        .rev2:
+        .revX2:
     pop cx                   ; Restore line counter
     loop .plot_line
     popa
