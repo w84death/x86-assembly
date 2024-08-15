@@ -43,10 +43,13 @@ draw_terrain:
   inc si
 
   mov cx, [si]  ; width
+
   inc si
   inc si
+
   mov bp, [si] ; size
-  inc si  ; why not?
+  inc si
+  ;inc si
 
   .draw_tile:
     push si
@@ -55,10 +58,8 @@ draw_terrain:
     xor bx,bx        ; Clear bx
     shl ax,1         ; Cut left bit
     adc bx,0         ; Get first bit
-    jnz .skip_tile
-    ;mov dx, ax
+    jz .skip_tile
 
-    ; decode ax
     xor bx,bx        ; Clear bx
     shl ax,1         ; Cut left bit
     adc bx,0         ; Get first bit
@@ -85,9 +86,9 @@ draw_terrain:
     mov dx, bx
     call draw_sprite
 
-    .skip_tile:
-    ; spawn tree?
 
+
+    ; spawn tree?
     xor bx,bx        ; Clear bx
     shl ax,1         ; Cut left bit
     adc bx,0         ; Get first bit
@@ -96,6 +97,8 @@ draw_terrain:
     mov si, PalmSpr
     call draw_sprite
     .skip_tree:
+    .skip_tile:
+
     ; next tile
     add di,0x8
 
@@ -187,18 +190,6 @@ wait_for_tick:
     ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
-draw_msprite:
-  push di               ; Save destination position
-  xor dx,dx             ; Clear mirroring (left side)
-  call draw_sprite
-  inc dx                ; Enable mirroring (right side)
-  pop di                ; Restore destination position
-  add di, 15            ; Adjust mirrored position
-  call draw_sprite
-  ret
-
-; Drawing Sprite
-; ------------------------------
 ; DI - positon (linear)
 ; SI - sprite data addr
 ; DX - settings
@@ -206,8 +197,6 @@ draw_msprite:
 ;    - 01 - mirrored x
 ;    - 10 - mirrored y
 ;    - 11 - mirrored X&Y
-
-
 draw_sprite:
     pusha
     mov cx, [si]        ; Get the sprite lines
@@ -220,7 +209,7 @@ draw_sprite:
     mov bx, dx
     and bx, 1
     jz .revX3
-    add di, 0x8
+    add di, 0x7
     .revX3:
     ; check DX, go to the end of si (si+cx*2)
     mov bx, dx
@@ -344,6 +333,19 @@ dw 0101111100000000b
 dw 1111110000000000b
 dw 0000000000000000b
 
+; Waves light
+dw 0x8, 0xbc
+dw 0000000000000000b
+dw 0000000000000000b
+dw 0000000000000000b
+dw 0000001011000000b
+dw 0001110000011100b
+dw 0000000000000000b
+dw 0000000000000000b
+dw 0000000000000000b
+
+; Waves dense
+
 PalmSpr:
 dw 0x7, 0x27
 dw 0010000000000000b
@@ -379,48 +381,57 @@ dw 0000111001011011b
 
 LevelData:
 ; start position
-; length
-; width
-; skip(1) id(3)  mirror(2) tree(1) empty(1)
+; length - number of tiles
+; width - when to make line brake
+; tiles - visible(1) sprite id(3)  mirror(2) tree(1) empty(1)
 dw 320*(100-12)+(160-24)
-dw 0x20
+dw 0x28
 dw 0x08
 
-db 01001100b
-db 00111000b
-db 00111000b
-db 00111000b
-db 00111000b
-db 00111000b
-db 00111000b
-db 01001000b
+db 11010000b
+db 11010000b
+db 00000000b
+db 11010000b
+db 00000000b
+db 00000000b
+db 00000000b
+db 00000000b
 
-db 00100100b
-db 00010000b
-db 00010010b
-db 00010000b
-db 00000000b
-db 00010000b
-db 00000000b
-db 00100000b
+db 11001100b
+db 10111000b
+db 10111000b
+db 10111000b
+db 10111000b
+db 10111000b
+db 10111000b
+db 11001000b
 
-db 00100100b
-db 00010000b
-db 00000000b
-db 00000000b
-db 00000000b
-db 00010000b
-db 00010010b
-db 00100000b
+db 10100100b
+db 10010000b
+db 10010010b
+db 10010000b
+db 10000000b
+db 10010000b
+db 10000000b
+db 10100000b
 
-db 01000100b
-db 00110000b
-db 00110000b
-db 00110000b
-db 00110000b
-db 00110000b
-db 00110000b
-db 01000000b
+db 10100100b
+db 10010000b
+db 10000000b
+db 10000000b
+db 10000000b
+db 10010000b
+db 10010010b
+db 10100000b
+
+db 11000100b
+db 10110000b
+db 10110000b
+db 10110000b
+db 10110000b
+db 10110000b
+db 10110000b
+db 11000000b
 
 Logo:
 db "P1X"
