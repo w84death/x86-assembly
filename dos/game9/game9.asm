@@ -30,10 +30,29 @@ game_loop:
     xor si,si                   ; Clear source address
 
 draw_bg:
-    mov ax,0xc6c6               ; Set background color (2 bytes)
-    mov cx,SCREEN_BUFFER_SIZE   ; Set buffer size to fullscreen
-    rep stosw                   ; Fill the buffer with color
+    mov ax, 0x3b3b                          ; Multiply level by 0x0404
+    mov dx, 16                              ; We have 8 bars
+    .draw_bars:
+        mov cx, 320*3                  ; One bar of 320x200
+        rep stosw                           ; Write to the doublebuffer
+        inc ax                              ; Increment color index for next bar
+        xchg al, ah                         ; Swap colors
+        dec dx                              ; Decrement bar counter
+        jnz .draw_bars
 
+;13440
+    mov dx, 9
+    mov bx, 2
+    .draw_bars2:
+    mov cx, 320
+    imul cx, bx
+    mov al, 0x36
+    add al, bl
+    mov ah,al
+    rep stosw
+    inc bx
+    dec dx
+    jnz .draw_bars2
 
 draw_terrain:
   mov si, LevelData
@@ -135,13 +154,8 @@ draw_players:
   xor dx, dx
   call draw_sprite
 
-  mov si, SnakeSpr
-  mov di, 320*108+146
-  rdtsc
-  and ax, 0x1
-  mov bx, 320
-  imul ax, bx
-  sub di, ax
+  mov si, OctopusSpr
+  mov di, 320*108+64
   xor dx, dx
   call draw_sprite
 
@@ -279,7 +293,7 @@ draw_sprite:
 TerrainSpr:
 
 ; Dense grass
-dw 0x8,0xba
+dw 0x8,0x54
 dw 0110100101101001b
 dw 1001011010010110b
 dw 0110100101101001b
@@ -290,7 +304,7 @@ dw 0110100101101001b
 dw 1001011010010110b
 
 ; Light grass
-dw 0x8,0xba
+dw 0x8,0x54
 dw 1010101010101010b
 dw 1001101001101010b
 dw 1010101010101010b
@@ -301,7 +315,7 @@ dw 1010101010101010b
 dw 1010011010011010b
 
 ; Right bank
-dw 0x8,0xba
+dw 0x8,0x54
 dw 1010100111011111b
 dw 1010101001110111b
 dw 1001101001110111b
@@ -312,7 +326,7 @@ dw 1010101001110111b
 dw 1001100111011111b
 
 ; Bottom bank
-dw 0x8,0xba
+dw 0x8,0x54
 dw 1001101010101001b
 dw 1010101010101010b
 dw 1010011010011010b
@@ -323,7 +337,7 @@ dw 1101010101111111b
 dw 0011111111110000b
 
 ; Corner
-dw 0x8,0xba
+dw 0x8,0x54
 dw 1010100111011100b
 dw 1010010111011100b
 dw 1010011101111100b
@@ -367,35 +381,29 @@ dw 0001101011100000b
 dw 0000001010100000b
 dw 0000010000010000b
 
-SnakeSpr:
-dw 0x8, 0x56
-dw 0000000000000000b
-dw 0000000000100100b
-dw 0010000010011001b
-dw 0000010010010101b
-dw 0000010011101000b
-dw 0010000000010110b
-dw 0001011011001001b
-dw 0000111001011011b
-
+OctopusSpr:
+dw 0x8, 0x4d
+dw 0011111111000000b
+dw 1010101010110000b
+dw 0110001100100000b
+dw 0001101010100000b
+dw 0000011001000011b
+dw 1100000000001000b
+dw 0010001011000100b
+dw 0001000100000000b
 
 LevelData:
 ; start position
 ; length - number of tiles
 ; width - when to make line brake
-; tiles - visible(1) sprite id(3)  mirror(2) tree(1) empty(1)
-dw 320*(100-12)+(160-24)
-dw 0x28
-dw 0x08
-
-db 11010000b
-db 11010000b
-db 00000000b
-db 11010000b
-db 00000000b
-db 00000000b
-db 00000000b
-db 00000000b
+; tiles - visible(1) sprite id(3)  mirror(2) source(2):
+;   00 no source
+;   01 source 1
+;   10 source 2
+;   11 source 3
+dw 320*(24)+(24)
+dw 0x20
+dw 0x04
 
 db 11001100b
 db 10111000b
