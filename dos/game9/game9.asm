@@ -41,34 +41,24 @@ draw_bg:
         jnz .draw_bars
 
 ;13440
-    mov dx, 9
-    mov bx, 2
+    mov dx, 0x7
+    mov bx, 0x4
+    mov al, 0x37
     .draw_bars2:
     mov cx, 320
     imul cx, bx
-    mov al, 0x36
-    add al, bl
+    inc al
+    ;add al, bl
     mov ah,al
     rep stosw
-    inc bx
+    add bx, 0x2
     dec dx
     jnz .draw_bars2
 
 draw_terrain:
   mov si, LevelData
-
-  mov di, [si]  ; position
-  inc si
-  inc si
-
-  mov cx, [si]  ; width
-
-  inc si
-  inc si
-
-  mov bp, [si] ; size
-  inc si
-  ;inc si
+  mov di, 320*(16)+(16)  ; position
+  mov cx, 0x40
 
   .draw_tile:
     push si
@@ -105,13 +95,13 @@ draw_terrain:
     mov dx, bx
     call draw_sprite
 
-
-
-    ; spawn tree?
+    ; spawn source?
     xor bx,bx        ; Clear bx
     shl ax,1         ; Cut left bit
     adc bx,0         ; Get first bit
+    ; todo: add more resources
     jz .skip_tree
+
 
     mov si, PalmSpr
     call draw_sprite
@@ -124,23 +114,17 @@ draw_terrain:
     pop si
     inc si
 
+; REMOVE THOSE
     mov ax, cx
     dec ax
-    div bp
+    mov bx, 0x4
+    div bx
     cmp dx, 0
     jnz .noNewLine
-
-    ;add di, 320*8-64
-
-    mov ax, 0x140
-    mov bx, 0x08
-    mul bx
-    add di, ax
-    mov ax, 0x08
-    mul bp
-    sub di, ax
-
+    add di, 320*8-32
     .noNewLine:
+; REMOVE ^
+
   loop .draw_tile
 
 draw_players:
@@ -347,18 +331,6 @@ dw 0101111100000000b
 dw 1111110000000000b
 dw 0000000000000000b
 
-; Waves light
-dw 0x8, 0xbc
-dw 0000000000000000b
-dw 0000000000000000b
-dw 0000000000000000b
-dw 0000001011000000b
-dw 0001110000011100b
-dw 0000000000000000b
-dw 0000000000000000b
-dw 0000000000000000b
-
-; Waves dense
 
 PalmSpr:
 dw 0x7, 0x27
@@ -401,14 +373,12 @@ LevelData:
 ;   01 source 1
 ;   10 source 2
 ;   11 source 3
-dw 320*(24)+(24)
-dw 0x20
-dw 0x04
 
 db 11001100b
 db 10111000b
 db 10111000b
 db 10111000b
+
 db 10111000b
 db 10111000b
 db 10111000b
@@ -418,6 +388,7 @@ db 10100100b
 db 10010000b
 db 10010010b
 db 10010000b
+
 db 10000000b
 db 10010000b
 db 10000000b
@@ -427,6 +398,7 @@ db 10100100b
 db 10010000b
 db 10000000b
 db 10000000b
+
 db 10000000b
 db 10010000b
 db 10010010b
@@ -436,10 +408,52 @@ db 11000100b
 db 10110000b
 db 10110000b
 db 10110000b
+
 db 10110000b
 db 10110000b
 db 10110000b
 db 11000000b
+
+db 11001100b
+db 10111000b
+db 10111000b
+db 10111000b
+
+db 10111000b
+db 10111000b
+db 10111000b
+db 11001000b
+
+db 10100100b
+db 10010000b
+db 10010010b
+db 10010000b
+
+db 10000000b
+db 10010000b
+db 10000000b
+db 10100000b
+
+db 10100100b
+db 10010000b
+db 10000000b
+db 10000000b
+
+db 10000000b
+db 10010000b
+db 10010010b
+db 10100000b
+
+db 11000100b
+db 10110000b
+db 10110000b
+db 10110000b
+
+db 10110000b
+db 10110000b
+db 10110000b
+db 11000000b
+
 
 Logo:
 db "P1X"
