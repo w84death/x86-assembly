@@ -56,18 +56,59 @@ draw_bg:
     jnz .draw_bars2
 
 draw_terrain:
+  ; draw metatiles
+
+  mov di, 320*(108)-32  ; position
   mov si, LevelData
-  mov di, 320*(16)+(16)  ; position
-  mov cx, 0x40
+  mov cx, 0x10
 
-  .draw_tile:
-    push si
+  .draw_meta_tiles:
+  push cx
+  push si
 
-    mov ax, [si]
+
+  mov ax, cx
+  dec ax
+  and ax, 0x1
+  cmp ax, 0x1
+  jnz .no_new_line
+  add di, 320*8-(32*8)
+  .no_new_line:
+
+  mov ax, [si] ; AX - LevelData
+  mov cx, 0x4
+  .small_loop:
+    push cx
+
     xor bx,bx        ; Clear bx
     shl ax,1         ; Cut left bit
     adc bx,0         ; Get first bit
-    jz .skip_tile
+    shl bx,1         ; Mov to represent 1 or 0
+    shl ax,1         ; Cut left bit
+    adc bx,0         ; Get second bit
+    shl bx,1         ; Mov to represent 2 or 0
+    shl ax,1         ; Cut left bit
+    adc bx,0         ; Get third bit
+    shl bx,1         ; Mov to represent 4 or 0
+    shl ax,1         ; Cut left bit
+    adc bx,0         ; Get forth bit
+
+    push ax ; AX - LevelData
+
+    mov si, MetaTiles
+    mov ax, bx
+    mov bx, 0x4
+    imul bx
+    add si, ax
+    mov ax, [si] ; AX - MeTatile
+    mov cx, 0x4
+    .draw_tile:
+      push si
+      mov ax, [si]
+      xor bx,bx        ; Clear bx
+      shl ax,1         ; Cut left bit
+      adc bx,0         ; Get first bit
+      jz .skip_tile
 
     xor bx,bx        ; Clear bx
     shl ax,1         ; Cut left bit
@@ -84,7 +125,7 @@ draw_terrain:
     mov si, bx
     mov bx, 0x14
     imul si, bx
-    add si, TerrainSpr
+    add si, Tiles
 
     xor bx,bx        ; Clear bx
     shl ax,1         ; Cut left bit
@@ -113,23 +154,26 @@ draw_terrain:
 
     pop si
     inc si
-
-; REMOVE THOSE
-    mov ax, cx
-    dec ax
-    mov bx, 0x4
-    div bx
-    cmp dx, 0
-    jnz .noNewLine
-    add di, 320*8-32
-    .noNewLine:
-; REMOVE ^
-
   loop .draw_tile
+
+    pop ax
+    pop cx
+    dec cx
+  jnz .small_loop
+
+
+  pop si
+  inc si
+  inc si
+  pop cx
+  dec cx
+  jnz .draw_meta_tiles
+
+
 
 draw_players:
   mov si, DinoASpr
-  mov di, 320*100+160
+  mov di, 320*148+160
   rdtsc
   and ax, 0x1
   mov bx, 320
@@ -139,7 +183,7 @@ draw_players:
   call draw_sprite
 
   mov si, OctopusSpr
-  mov di, 320*108+64
+  mov di, 320*104+64
   xor dx, dx
   call draw_sprite
 
@@ -274,7 +318,7 @@ draw_sprite:
 
 ; =========================================== SPRITE DATA ======================
 
-TerrainSpr:
+Tiles:
 
 ; Dense grass
 dw 0x8,0x55
@@ -366,10 +410,7 @@ dw 1100000000001000b
 dw 0010001011000100b
 dw 0001000100000000b
 
-LevelData:
-; start position
-; length - number of tiles
-; width - when to make line brake
+MetaTiles:
 ; tiles - visible(1) sprite id(3)  mirror(2) source(2):
 ;   00 no source
 ;   01 source 1
@@ -381,6 +422,8 @@ LevelData:
 ; 011 Bottom bank
 ; 100 Corner
 db 0b
+
+; *___YX___
 
 ; 0000 up-ball
 db 11001100b
@@ -477,6 +520,34 @@ db 00000000b
 db 00000000b
 db 00000000b
 db 00000000b
+
+LevelData:
+; list of meta tiles
+; width of each level is 8x8
+;1 ****____****____
+dw 0000111111111111b
+dw 0010001111110000b
+;2 ****____****____
+dw 0110001111111111b
+dw 0110101010000111b
+;3 ****____****____
+dw 0110101110001000b
+dw 1010101110100111b
+;4 ****____****____
+dw 0001011010101011b
+dw 1011101010110111b
+;5 ****____****____
+dw 1111011010101010b
+dw 1111111111111111b
+;  ****____****____
+dw 1111011001011111b
+dw 1111111111111111b
+
+dw 1111000111111111b
+dw 1111111111111111b
+
+dw 0000111111111111b
+dw 1111111111110000b
 
 Logo:
 db "P1X"
