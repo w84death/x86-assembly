@@ -15,6 +15,8 @@ use16
 VGA_MEMORY_ADR equ 0xA000                   ; VGA memory address
 DBUFFER_MEMORY_ADR equ 0x8000               ; Doublebuffer memory address
 SCREEN_BUFFER_SIZE equ 0xFa00               ; Size of the VGA buffer size
+CURRENT_LEVEL_ADR equ 0x7000
+PLAYER_POS equ 0x7002
 
 
 start:
@@ -24,6 +26,7 @@ start:
     push DBUFFER_MEMORY_ADR                 ; Set doublebuffer memory
     pop es                                  ; as target
 
+    mov word [CURRENT_LEVEL_ADR], 0x00
 
 game_loop:
     xor di,di                   ; Clear destination address
@@ -40,7 +43,7 @@ draw_bg:
         dec dx                              ; Decrement bar counter
         jnz .draw_bars
 
-
+; perspective bg
 ;    mov dx, 0x7
 ;    mov bx, 0x4
 ;    mov al, 0x37
@@ -48,7 +51,7 @@ draw_bg:
 ;    mov cx, 320
 ;    imul cx, bx
 ;    inc al
-    ;add al, bl
+;    add al, bl
 ;    mov ah,al
 ;    rep stosw
 ;    add bx, 0x2
@@ -61,15 +64,18 @@ draw_bg:
 
 draw_terrain:
   ; draw metatiles
-
   mov di, 320*(104)-32  ; position
   mov si, LevelData
-  mov cx, 0x14
+  ;xor ax,ax
+  mov word ax, [CURRENT_LEVEL_ADR]
+  mov bx, 0x28
+  imul bx
+  add si, ax
 
+  mov cx, 0x14 ; 20 reads, 2 per line
   .draw_meta_tiles:
   push cx
   push si
-
 
   mov ax, cx
   dec ax
@@ -79,7 +85,7 @@ draw_terrain:
   add di, 320*8-(32*8)
   .no_new_line:
 
-  mov ax, [si] ; AX - LevelData
+  mov ax, [si]      ; AX - LevelData
   mov cx, 0x4
   .small_loop:
     push cx
@@ -191,6 +197,21 @@ draw_players:
   xor dx, dx
   call draw_sprite
 
+
+; kbrd
+    in al,0x60
+    cmp al,0x48                         ; Up pressed
+    jne .no_up
+      mov ax, [CURRENT_LEVEL_ADR]
+      inc ax
+      mov [CURRENT_LEVEL_ADR], ax
+    .no_up:
+    cmp al,0x50                         ; Down pressed
+    jne .no_down
+      mov ax, [CURRENT_LEVEL_ADR]
+      dec ax
+      mov [CURRENT_LEVEL_ADR], ax
+    .no_down:
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 
@@ -558,33 +579,97 @@ LevelData:
 ; 1100 source-1
 ; 1101 source-2
 ; 1110 source-3
-;1 ****____****____
-dw 0000111100011111b
-dw 1111001011110011b
 
-dw 1111010011110101b
-dw 0110111101111111b
+; Level-1
+dw 1111111111111111b
+dw 1111111100001111b
+dw 1111111111111111b
+dw 1111111101101111b
+dw 1111111111111111b
+dw 1111111100011111b
+dw 1111111100100011b
+dw 0000111111111111b
+dw 1111001010101010b
+dw 1010001100100011b
+dw 1111011011000111b
+dw 1101101011100111b
+dw 1111010010010101b
+dw 0110010101000101b
+dw 0000111111111111b
+dw 0001111111111111b
+dw 0001111111111111b
+dw 1111111111111111b
+dw 1111111111111111b
+dw 1111111111111111b
 
-dw 1000111110011111b
-dw 1111101011111011b
 
-dw 1111110011111101b
-dw 1110111111111111b
 
+; Level-2
+dw 0000111111111111b
 dw 1111111111111111b
-dw 1111111111111111b
-dw 1111111111111111b
-dw 1111111111111111b
-dw 1111111111111111b
+dw 0110001111111111b
+dw 1111000000100011b
+dw 0110011111111111b
+dw 0010101010100111b
+dw 0110101000110010b
+dw 1010010101000111b
+dw 0100100110101010b
+dw 1010001100100111b
+dw 1111111101101100b
+dw 1010011101100111b
+dw 0010100010111011b
+dw 1101010101100101b
+dw 0110111010011001b
+dw 0111111100011111b
+dw 0110010111111111b
+dw 0001111111111111b
+dw 0001111111111111b
 dw 1111111111111111b
 
+; Level-3
+dw 1111111111110010b
+dw 0011111111111111b
+dw 1111111111110110b
+dw 1010001111111111b
+dw 1111111111110100b
+dw 1101011111111111b
+dw 0010001111111111b
+dw 0110010111111111b
+dw 0110101000111111b
+dw 0110111111111111b
+dw 0110110010101000b
+dw 0111111100001111b
+dw 0110101001011001b
+dw 1010100010100011b
+dw 0100011111111111b
+dw 1001100111100111b
+dw 1111000111111111b
+dw 1111111101100101b
 dw 1111111111111111b
-dw 1111111111111111b
-dw 1111111111111111b
+dw 1111111100011111b
 
+; Level-4
+dw 0000111111111111b
 dw 1111111111111111b
-dw 1111111111111111b
-dw 1111111111111111b
+dw 0110001111111111b
+dw 1111111111110000b
+dw 0110101100111111b
+dw 1111000000100111b
+dw 0110101001111111b
+dw 1111011010100111b
+dw 0110110001111111b
+dw 0010101011100111b
+dw 0110101001111111b
+dw 0110110110100111b
+dw 0100101001111111b
+dw 0100101010100101b
+dw 1111010010110011b
+dw 1111011001011111b
+dw 1111111101001010b
+dw 1000011111111111b
+dw 1111111111110100b
+dw 1001010111111111b
+
 
 Logo:
 db "P1X"
