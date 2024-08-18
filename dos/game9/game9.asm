@@ -12,35 +12,43 @@
 org 0x100
 use16
 
-VGA_MEMORY_ADR equ 0xA000                   ; VGA memory address
-DBUFFER_MEMORY_ADR equ 0x8000               ; Doublebuffer memory address
-SCREEN_BUFFER_SIZE equ 0xFa00               ; Size of the VGA buffer size
-CURRENT_LEVEL_ADR equ 0x7000
-PLAYER_POS equ 0x7002
+_VGA_MEMORY_ equ 0xA000                   ; VGA memory address
+_DBUFFER_MEMORY_ equ 0x8000               ; Doublebuffer memory address
+_CURRENT_LEVEL_ equ 0x7000
+_PLAYER_POS_ equ 0x7002
+
+LEVEL_START_POSITION equ 320*(104)-32
 
 
 start:
     mov ax,0x13                             ; Init VGA 320x200x256
     int 0x10                                ; Video BIOS interrupt
 
-    push DBUFFER_MEMORY_ADR                 ; Set doublebuffer memory
+    push _DBUFFER_MEMORY_                 ; Set doublebuffer memory
     pop es                                  ; as target
 
-    mov word [CURRENT_LEVEL_ADR], 0x00
+      cli
+      mov al,2        ; dissable IRQ 1
+      out 21h,al
+      sti
+
+    mov word [_CURRENT_LEVEL_], 0x0000
+    mov word [_PLAYER_POS_], 0x0505
 
 game_loop:
     xor di,di                   ; Clear destination address
     xor si,si                   ; Clear source address
 
+; =========================================== DRAW BACKGROUND ==================
 draw_bg:
-    mov ax, 0x3b3b                          ; Multiply level by 0x0404
-    mov dx, 16                              ; We have 8 bars
+    mov ax, 0x3b3b              ; Set color to 3b
+    mov dx, 16                  ; 16 bars to draw
     .draw_bars:
-        mov cx, 320*3                  ; One bar of 320x200
-        rep stosw                           ; Write to the doublebuffer
-        inc ax                              ; Increment color index for next bar
-        xchg al, ah                         ; Swap colors
-        dec dx                              ; Decrement bar counter
+        mov cx, 320*3           ; 3 pixels high
+        rep stosw               ; Write to the doublebuffer
+        inc ax                  ; Increment color index for next bar
+        xchg al, ah             ; Swap colors
+        dec dx                  ; Decrement bar counter
         jnz .draw_bars
 
 ; perspective bg
@@ -58,16 +66,18 @@ draw_bg:
 ;    dec dx
 ;    jnz .draw_bars2
 
-  mov cx, 320*54
-  mov ax, 0x3636
-  rep stosw
+  mov cx, 320*54              ; Clear the rest of the screen
+  mov ax, 0x3636              ; Set color to 36
+  rep stosw                   ; Write to the doublebuffer
 
+; =========================================== DRAW TERRAIN =====================
+  
 draw_terrain:
+
   ; draw metatiles
-  mov di, 320*(104)-32  ; position
+  mov di, LEVEL_START_POSITION
   mov si, LevelData
-  ;xor ax,ax
-  mov word ax, [CURRENT_LEVEL_ADR]
+  mov word ax, [_CURRENT_LEVEL_]
   mov bx, 0x28
   imul bx
   add si, ax
@@ -180,10 +190,22 @@ draw_terrain:
   jnz .draw_meta_tiles
 
 
-
+; =========================================== DRAW PLAYERS =====================
 draw_players:
-  mov si, DinoASpr
-  mov di, 320*148+160
+  mov si, DinoSpr
+  mov di, LEVEL_START_POSITION
+  mov cx, [_PLAYER_POS_]
+  xor ax,ax
+  mov al,ch
+  mov bx, 320*8
+  imul ax, bx
+  add di, ax
+
+  xor ax,ax
+  mov al, cl
+  mov bx, 0x8
+  imul ax, bx
+  add di, ax
   rdtsc
   and ax, 0x1
   mov bx, 320
@@ -198,20 +220,47 @@ draw_players:
   call draw_sprite
 
 
-; kbrd
-    in al,0x60
-    cmp al,0x48                         ; Up pressed
-    jne .no_up
-      mov ax, [CURRENT_LEVEL_ADR]
-      inc ax
-      mov [CURRENT_LEVEL_ADR], ax
-    .no_up:
-    cmp al,0x50                         ; Down pressed
-    jne .no_down
-      mov ax, [CURRENT_LEVEL_ADR]
-      dec ax
-      mov [CURRENT_LEVEL_ADR], ax
-    .no_down:
+; =========================================== KEYBOARD INPUT ==================
+check_keyboard:
+  in al,64h
+  test al,1       ; check output buffer
+  jz .no_key           ; Jump if Zero Flag is set (no key pressed)
+  test al,20h 
+  jnz .no_key
+  
+  in al,60h
+  
+  .check_spacebar:
+  cmp al, 1ch         ; Compare scan code with spacebar
+  jne .check_up
+    mov ax, [_CURRENT_LEVEL_]
+    inc ax
+    mov [_CURRENT_LEVEL_], ax
+  .check_up:
+  cmp al, 48h         ; Compare scan code with up arrow
+  jne .check_down
+    mov ax, [_PLAYER_POS_]
+    dec ah
+    mov [_PLAYER_POS_], ax  
+  .check_down:
+  cmp al, 50h         ; Compare scan code with down arrow
+  jne .check_left
+    mov ax, [_PLAYER_POS_]
+    inc ah
+    mov [_PLAYER_POS_], ax
+  .check_left:
+  cmp al, 4Bh         ; Compare scan code with left arrow
+  jne .check_right
+    mov ax, [_PLAYER_POS_]
+    dec al
+    mov [_PLAYER_POS_], ax
+  .check_right:
+  cmp al, 4Dh         ; Compare scan code with right arrow
+  jne .no_key
+    mov ax, [_PLAYER_POS_]
+    inc al
+    mov [_PLAYER_POS_], ax
+  .no_key:
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 
@@ -219,9 +268,9 @@ vga_blit:
     push es
     push ds
 
-    push VGA_MEMORY_ADR                     ; Set VGA memory
+    push _VGA_MEMORY_                     ; Set VGA memory
     pop es                                  ; as target
-    push DBUFFER_MEMORY_ADR                 ; Set doublebuffer memory
+    push _DBUFFER_MEMORY_                 ; Set doublebuffer memory
     pop ds                                  ; as source
     mov cx,0x7D00                           ; Half of 320x200 pixels
     xor si,si                               ; Clear SI
@@ -251,7 +300,12 @@ wait_for_tick:
     jnz game_loop
 
 ; =========================================== TERMINATE PROGRAM ================
-    exit:
+exit:
+    cli
+    xor al,al       ; enable IRQ 1
+    out 21h,al
+    sti
+
     mov ax, 0x0003
     int 0x10
     ret
@@ -344,6 +398,10 @@ draw_sprite:
 ; =========================================== SPRITE DATA ======================
 
 Tiles:
+; Set of 8x8 tiles for constructing meta-tiles
+; word lines
+; word palette id
+; word per line (8 pixels) of palette indexes
 
 ; Dense grass
 dw 0x8,0x55
@@ -413,7 +471,7 @@ dw 0010110001111000b
 dw 0011000001001100b
 dw 0000000101000000b
 
-DinoASpr:
+DinoSpr:
 dw 0x8, 0x20
 dw 0000011011111100b
 dw 0000001010010111b
@@ -436,239 +494,95 @@ dw 0010001011000100b
 dw 0001000100000000b
 
 MetaTiles:
-; tiles - visible(1) sprite id(3)  mirror(2) source(2):
-;   00 no source
-;   01 source 1
-;   10 source 2
-;   11 source 3
-; 000 Dense grass
-; 001 Light grass
-; 010 Right bank
-; 011 Bottom bank
-; 100 Corner
+; List of tiles, one row of 4 tiles per meta-tile
 db 0b
-
-; *___YX___  \
-; 0000 up-ball
-; 0001 down-ball
-; 0010 up-left-long-ball
-; 0011 up-right-long-ball
-; 0100 down-left-long-ball
-; 0101 down-right-long-ball
-; 0110 left-bank
-; 0111 right-bank
-; 1000 top-bank
-; 1001 bottom-bank
-; 1010 light-grass
-; 1011 dense-grass
-; 1100 source-1
-; 1101 source-2
-; 1110 source-3
-
-; 0000 up-ball
-db 11001100b
-db 10111000b
-db 10111100b
-db 11001000b
-
-; 0001 down-ball
-db 11000100b
-db 10110100b
-db 10110000b
-db 11000000b
-
-; 0010 up-left-long-ball
-db 11001100b
-db 10111000b
-db 10111100b
-db 10111000b
-
-; 0011 up-right-long-ball
-db 10111000b
-db 10111100b
-db 10111000b
-db 11001000b
-
-; 0100 down-left-long-ball
-db 11000100b
-db 10110000b
-db 10110100b
-db 10110000b
-
-; 0101 down-right-long-ball
-db 10110000b
-db 10110100b
-db 10110000b
-db 11000000b
-
-; 0110 left-bank
-db 10100100b
-db 10000100b
-db 10000000b
-db 10000100b
-
-; 0111 right-bank
-db 10000000b
-db 10000100b
-db 10000100b
-db 10100000b
-
-; 1000 top-bank
-db 10111100b
-db 10111000b
-db 10111100b
-db 10111000b
-
-; 1001 bottom-bank
-db 10110100b
-db 10110100b
-db 10110100b
-db 10110100b
-
-; 1010 light-grass
-db 10000100b
-db 10000000b
-db 10000000b
-db 10000100b
-
-; 1011 dense-grass
-db 10010100b
-db 10010000b
-db 10010100b
-db 10010000b
-
-; 1100 source-1
-db 10010000b
-db 10000010b
-db 10000000b
-db 10010000b
-
-; 1101 source-2
-db 10010000b
-db 10010000b
-db 10000010b
-db 10000000b
-
-; 1110 source-3
-db 10010000b
-db 10000010b
-db 10000000b
-db 10010000b
-
-; 1111 empty-filler
-db 00000000b
-db 00000000b
-db 00000000b
-db 00000000b
+db 11001100b,10111000b,10111100b,11001000b  ; 0000 up-ball
+db 11000100b,10110100b,10110000b,11000000b  ; 0001 down-ball
+db 11001100b,10111000b,10111100b,10111000b  ; 0010 up-left-long-ball
+db 10111000b,10111100b,10111000b,11001000b  ; 0011 up-right-long-ball
+db 11000100b,10110000b,10110100b,10110000b  ; 0100 down-left-long-ball
+db 10110000b,10110100b,10110000b,11000000b  ; 0101 down-right-long-ball
+db 10100100b,10000100b,10000000b,10000100b  ; 0110 left-bank
+db 10000000b,10000100b,10000100b,10100000b  ; 0111 right-bank
+db 10111100b,10111000b,10111100b,10111000b  ; 1000 top-bank
+db 10110100b,10110100b,10110100b,10110100b  ; 1001 bottom-bank
+db 10000100b,10000000b,10000000b,10000100b  ; 1010 light-grass
+db 10010100b,10010000b,10010100b,10010000b  ; 1011 dense-grass
+db 10010000b,10000010b,10000000b,10010000b  ; 1100 source-1
+db 10010000b,10010000b,10000010b,10000000b  ; 1101 source-2
+db 10010000b,10000010b,10000000b,10010000b  ; 1110 source-3
+db 00000000b,00000000b,00000000b,00000000b  ; 1111 empty-filler
 
 LevelData:
-; list of meta tiles
-; width of each level is 8x8
-; 0000 up-ball
-; 0001 down-ball
-; 0010 up-left-long-ball
-; 0011 up-right-long-ball
-; 0100 down-left-long-ball
-; 0101 down-right-long-ball
-; 0110 left-bank
-; 0111 right-bank
-; 1000 top-bank
-; 1001 bottom-bank
-; 1010 light-grass
-; 1011 dense-grass
-; 1100 source-1
-; 1101 source-2
-; 1110 source-3
+; List of meta tiles, width of each level is 8x10
+; Two words per line
+; 8x10 = 80 tiles
+; 40 bytes per level
+; Meta tiles:
+;   0000 up-ball
+;   0001 down-ball
+;   0010 up-left-long-ball
+;   0011 up-right-long-ball
+;   0100 down-left-long-ball
+;   0101 down-right-long-ball
+;   0110 left-bank
+;   0111 right-bank
+;   1000 top-bank
+;   1001 bottom-bank
+;   1010 light-grass
+;   1011 dense-grass
+;   1100 source-1
+;   1101 source-2
+;   1110 source-3
 
-; Level-1
-dw 1111111111111111b
-dw 1111111100001111b
-dw 1111111111111111b
-dw 1111111101101111b
-dw 1111111111111111b
-dw 1111111100011111b
-dw 1111111100100011b
-dw 0000111111111111b
-dw 1111001010101010b
-dw 1010001100100011b
-dw 1111011011000111b
-dw 1101101011100111b
-dw 1111010010010101b
-dw 0110010101000101b
-dw 0000111111111111b
-dw 0001111111111111b
-dw 0001111111111111b
-dw 1111111111111111b
-dw 1111111111111111b
-dw 1111111111111111b
+; Level-1 (40b)
+dw 1111111111111111b,1111111100001111b
+dw 1111111111111111b,1111111101101111b
+dw 1111111111111111b,1111111100011111b
+dw 1111111100100011b,0000111111111111b
+dw 1111001010101010b,1010001100100011b
+dw 1111011011000111b,1101101011100111b
+dw 1111010010010101b,0110010101000101b
+dw 0000111111111111b,0001111111111111b
+dw 0001111111111111b,1111111111111111b
+dw 1111111111111111b,1111111111111111b
 
 
+; Level-2 (40b)
+dw 0000111111111111b,1111111111111111b
+dw 0110001111111111b,1111000000100011b
+dw 0110011111111111b,0010101010100111b
+dw 0110101000110010b,1010010101000111b
+dw 0100100110101010b,1010001100100111b
+dw 1111111101101100b,1010011101100111b
+dw 0010100010111011b,1101010101100101b
+dw 0110111010011001b,0111111100011111b
+dw 0110010111111111b,0001111111111111b
+dw 0001111111111111b,1111111111111111b
 
-; Level-2
-dw 0000111111111111b
-dw 1111111111111111b
-dw 0110001111111111b
-dw 1111000000100011b
-dw 0110011111111111b
-dw 0010101010100111b
-dw 0110101000110010b
-dw 1010010101000111b
-dw 0100100110101010b
-dw 1010001100100111b
-dw 1111111101101100b
-dw 1010011101100111b
-dw 0010100010111011b
-dw 1101010101100101b
-dw 0110111010011001b
-dw 0111111100011111b
-dw 0110010111111111b
-dw 0001111111111111b
-dw 0001111111111111b
-dw 1111111111111111b
+; Level-3 (40b)
+dw 1111111111110010b,0011111111111111b
+dw 1111111111110110b,1010001111111111b
+dw 1111111111110100b,1101011111111111b
+dw 0010001111111111b,0110010111111111b
+dw 0110101000111111b,0110111111111111b
+dw 0110110010101000b,0111111100001111b
+dw 0110101001011001b,1010100010100011b
+dw 0100011111111111b,1001100111100111b
+dw 1111000111111111b,1111111101100101b
+dw 1111111111111111b,1111111100011111b
 
-; Level-3
-dw 1111111111110010b
-dw 0011111111111111b
-dw 1111111111110110b
-dw 1010001111111111b
-dw 1111111111110100b
-dw 1101011111111111b
-dw 0010001111111111b
-dw 0110010111111111b
-dw 0110101000111111b
-dw 0110111111111111b
-dw 0110110010101000b
-dw 0111111100001111b
-dw 0110101001011001b
-dw 1010100010100011b
-dw 0100011111111111b
-dw 1001100111100111b
-dw 1111000111111111b
-dw 1111111101100101b
-dw 1111111111111111b
-dw 1111111100011111b
-
-; Level-4
-dw 0000111111111111b
-dw 1111111111111111b
-dw 0110001111111111b
-dw 1111111111110000b
-dw 0110101100111111b
-dw 1111000000100111b
-dw 0110101001111111b
-dw 1111011010100111b
-dw 0110110001111111b
-dw 0010101011100111b
-dw 0110101001111111b
-dw 0110110110100111b
-dw 0100101001111111b
-dw 0100101010100101b
-dw 1111010010110011b
-dw 1111011001011111b
-dw 1111111101001010b
-dw 1000011111111111b
-dw 1111111111110100b
-dw 1001010111111111b
+; Level-4 (40b)
+dw 0000111111111111b,1111111111111111b
+dw 0110001111111111b,1111111111110000b
+dw 0110101100111111b,1111000000100111b
+dw 0110101001111111b,1111011010100111b
+dw 0110110001111111b,0010101011100111b
+dw 0110101001111111b,0110110110100111b
+dw 0100101001111111b,0100101010100101b
+dw 1111010010110011b,1111011001011111b
+dw 1111111101001010b,1000011111111111b
+dw 1111111111110100b,1001010111111111b
 
 
 Logo:
