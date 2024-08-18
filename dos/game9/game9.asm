@@ -22,6 +22,7 @@ _PLAYER_MIRROR_ equ 0x7006
 
 ; Constants
 LEVEL_START_POSITION equ 320*(104)-32
+PLAYER_START_POSITION equ 0x0711
 LEVELS_AVAILABLE equ 0x4
 
 start:
@@ -40,7 +41,7 @@ set_keyboard_rate:
 
 restart_game:
     mov word [_CURRENT_LEVEL_], 0x0000
-    mov word [_PLAYER_POS_], 0x0510
+    mov word [_PLAYER_POS_], PLAYER_START_POSITION
 
 game_loop:
     xor di,di                   ; Clear destination address
@@ -92,20 +93,9 @@ draw_terrain:
   .small_loop:
     push cx
 
-    xor bx,bx        ; Clear bx
-    shl ax,1         ; Cut left bit
-    adc bx,0         ; Get first bit
-    shl bx,1         ; Mov to represent 1 or 0
-    shl ax,1         ; Cut left bit
-    adc bx,0         ; Get second bit
-    shl bx,1         ; Mov to represent 2 or 0
-    shl ax,1         ; Cut left bit
-    adc bx,0         ; Get third bit
-    shl bx,1         ; Mov to represent 4 or 0
-    shl ax,1         ; Cut left bit
-    adc bx,0         ; Get forth bit
-
-    push ax ; AX - LevelData
+    mov cl, 0x4           ; Set up counter for loop
+    call convert_value
+    push ax             ; Preserve AX - LevelData
 
     mov si, MetaTiles
     mov ax, bx
@@ -122,65 +112,52 @@ draw_terrain:
       adc bx,0         ; Get first bit
       jz .skip_tile
 
-    xor bx,bx        ; Clear bx
-    shl ax,1         ; Cut left bit
-    adc bx,0         ; Get first bit
-    shl bx,1
+      push cx
+      mov cl, 0x3           ; Set up counter for loop
+      call convert_value
 
-    shl ax,1         ; Cut left bit
-    adc bx,0         ; Get second bit
-    shl bx,1
+      mov si, bx
+      mov bx, 0x14
+      imul si, bx
+      add si, Tiles
 
-    shl ax,1         ; Cut left bit
-    adc bx,0         ; Get third bit
+      mov cl, 0x2           ; Set up counter for loop
+      call convert_value
 
-    mov si, bx
-    mov bx, 0x14
-    imul si, bx
-    add si, Tiles
+      mov dx, bx
+      call draw_sprite
 
-    xor bx,bx        ; Clear bx
-    shl ax,1         ; Cut left bit
-    adc bx,0         ; Get first bit
-    shl bx,1
-    shl ax,1         ; Cut left bit
-    adc bx,0         ; Get second bit
-    mov dx, bx
-    call draw_sprite
+      pop cx
+      ; spawn source?
+      xor bx,bx        ; Clear bx
+      shl ax,1         ; Cut left bit
+      adc bx,0         ; Get first bit
+      ; todo: add more resources
+      jz .skip_tree
 
-    ; spawn source?
-    xor bx,bx        ; Clear bx
-    shl ax,1         ; Cut left bit
-    adc bx,0         ; Get first bit
-    ; todo: add more resources
-    jz .skip_tree
+      mov si, PalmSpr
+      call draw_sprite
+      .skip_tree:
+      .skip_tile:
 
+      ; next tile
+      add di,0x8
 
-    mov si, PalmSpr
-    call draw_sprite
-    .skip_tree:
-    .skip_tile:
-
-    ; next tile
-    add di,0x8
-
-    pop si
-    inc si
-  loop .draw_tile
+      pop si
+      inc si
+    loop .draw_tile
 
     pop ax
     pop cx
     dec cx
   jnz .small_loop
 
-
   pop si
   inc si
   inc si
   pop cx
   dec cx
-  jnz .draw_meta_tiles
-
+jnz .draw_meta_tiles
 
 ; =========================================== DRAW PLAYERS =====================
 draw_players:
@@ -188,18 +165,17 @@ draw_players:
   mov di, LEVEL_START_POSITION
   add di, 64    ; bug?
   sub di, 320*2
-  mov cx, [_PLAYER_POS_]
-  xor ax, ax
-  mov al, ch
-  mov bx, 320*8
- imul ax, bx
-  add di, ax
 
-  xor ax, ax
-  mov al, cl
-  mov bx, 0x8
- imul ax, bx
-  add di, ax
+  mov cx, [_PLAYER_POS_]   ; Load player position into CX (Y in CH, X in CL)
+  xor ax, ax               ; Clear AX
+  mov al, ch               ; Move Y coordinate to AL
+  mov bx, 320*8
+ imul bx
+  xor dh, dh               ; Clear DH
+  mov dl, cl               ; Move X coordinate to DL
+  shl dx, 3                ; DX = X * 8
+  add ax, dx               ; AX = Y * 2560 + X * 8
+  add di, ax               ; Move result to DI
 
   mov word [_PLAYER_MEM_], di
 
@@ -236,8 +212,8 @@ check_keyboard:
     xor ax,ax
     .ok:
     mov [_CURRENT_LEVEL_], ax
-    mov word [_PLAYER_POS_], 0x0510
 
+    mov word [_PLAYER_POS_], PLAYER_START_POSITION
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
@@ -405,6 +381,19 @@ draw_sprite:
     pop cx                   ; Restore line counter
     loop .plot_line
     popa
+    ret
+
+
+convert_value:
+    ; ax source
+    ; cl counter
+    xor bx, bx          ; Clear BX
+    .rotate_loop:
+        rol ax, 1       ; Rotate left, moving leftmost bit to carry flag
+        adc bx, 0       ; Add carry to BX (0 or 1)
+        shl bx, 1       ; Shift BX left, making room for next bit
+        loop .rotate_loop
+    shr bx, 1           ; Adjust final result (undo last shift)
     ret
 
 ; =========================================== SPRITE DATA ======================
