@@ -16,9 +16,9 @@ _VGA_MEMORY_ equ 0xA000                   ; VGA memory address
 _DBUFFER_MEMORY_ equ 0x8000               ; Doublebuffer memory address
 _CURRENT_LEVEL_ equ 0x7000
 _PLAYER_POS_ equ 0x7002
-
+_PLAYER_MIRROR_ equ 0x7004
 LEVEL_START_POSITION equ 320*(104)-32
-
+LEVELS_AVAILABLE equ 0x4
 
 start:
     mov ax,0x13                             ; Init VGA 320x200x256
@@ -28,20 +28,15 @@ start:
     pop es                                  ; as target
 
 set_keyboard_rate:
+    xor ax, ax
+    xor bx, bx
     mov ah, 03h         ; BIOS function to set typematic rate and delay
-    mov al, 00h         ; AL = 0 to set both delay and rate
-    mov bh, 00h         ; BH = 0 for minimum delay (immediate repeat)
     mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
-    int 16h             ; Call BIOS interrupt
+    int 16h
 
-    ; Disable key click (beep) sound
-    in al, 61h          ; Read from port 61h (keyboard control)
-    and al, 11111100b   ; Clear bits 0 and 1 to disable speaker
-    out 61h, al         ; Write back to port 61h
-
-
+restart_game:
     mov word [_CURRENT_LEVEL_], 0x0000
-    mov word [_PLAYER_POS_], 0x0505
+    mov word [_PLAYER_POS_], 0x0510
 
 game_loop:
     xor di,di                   ; Clear destination address
@@ -49,37 +44,22 @@ game_loop:
 
 ; =========================================== DRAW BACKGROUND ==================
 draw_bg:
-    mov ax, 0x3b3b              ; Set color to 3b
-    mov dx, 16                  ; 16 bars to draw
-    .draw_bars:
-        mov cx, 320*3           ; 3 pixels high
-        rep stosw               ; Write to the doublebuffer
-        inc ax                  ; Increment color index for next bar
-        xchg al, ah             ; Swap colors
-        dec dx                  ; Decrement bar counter
-        jnz .draw_bars
-
-; perspective bg
-;    mov dx, 0x7
-;    mov bx, 0x4
-;    mov al, 0x37
-;    .draw_bars2:
-;    mov cx, 320
-;    imul cx, bx
-;    inc al
-;    add al, bl
-;    mov ah,al
-;    rep stosw
-;    add bx, 0x2
-;    dec dx
-;    jnz .draw_bars2
+  mov ax, 0x3b3b              ; Set color to 3b
+  mov dx, 16                  ; 16 bars to draw
+  .draw_bars:
+     mov cx, 320*3           ; 3 pixels high
+     rep stosw               ; Write to the doublebuffer
+     inc ax                  ; Increment color index for next bar
+     xchg al, ah             ; Swap colors
+     dec dx                  ; Decrement bar counter
+     jnz .draw_bars
 
   mov cx, 320*54              ; Clear the rest of the screen
   mov ax, 0x3636              ; Set color to 36
   rep stosw                   ; Write to the doublebuffer
 
 ; =========================================== DRAW TERRAIN =====================
-  
+
 draw_terrain:
 
   ; draw metatiles
@@ -202,24 +182,27 @@ draw_terrain:
 draw_players:
   mov si, DinoSpr
   mov di, LEVEL_START_POSITION
+  add di, 64    ; bug?
+  sub di, 320*2
   mov cx, [_PLAYER_POS_]
-  xor ax,ax
-  mov al,ch
+  xor ax, ax
+  mov al, ch
   mov bx, 320*8
-  imul ax, bx
+ imul ax, bx
   add di, ax
 
-  xor ax,ax
+  xor ax, ax
   mov al, cl
   mov bx, 0x8
-  imul ax, bx
+ imul ax, bx
   add di, ax
+
   rdtsc
   and ax, 0x1
   mov bx, 320
-  imul ax, bx
+ imul ax, bx
   sub di, ax
-  xor dx, dx
+  mov dx, [_PLAYER_MIRROR_]
   call draw_sprite
 
   mov si, OctopusSpr
@@ -233,22 +216,26 @@ check_keyboard:
     mov ah, 01h         ; BIOS keyboard status function
     int 16h             ; Call BIOS interrupt
     jz .no_key           ; Jump if Zero Flag is set (no key pressed)
-    
+
     mov ah, 00h         ; BIOS keyboard read function
     int 16h             ; Call BIOS interrupt
-  
-  .check_spacebar:
-  cmp ah, 1ch         ; Compare scan code with spacebar
+
+  .check_enter:
+  cmp ah, 1ch         ; Compare scan code with enter
   jne .check_up
     mov ax, [_CURRENT_LEVEL_]
     inc ax
+    cmp ax, LEVELS_AVAILABLE
+    jl .ok
+    xor ax,ax
+    .ok:
     mov [_CURRENT_LEVEL_], ax
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
     mov ax, [_PLAYER_POS_]
     dec ah
-    mov [_PLAYER_POS_], ax  
+    mov [_PLAYER_POS_], ax
   .check_down:
   cmp ah, 50h         ; Compare scan code with down arrow
   jne .check_left
@@ -261,12 +248,14 @@ check_keyboard:
     mov ax, [_PLAYER_POS_]
     dec al
     mov [_PLAYER_POS_], ax
+    mov byte [_PLAYER_MIRROR_], 0x01
   .check_right:
   cmp ah, 4Dh         ; Compare scan code with right arrow
   jne .no_key
     mov ax, [_PLAYER_POS_]
     inc al
     mov [_PLAYER_POS_], ax
+    mov byte [_PLAYER_MIRROR_], 0x00
   .no_key:
 
 ; =========================================== VGA BLIT PROCEDURE ===============
