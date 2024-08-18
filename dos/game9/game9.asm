@@ -1,22 +1,26 @@
-; GAME9 - DINO?
+; GAME9 - DINOPIX
 ; DOS VERSION
 ;
 ; Description:
-;   Some shootemup
+;   Dino cook serving food to octopuses.
 ;
 ;
 ; Author: Krzysztof Krystian Jankowski
-; Date: 2024-08/15
+; Date: 2024-08/18
 ; License: MIT
 
 org 0x100
 use16
 
-_VGA_MEMORY_ equ 0xA000                   ; VGA memory address
-_DBUFFER_MEMORY_ equ 0x8000               ; Doublebuffer memory address
+; Memory adresses
+_VGA_MEMORY_ equ 0xA000
+_DBUFFER_MEMORY_ equ 0x8000
 _CURRENT_LEVEL_ equ 0x7000
 _PLAYER_POS_ equ 0x7002
-_PLAYER_MIRROR_ equ 0x7004
+_PLAYER_MEM_ equ 0x7004
+_PLAYER_MIRROR_ equ 0x7006
+
+; Constants
 LEVEL_START_POSITION equ 320*(104)-32
 LEVELS_AVAILABLE equ 0x4
 
@@ -197,6 +201,8 @@ draw_players:
  imul ax, bx
   add di, ax
 
+  mov word [_PLAYER_MEM_], di
+
   rdtsc
   and ax, 0x1
   mov bx, 320
@@ -230,18 +236,26 @@ check_keyboard:
     xor ax,ax
     .ok:
     mov [_CURRENT_LEVEL_], ax
+    mov word [_PLAYER_POS_], 0x0510
+
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
+    mov si, [_PLAYER_MEM_]
+    mov cx, [si-320*4]
+    cmp cl, 0x36
+    jz .water
     mov ax, [_PLAYER_POS_]
     dec ah
     mov [_PLAYER_POS_], ax
+    .water:
   .check_down:
   cmp ah, 50h         ; Compare scan code with down arrow
   jne .check_left
     mov ax, [_PLAYER_POS_]
     inc ah
     mov [_PLAYER_POS_], ax
+
   .check_left:
   cmp ah, 4Bh         ; Compare scan code with left arrow
   jne .check_right
@@ -249,6 +263,7 @@ check_keyboard:
     dec al
     mov [_PLAYER_POS_], ax
     mov byte [_PLAYER_MIRROR_], 0x01
+
   .check_right:
   cmp ah, 4Dh         ; Compare scan code with right arrow
   jne .no_key
@@ -256,6 +271,7 @@ check_keyboard:
     inc al
     mov [_PLAYER_POS_], ax
     mov byte [_PLAYER_MIRROR_], 0x00
+
   .no_key:
 
 ; =========================================== VGA BLIT PROCEDURE ===============
