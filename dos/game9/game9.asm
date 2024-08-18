@@ -400,7 +400,7 @@ dw 0000001010100000b
 dw 0000010000010000b
 
 OctopusSpr:
-dw 0x8, 0x16
+dw 0x8, 0x0e
 dw 0011111111000000b
 dw 1010101010110000b
 dw 0110001100100000b
@@ -423,7 +423,22 @@ MetaTiles:
 ; 100 Corner
 db 0b
 
-; *___YX___
+; *___YX___  \
+; 0000 up-ball
+; 0001 down-ball
+; 0010 up-left-long-ball
+; 0011 up-right-long-ball
+; 0100 down-left-long-ball
+; 0101 down-right-long-ball
+; 0110 left-bank
+; 0111 right-bank
+; 1000 top-bank
+; 1001 bottom-bank
+; 1010 light-grass
+; 1011 dense-grass
+; 1100 source-1
+; 1101 source-2
+; 1110 source-3
 
 ; 0000 up-ball
 db 11001100b
@@ -524,6 +539,21 @@ db 00000000b
 LevelData:
 ; list of meta tiles
 ; width of each level is 8x8
+; 0000 up-ball
+; 0001 down-ball
+; 0010 up-left-long-ball
+; 0011 up-right-long-ball
+; 0100 down-left-long-ball
+; 0101 down-right-long-ball
+; 0110 left-bank
+; 0111 right-bank
+; 1000 top-bank
+; 1001 bottom-bank
+; 1010 light-grass
+; 1011 dense-grass
+; 1100 source-1
+; 1101 source-2
+; 1110 source-3
 ;1 ****____****____
 dw 0000111111111111b
 dw 0010001111110000b
@@ -538,22 +568,22 @@ dw 0001011010101011b
 dw 1011101010110111b
 ;5 ****____****____
 dw 1111011010101010b
-dw 1010101110101111b
+dw 1010101110010101b
 ;6 ****____****____
 dw 1111011001010110b
-dw 1011101011111111b
+dw 1011101010000011b
 ;7 ****____****____
-dw 1111000111111111b
-dw 1111111111111111b
+dw 1111000111110110b
+dw 1010101110100101b
 ;8 ****____****____
-dw 1111111111111111b
-dw 1111111111111111b
+dw 1111111100101010b
+dw 1010101001011111b
 ;9 ****____****____
+dw 1111100010101011b
+dw 1010101111111111b
+;0 ****____****____
+dw 1111100110011111b
 dw 1111111111111111b
-dw 1111111111111111b
-;10 ****____****____
-dw 0000111111111111b
-dw 1111111111110000b
 
 
 Logo:
