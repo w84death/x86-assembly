@@ -27,10 +27,18 @@ start:
     push _DBUFFER_MEMORY_                 ; Set doublebuffer memory
     pop es                                  ; as target
 
-      cli
-      mov al,2        ; dissable IRQ 1
-      out 21h,al
-      sti
+set_keyboard_rate:
+    mov ah, 03h         ; BIOS function to set typematic rate and delay
+    mov al, 00h         ; AL = 0 to set both delay and rate
+    mov bh, 00h         ; BH = 0 for minimum delay (immediate repeat)
+    mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
+    int 16h             ; Call BIOS interrupt
+
+    ; Disable key click (beep) sound
+    in al, 61h          ; Read from port 61h (keyboard control)
+    and al, 11111100b   ; Clear bits 0 and 1 to disable speaker
+    out 61h, al         ; Write back to port 61h
+
 
     mov word [_CURRENT_LEVEL_], 0x0000
     mov word [_PLAYER_POS_], 0x0505
@@ -222,40 +230,39 @@ draw_players:
 
 ; =========================================== KEYBOARD INPUT ==================
 check_keyboard:
-  in al,64h
-  test al,1       ; check output buffer
-  jz .no_key           ; Jump if Zero Flag is set (no key pressed)
-  test al,20h 
-  jnz .no_key
-  
-  in al,60h
+    mov ah, 01h         ; BIOS keyboard status function
+    int 16h             ; Call BIOS interrupt
+    jz .no_key           ; Jump if Zero Flag is set (no key pressed)
+    
+    mov ah, 00h         ; BIOS keyboard read function
+    int 16h             ; Call BIOS interrupt
   
   .check_spacebar:
-  cmp al, 1ch         ; Compare scan code with spacebar
+  cmp ah, 1ch         ; Compare scan code with spacebar
   jne .check_up
     mov ax, [_CURRENT_LEVEL_]
     inc ax
     mov [_CURRENT_LEVEL_], ax
   .check_up:
-  cmp al, 48h         ; Compare scan code with up arrow
+  cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
     mov ax, [_PLAYER_POS_]
     dec ah
     mov [_PLAYER_POS_], ax  
   .check_down:
-  cmp al, 50h         ; Compare scan code with down arrow
+  cmp ah, 50h         ; Compare scan code with down arrow
   jne .check_left
     mov ax, [_PLAYER_POS_]
     inc ah
     mov [_PLAYER_POS_], ax
   .check_left:
-  cmp al, 4Bh         ; Compare scan code with left arrow
+  cmp ah, 4Bh         ; Compare scan code with left arrow
   jne .check_right
     mov ax, [_PLAYER_POS_]
     dec al
     mov [_PLAYER_POS_], ax
   .check_right:
-  cmp al, 4Dh         ; Compare scan code with right arrow
+  cmp ah, 4Dh         ; Compare scan code with right arrow
   jne .no_key
     mov ax, [_PLAYER_POS_]
     inc al
