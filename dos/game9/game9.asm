@@ -336,12 +336,10 @@ draw_sprite:
         mov ax, [si]      ; Get sprite line
         mov cx, 0x08      ; 8 pixels in line
         .draw_pixel:
-            xor bx,bx        ; Clear bx
-            shl ax,1         ; Cut left bit
-            adc bx,0         ; Get first bit
-            shl bx,1         ; Mov to represent 2 or 0
-            shl ax,1         ; Cut left bit
-            adc bx,0         ; Get second bit (0,1)
+            push cx
+
+            mov cl, 2
+            call convert_value
 
             cmp bx, 0        ; transparency
             jz .skip_pixel
@@ -359,6 +357,7 @@ draw_sprite:
             dec di           ; Remove previous shift (now it's 0)
             dec di           ; Move destination 1px left (-1)
             .revX:
+            pop cx
             loop .draw_pixel
 
         inc si               ; Move to the next
