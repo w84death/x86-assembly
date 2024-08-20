@@ -21,9 +21,11 @@ _PLAYER_MEM_ equ 0x7004
 _PLAYER_MIRROR_ equ 0x7006
 
 ; Constants
-LEVEL_START_POSITION equ 320*(104)-32
-PLAYER_START_POSITION equ 0x0711
+LEVEL_START_POSITION equ 320*108
+PLAYER_START_POSITION equ 0x510        ; AH=Y, AL=X
 LEVELS_AVAILABLE equ 0x4
+COLOR_SKY equ 0x3b3b
+COLOR_WATER equ 0x3636
 
 start:
     mov ax,0x13                             ; Init VGA 320x200x256
@@ -49,47 +51,48 @@ game_loop:
 
 ; =========================================== DRAW BACKGROUND ==================
 draw_bg:
-  mov ax, 0x3b3b              ; Set color to 3b
-  mov dx, 16                  ; 16 bars to draw
+  mov ax, COLOR_SKY               ; Set color to 3b
+  mov cl, 0x10                  ; 16 bars to draw
   .draw_bars:
+     push cx
+
      mov cx, 320*3           ; 3 pixels high
      rep stosw               ; Write to the doublebuffer
      inc ax                  ; Increment color index for next bar
      xchg al, ah             ; Swap colors
-     dec dx                  ; Decrement bar counter
-     jnz .draw_bars
+
+     pop cx                  ; Decrement bar counter
+     loop .draw_bars
 
   mov cx, 320*54              ; Clear the rest of the screen
-  mov ax, 0x3636              ; Set color to 36
+  mov ax, COLOR_WATER              ; Set color to 36
   rep stosw                   ; Write to the doublebuffer
 
 ; =========================================== DRAW TERRAIN =====================
 
 draw_terrain:
+  mov di, LEVEL_START_POSITION
+  sub di, 32    ; bug
 
   ; draw metatiles
-  mov di, LEVEL_START_POSITION
   mov si, LevelData
   mov word ax, [_CURRENT_LEVEL_]
-  mov bx, 0x28
-  imul bx
+ imul ax, 0x28
   add si, ax
 
-  mov cx, 0x14 ; 20 reads, 2 per line
+  mov cl, 0x14 ; 20 reads, 2 per line
   .draw_meta_tiles:
   push cx
   push si
 
-  mov ax, cx
-  dec ax
-  and ax, 0x1
-  cmp ax, 0x1
-  jnz .no_new_line
-  add di, 320*8-(32*8)
+  dec cx
+  shr cx, 0x1
+  jnc .no_new_line
+    add di, 320*8-(32*8)
   .no_new_line:
 
   mov ax, [si]      ; AX - LevelData
-  mov cx, 0x4
+  mov cl, 0x4
   .small_loop:
     push cx
 
@@ -99,26 +102,23 @@ draw_terrain:
 
     mov si, MetaTiles
     mov ax, bx
-    mov bx, 0x4
-    imul bx
+   imul ax, 0x4
     add si, ax
     mov ax, [si] ; AX - MeTatile
-    mov cx, 0x4
+    mov cl, 0x4
     .draw_tile:
-      push si
-      mov ax, [si]
-      xor bx,bx        ; Clear bx
-      shl ax,1         ; Cut left bit
-      adc bx,0         ; Get first bit
-      jz .skip_tile
-
       push cx
+      push si
+
+      mov ax, [si]
+      shl ax, 1         ; Cut left bit
+      jnc .skip_tile
+
       mov cl, 0x3           ; Set up counter for loop
       call convert_value
 
       mov si, bx
-      mov bx, 0x14
-      imul si, bx
+     imul si, 0x14
       add si, Tiles
 
       mov cl, 0x2           ; Set up counter for loop
@@ -127,50 +127,42 @@ draw_terrain:
       mov dx, bx
       call draw_sprite
 
-      pop cx
       ; spawn source?
-      xor bx,bx        ; Clear bx
       shl ax,1         ; Cut left bit
-      adc bx,0         ; Get first bit
       ; todo: add more resources
-      jz .skip_tree
-
-      mov si, PalmSpr
-      call draw_sprite
+      jnc .skip_tree
+        mov si, PalmSpr
+        call draw_sprite
       .skip_tree:
+
       .skip_tile:
 
-      ; next tile
       add di,0x8
-
       pop si
       inc si
+      pop cx
     loop .draw_tile
 
     pop ax
     pop cx
-    dec cx
-  jnz .small_loop
+  loop .small_loop
 
   pop si
   inc si
   inc si
   pop cx
-  dec cx
-jnz .draw_meta_tiles
+loop .draw_meta_tiles
 
 ; =========================================== DRAW PLAYERS =====================
 draw_players:
   mov si, DinoSpr
   mov di, LEVEL_START_POSITION
-  add di, 64    ; bug?
   sub di, 320*2
 
   mov cx, [_PLAYER_POS_]   ; Load player position into CX (Y in CH, X in CL)
   xor ax, ax               ; Clear AX
   mov al, ch               ; Move Y coordinate to AL
-  mov bx, 320*8
- imul bx
+ imul ax, 320*8
   xor dh, dh               ; Clear DH
   mov dl, cl               ; Move X coordinate to DL
   shl dx, 3                ; DX = X * 8
@@ -180,72 +172,73 @@ draw_players:
   mov word [_PLAYER_MEM_], di
 
   rdtsc
-  and ax, 0x1
-  mov bx, 320
- imul ax, bx
-  sub di, ax
+  shr ax, 0x1
+  jnc .skip_jump
+  sub di, 320
+  .skip_jump:
+
   mov dx, [_PLAYER_MIRROR_]
   call draw_sprite
 
-  mov si, OctopusSpr
-  mov di, 320*104+64
-  xor dx, dx
-  call draw_sprite
-
-
 ; =========================================== KEYBOARD INPUT ==================
 check_keyboard:
-    mov ah, 01h         ; BIOS keyboard status function
-    int 16h             ; Call BIOS interrupt
-    jz .no_key           ; Jump if Zero Flag is set (no key pressed)
+  mov ah, 01h         ; BIOS keyboard status function
+  int 16h             ; Call BIOS interrupt
+  jz .no_key           ; Jump if Zero Flag is set (no key pressed)
 
-    mov ah, 00h         ; BIOS keyboard read function
-    int 16h             ; Call BIOS interrupt
+  mov ah, 00h         ; BIOS keyboard read function
+  int 16h             ; Call BIOS interrupt
+
+  mov si, [_PLAYER_MEM_]
+  add si, 320*4+5
+  mov byte al, [_PLAYER_MIRROR_]
+  shr al, 1
+  jnc .skip_adjust
+    sub si, 2
+  .skip_adjust:
 
   .check_enter:
   cmp ah, 1ch         ; Compare scan code with enter
   jne .check_up
-    mov ax, [_CURRENT_LEVEL_]
-    inc ax
-    cmp ax, LEVELS_AVAILABLE
+    inc word [_CURRENT_LEVEL_]
+    cmp word [_CURRENT_LEVEL_], LEVELS_AVAILABLE
     jl .ok
-    xor ax,ax
+    mov word [_CURRENT_LEVEL_], 0x0
     .ok:
-    mov [_CURRENT_LEVEL_], ax
-
     mov word [_PLAYER_POS_], PLAYER_START_POSITION
+
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
-    mov si, [_PLAYER_MEM_]
-    mov cx, [si-320*8]
-    cmp cl, 0x36
-    jz .water
-    mov ax, [_PLAYER_POS_]
-    dec ah
-    mov [_PLAYER_POS_], ax
-    .water:
+    sub si, 320*6
+    call check_water
+    jz .no_key
+    sub word [_PLAYER_POS_],0x0100
+
   .check_down:
   cmp ah, 50h         ; Compare scan code with down arrow
   jne .check_left
-    mov ax, [_PLAYER_POS_]
-    inc ah
-    mov [_PLAYER_POS_], ax
+    add si, 320*6
+    call check_water
+    jz .no_key
+    add word [_PLAYER_POS_],0x0100
 
   .check_left:
   cmp ah, 4Bh         ; Compare scan code with left arrow
   jne .check_right
-    mov ax, [_PLAYER_POS_]
-    dec al
-    mov [_PLAYER_POS_], ax
+    sub si, 8
+    call check_water
+    jz .no_key
+    dec word [_PLAYER_POS_]
     mov byte [_PLAYER_MIRROR_], 0x01
 
   .check_right:
   cmp ah, 4Dh         ; Compare scan code with right arrow
   jne .no_key
-    mov ax, [_PLAYER_POS_]
-    inc al
-    mov [_PLAYER_POS_], ax
+    add si, 6
+    call check_water
+    jz .no_key
+    inc word [_PLAYER_POS_]
     mov byte [_PLAYER_MIRROR_], 0x00
 
   .no_key:
@@ -289,14 +282,10 @@ wait_for_tick:
 
 ; =========================================== TERMINATE PROGRAM ================
 exit:
-    cli
-    xor al,al       ; enable IRQ 1
-    out 21h,al
-    sti
-
     mov ax, 0x0003
     int 0x10
     ret
+
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
 ; DI - positon (linear)
@@ -334,7 +323,7 @@ draw_sprite:
     .plot_line:
         push cx           ; Save lines couter
         mov ax, [si]      ; Get sprite line
-        mov cx, 0x08      ; 8 pixels in line
+        mov cl, 0x08      ; 8 pixels in line
         .draw_pixel:
             push cx
 
@@ -382,10 +371,19 @@ draw_sprite:
     popa
     ret
 
+; =========================================== CHECK WATER =====================
+; SI - memory position to check for water
+check_water:
+    mov ax, [es:si]
+    ;mov word [es:si], 0x0 ;DEBUG ONLY
+    cmp ax, COLOR_WATER
+    ret
 
+; =========================================== CONVERT VALUE ===================
+; AX - source
+; CL - number of bits to convert
+; Return: BX
 convert_value:
-    ; ax source
-    ; cl counter
     xor bx, bx          ; Clear BX
     .rotate_loop:
         rol ax, 1       ; Rotate left, moving leftmost bit to carry flag
