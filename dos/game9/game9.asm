@@ -180,6 +180,29 @@ draw_players:
   mov dx, [_PLAYER_MIRROR_]
   call draw_sprite
 
+  xor dx,dx
+  mov di, [_PLAYER_MEM_]
+  sub di, 320*13+6
+
+  mov si, CaptionSpr
+  mov cx, 4
+  .draw_cap:
+  add di, 10
+  call draw_sprite
+  loop .draw_cap
+
+  add di, 320*2-30
+
+  mov si, IconsSpr
+  call draw_sprite
+  mov cx, 3
+  .draw_food:
+  add di, 10
+  add si, 14
+  call draw_sprite
+  loop .draw_food
+
+
 ; =========================================== KEYBOARD INPUT ==================
 check_keyboard:
   mov ah, 01h         ; BIOS keyboard status function
@@ -490,6 +513,50 @@ dw 0000011001000011b
 dw 1100000000001000b
 dw 0010001011000100b
 dw 0001000100000000b
+
+CaptionSpr:
+dw 0x0c, 0x17
+dw 0010101010100100b
+dw 1011111111111110b
+dw 1011111111111110b
+dw 0111111111111101b
+dw 1011111111111110b
+dw 0111111111111101b
+dw 0111111111111101b
+dw 0111111111111101b
+dw 1101101010101001b
+dw 0011111101100111b
+dw 0000000110111100b
+dw 0000001111000000b
+
+IconsSpr:
+dw 0x5, 0x16
+dw 0000001111000000b
+dw 0000001110000000b
+dw 0000001001000000b
+dw 0000000000000000b
+dw 0000001110000000b
+
+dw 0x5, 0x3b
+dw 0000010000000000b
+dw 0000101100000000b
+dw 0000111111000000b
+dw 0000111111000000b
+dw 0000001111100000b
+
+dw 0x5, 0x6b
+dw 0000001111000000b
+dw 0000111110010000b
+dw 0000111010010000b
+dw 0000111010010000b
+dw 0000000101000000b
+
+dw 0x4, 0x22
+dw 0000000111000000b
+dw 0011011001111000b
+dw 0001011110100100b
+dw 0000001001000000b
+
 
 MetaTiles:
 ; List of tiles, one row of 4 tiles per meta-tile
