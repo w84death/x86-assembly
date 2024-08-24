@@ -49,10 +49,23 @@ restart_game:
     mov word [_ENTITIES_], 0x0101      ; Y/X
     mov byte [_ENTITIES_+2], 0x00      ; ID: 0 eyes, 1 submerged
     mov byte [_ENTITIES_+3], 0x00      ; State: 0 explore, 1 hungry, 2 waiting
+    mov byte [_ENTITIES_+4], 0x00
 
-    mov word [_ENTITIES_+4], 0x0805      ; Y/X
-    mov byte [_ENTITIES_+6], 0x00      ; ID: 0 eyes, 1 submerged
-    mov byte [_ENTITIES_+7], 0x00      ; State: 0 explore, 1 hungry, 2 waiting
+    mov word [_ENTITIES_+5], 0x0406      ; Y/X
+    mov byte [_ENTITIES_+7], 0x00      ; ID: 0 eyes, c submerged
+    mov byte [_ENTITIES_+8], 0x00      ; State: 0 explore, 1 hungry, 2 waiting
+    mov byte [_ENTITIES_+9], 0x01
+
+    mov word [_ENTITIES_+10], 0x060b      ; Y/X
+    mov byte [_ENTITIES_+12], 0x0c      ; ID: 0 eyes, 1 submerged
+    mov byte [_ENTITIES_+13], 0x01      ; mirror
+    mov byte [_ENTITIES_+14], 0x02
+    ; State: 0 explore, 1 hungry, 2 waiting
+
+    mov word [_ENTITIES_+15], 0x031a      ; Y/X
+    mov byte [_ENTITIES_+17], 0x00      ; ID: 0 eyes, 1 submerged
+    mov byte [_ENTITIES_+18], 0x01
+    mov byte [_ENTITIES_+19], 0x01
 
 
 
@@ -257,29 +270,48 @@ check_keyboard:
 
 draw_entities:
   mov si, _ENTITIES_
-  mov cx, 2
+  mov cx, 4
   .next:
     push cx
     mov word cx, [si]
-    call conv_pos
-
     push si
-    mov si, FishSpr
-    call draw_sprite
-    pop si
 
-    add si, 4
+
+
+    cmp byte  [si+4],1
+    jnz .skip_explore
+
+      rdtsc
+      and ax,1000
+      jnz .skip_explore
+
+      rdtsc
+      and ax, 0x0101
+      add cx,ax
+
+      .savepos:
+
+      mov word [si],cx
+    .skip_explore:
+
+    call conv_pos
+    xor ax,ax
+    mov byte al, [si+2]
+    mov si, FishSpr
+    add si, ax
+    mov byte dl, [si+3]
+    call draw_sprite
+
+    cmp al, 0
+    jz .skip_caption
+      call draw_caption
+    .skip_caption:
+
+    pop si
+    add si, 5
     pop cx
   loop .next
 
-draw_caption:
-  mov si, CaptionSpr
-  sub di, 320*13-3
-  call draw_sprite
-
-  add di, 320*2
-  mov si, IconsSpr
-  call draw_sprite
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 
@@ -336,6 +368,16 @@ conv_pos:
   add ax, dx               ; AX = Y * 2560 + X * 8
   add di, ax               ; Move result to DI
   ret
+
+draw_caption:
+  mov si, CaptionSpr
+  sub di, 320*13-3
+  call draw_sprite
+
+  add di, 320*2
+  mov si, IconsSpr
+  call draw_sprite
+ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
 ; DI - positon (linear)
@@ -442,6 +484,7 @@ convert_value:
         loop .rotate_loop
     shr bx, 1           ; Adjust final result (undo last shift)
     ret
+
 
 ; =========================================== SPRITE DATA ======================
 
@@ -563,6 +606,13 @@ dw 1110111001101001b
 dw 1011111110010100b
 dw 1010101111111000b
 dw 0010111011101000b
+
+TalkSpr:
+dw 0x4, 0x64
+dw 0000000000101000b
+dw 0000000001111101b
+dw 0000000001010101b
+dw 0000000010111100b
 
 CaptionSpr:
 dw 0x0c, 0x17
