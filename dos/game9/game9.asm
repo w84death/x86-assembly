@@ -19,10 +19,11 @@ _CURRENT_LEVEL_ equ 0x7000
 _PLAYER_POS_ equ 0x7002
 _PLAYER_MEM_ equ 0x7004
 _PLAYER_MIRROR_ equ 0x7006
+_ENTITIES_ equ 0x70a0
 
 ; Constants
-LEVEL_START_POSITION equ 320*108
-PLAYER_START_POSITION equ 0x610        ; AH=Y, AL=X
+LEVEL_START_POSITION equ 320*80
+PLAYER_START_POSITION equ 0x610            ; AH=Y, AL=X
 LEVELS_AVAILABLE equ 0x4
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3636
@@ -45,6 +46,16 @@ restart_game:
     mov word [_CURRENT_LEVEL_], 0x0000
     mov word [_PLAYER_POS_], PLAYER_START_POSITION
 
+    mov word [_ENTITIES_], 0x0101      ; Y/X
+    mov byte [_ENTITIES_+2], 0x00      ; ID: 0 eyes, 1 submerged
+    mov byte [_ENTITIES_+3], 0x00      ; State: 0 explore, 1 hungry, 2 waiting
+
+    mov word [_ENTITIES_+4], 0x0805      ; Y/X
+    mov byte [_ENTITIES_+6], 0x00      ; ID: 0 eyes, 1 submerged
+    mov byte [_ENTITIES_+7], 0x00      ; State: 0 explore, 1 hungry, 2 waiting
+
+
+
 game_loop:
     xor di,di                   ; Clear destination address
     xor si,si                   ; Clear source address
@@ -52,7 +63,7 @@ game_loop:
 ; =========================================== DRAW BACKGROUND ==================
 draw_bg:
   mov ax, COLOR_SKY               ; Set color to 3b
-  mov cl, 0x10                  ; 16 bars to draw
+  mov cl, 0xa                  ; 16 bars to draw
   .draw_bars:
      push cx
 
@@ -64,7 +75,7 @@ draw_bg:
      pop cx                  ; Decrement bar counter
      loop .draw_bars
 
-  mov cx, 320*54              ; Clear the rest of the screen
+  mov cx, 320*70              ; Clear the rest of the screen
   mov ax, COLOR_WATER              ; Set color to 36
   rep stosw                   ; Write to the doublebuffer
 
@@ -161,19 +172,8 @@ loop .draw_meta_tiles
 ; =========================================== DRAW PLAYERS =====================
 draw_players:
   mov si, DinoSpr
-  mov di, LEVEL_START_POSITION
-  sub di, 320*2
-
   mov cx, [_PLAYER_POS_]   ; Load player position into CX (Y in CH, X in CL)
-  xor ax, ax               ; Clear AX
-  mov al, ch               ; Move Y coordinate to AL
- imul ax, 320*8
-  xor dh, dh               ; Clear DH
-  mov dl, cl               ; Move X coordinate to DL
-  shl dx, 3                ; DX = X * 8
-  add ax, dx               ; AX = Y * 2560 + X * 8
-  add di, ax               ; Move result to DI
-
+  call conv_pos
   mov word [_PLAYER_MEM_], di
 
   rdtsc
@@ -185,27 +185,9 @@ draw_players:
   mov dx, [_PLAYER_MIRROR_]
   call draw_sprite
 
-  xor dx,dx
-  mov di, [_PLAYER_MEM_]
-  sub di, 320*13+6
-
-  mov si, CaptionSpr
-  mov cx, 4
-  .draw_cap:
-  add di, 10
-  call draw_sprite
-  loop .draw_cap
-
-  add di, 320*2-30
-
-  mov si, IconsSpr
-  call draw_sprite
-  mov cx, 3
-  .draw_food:
-  add di, 10
-  add si, 14
-  call draw_sprite
-  loop .draw_food
+;  xor dx,dx
+;  mov di, [_PLAYER_MEM_]
+;  sub di, 320*13+6
 
 
 ; =========================================== KEYBOARD INPUT ==================
@@ -271,6 +253,34 @@ check_keyboard:
 
   .no_key:
 
+; =========================================== DRAW ENITIES ===============
+
+draw_entities:
+  mov si, _ENTITIES_
+  mov cx, 2
+  .next:
+    push cx
+    mov word cx, [si]
+    call conv_pos
+
+    push si
+    mov si, FishSpr
+    call draw_sprite
+    pop si
+
+    add si, 4
+    pop cx
+  loop .next
+
+draw_caption:
+  mov si, CaptionSpr
+  sub di, 320*13-3
+  call draw_sprite
+
+  add di, 320*2
+  mov si, IconsSpr
+  call draw_sprite
+
 ; =========================================== VGA BLIT PROCEDURE ===============
 
 vga_blit:
@@ -314,6 +324,18 @@ exit:
     int 0x10
     ret
 
+conv_pos:
+  mov di, LEVEL_START_POSITION
+  sub di, 320*2
+  xor ax, ax               ; Clear AX
+  mov al, ch               ; Move Y coordinate to AL
+ imul ax, 320*8
+  xor dh, dh               ; Clear DH
+  mov dl, cl               ; Move X coordinate to DL
+  shl dx, 3                ; DX = X * 8
+  add ax, dx               ; AX = Y * 2560 + X * 8
+  add di, ax               ; Move result to DI
+  ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
 ; DI - positon (linear)
@@ -525,16 +547,22 @@ dw 0001101011100000b
 dw 0000001010100000b
 dw 0000010000010000b
 
-OctopusSpr:
-dw 0x8, 0x0e
-dw 0011111111000000b
-dw 1010101010110000b
-dw 0110001100100000b
-dw 0001101010100000b
-dw 0000011001000011b
-dw 1100000000001000b
-dw 0010001011000100b
-dw 0001000100000000b
+FishSpr:
+dw 0x4, 0x64
+dw 0011011100110111b
+dw 0001100111011001b
+dw 1011011100110111b
+dw 0010101010101010b
+
+dw 0x8, 0x64
+dw 0011011100110111b
+dw 0001100111011011b
+dw 0011011111010111b
+dw 0011111001101001b
+dw 1110111001101001b
+dw 1011111110010100b
+dw 1010101111111000b
+dw 0010111011101000b
 
 CaptionSpr:
 dw 0x0c, 0x17
