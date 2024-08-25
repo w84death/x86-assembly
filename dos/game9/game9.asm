@@ -186,7 +186,7 @@ loop .draw_meta_tiles
 draw_players:
   mov si, DinoSpr
   mov cx, [_PLAYER_POS_]   ; Load player position into CX (Y in CH, X in CL)
-  call conv_pos
+  call conv_pos2mem
   mov word [_PLAYER_MEM_], di
 
   rdtsc
@@ -281,22 +281,30 @@ draw_entities:
     cmp byte  [si+4],1
     jnz .skip_explore
 
-      rdtsc
-      and ax,1000
-      jnz .skip_explore
-
-      rdtsc
-      and ax, 0x0101
-      add cx,ax
+; explore
 
       .savepos:
-
       mov word [si],cx
     .skip_explore:
 
-    call conv_pos
+    cmp byte [si+4],1
+    jnz .skip_waiting
+
+; waiting
+
+
+    .skip_waiting:
+
+    call conv_pos2mem
+    xor dx,dx
+    mov si, SplashSpr
+    call draw_sprite
+    mov dx,0x01
+    call draw_sprite
+
     xor ax,ax
     mov byte al, [si+2]
+
     mov si, FishSpr
     add si, ax
     mov byte dl, [si+3]
@@ -356,7 +364,7 @@ exit:
     int 0x10
     ret
 
-conv_pos:
+conv_pos2mem:
   mov di, LEVEL_START_POSITION
   sub di, 320*2
   xor ax, ax               ; Clear AX
@@ -607,12 +615,13 @@ dw 1011111110010100b
 dw 1010101111111000b
 dw 0010111011101000b
 
-TalkSpr:
-dw 0x4, 0x64
-dw 0000000000101000b
-dw 0000000001111101b
-dw 0000000001010101b
-dw 0000000010111100b
+SplashSpr:
+dw 0x5, 0x32
+dw 0000000110011001b
+dw 0100011001100110b
+dw 0000000010011001b
+dw 0001100000000110b
+dw 0000000001100010b
 
 CaptionSpr:
 dw 0x0c, 0x17
