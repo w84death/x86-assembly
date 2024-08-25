@@ -65,7 +65,7 @@ spawn_entities:
       mov byte [si+3], 0x01     ; Mirror Y/X
     .skip_right:
     mov word [si], ax     ; YY/XX
-    mov byte [si+2], 0x00     ; ID: 0 eyes, 1 submerged
+    mov byte [si+2], 0x00     ; ID: 0 eyes, 0x0c submerged
     mov byte [si+4], 0x01     ; State
     add si, 0x5
   loop .next_entitie
@@ -320,24 +320,29 @@ ai_entities:
             add ch, 0x2
           .skip_down:
 
-
         .savepos:
-        call check_bounds
-        cmp ax, 0x1
-        jnz .skip_move
 
-        call conv_pos2mem
-        call check_water
-        jnz .skip_save
-          mov word [si], cx
-          jmp .skip_move
+          call check_bounds
+          cmp ax, 0x1
+          jnz .skip_move
+
+          call check_friends
+          cmp ax, 0x1
+          jnz .skip_move
+
+          call conv_pos2mem
+          call check_water
+          jnz .skip_save
+            mov word [si], cx
+            jmp .skip_move
         .skip_save:
-        mov byte [si+4],0x02
-        mov byte [si+2],0x0c
-        mov word cx, [si]
-        call conv_pos2mem
-        sub di, 320*4
-      .skip_move:
+          ; check if not served yet
+          mov byte [si+4],0x02
+          mov byte [si+2],0x0c
+          mov word cx, [si]
+          call conv_pos2mem
+          sub di, 320*4
+        .skip_move:
 
     .skip_explore:
 ; WAITING
@@ -346,7 +351,40 @@ ai_entities:
     pop si
     add si, 5
     pop cx
-  loop .next
+    dec cx
+  jnz .next
+
+sort_entities:
+  mov si, _ENTITIES_
+  .sort_loop:
+    mov cx, ENTITIES-1
+    .next_entitie:
+      mov word ax, [si]
+      mov word bx, [si+5]
+      cmp ah, bh
+      jle .skip_swap
+        mov word [si], bx
+        mov word [si+5], ax
+
+        mov byte al, [si+2]
+        mov byte bl, [si+7]
+        mov byte [si+2], bl
+        mov byte [si+7], al
+
+        mov byte al, [si+3]
+        mov byte bl, [si+8]
+        mov byte [si+3], bl
+        mov byte [si+8], al
+
+        mov byte al, [si+4]
+        mov byte bl, [si+9]
+        mov byte [si+4], bl
+        mov byte [si+9], al
+
+        .skip_swap:
+
+      add si, 0x5
+    loop .next_entitie
 
 draw_entities:
   mov si, _ENTITIES_
@@ -480,6 +518,32 @@ check_bounds:
   mov ax, 0x0
 ret
   .no_bound:
+  mov ax, 0x1
+ret
+
+; CX - pos
+; Return: AX
+check_friends:
+  push si
+  push cx
+  xor bx, bx
+  mov ax, cx
+  mov si, _ENTITIES_
+  mov cx, ENTITIES
+  .next_entitie:
+    cmp word [si], ax
+    jnz .different
+    inc bx
+    .different:
+    add si, 0x5
+  loop .next_entitie
+  pop cx
+  pop si
+  cmp bx,0x1
+  jnz .no_friend
+  mov ax, 0x0
+ret
+  .no_friend:
   mov ax, 0x1
 ret
 
