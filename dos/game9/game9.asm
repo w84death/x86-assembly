@@ -587,7 +587,8 @@ ret
 check_player:
    mov ax, [_PLAYER_POS_]
 
-   dec ah
+   ;dec ah
+
    cmp ch, ah
    jz .pass_y
    inc ah
