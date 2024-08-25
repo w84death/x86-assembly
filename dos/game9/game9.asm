@@ -2,11 +2,12 @@
 ; DOS VERSION
 ;
 ; Description:
-;   Dino cook serving food to octopuses.
+;   Dino cook serving food to sea creatures.
 ;
+; Size category: 2KB
 ;
 ; Author: Krzysztof Krystian Jankowski
-; Date: 2024-08/18
+; Web: smol.p1x.in/assembly/#dinopix
 ; License: MIT
 
 org 0x100
@@ -24,6 +25,7 @@ _ENTITIES_ equ 0x70a0
 ; Constants
 BEEPER_ENABLED equ 0x0
 BEEPER_FREQ equ 4800
+ENTITIES equ 0x6
 LEVEL_START_POSITION equ 320*80
 PLAYER_START_POSITION equ 0x610            ; AH=Y, AL=X
 LEVELS_AVAILABLE equ 0x4
@@ -48,26 +50,18 @@ restart_game:
     mov word [_CURRENT_LEVEL_], 0x0000
     mov word [_PLAYER_POS_], PLAYER_START_POSITION
 
-    mov word [_ENTITIES_], 0x0101     ; YY/XX
-    mov byte [_ENTITIES_+2], 0x00     ; ID: 0 eyes, 1 submerged
-    mov byte [_ENTITIES_+3], 0x00     ; Mirror Y/X
-    mov byte [_ENTITIES_+4], 0x00     ; State
-
-    mov word [_ENTITIES_+5], 0x0406
-    mov byte [_ENTITIES_+7], 0x00
-    mov byte [_ENTITIES_+8], 0x00
-    mov byte [_ENTITIES_+9], 0x01
-
-    mov word [_ENTITIES_+10], 0x060b
-    mov byte [_ENTITIES_+12], 0x0c
-    mov byte [_ENTITIES_+13], 0x01
-    mov byte [_ENTITIES_+14], 0x02
-
-    mov word [_ENTITIES_+15], 0x031a
-    mov byte [_ENTITIES_+17], 0x00
-    mov byte [_ENTITIES_+18], 0x01
-    mov byte [_ENTITIES_+19], 0x01
-
+spawn_entities:
+  mov si, _ENTITIES_
+  mov cl, ENTITIES
+  .next_entitie:
+    mov ah, cl
+    mov al, 0x00
+    mov word [si], ax     ; YY/XX
+    mov byte [si+2], 0x00     ; ID: 0 eyes, 1 submerged
+    mov byte [si+3], 0x00     ; Mirror Y/X
+    mov byte [si+4], 0x01     ; State
+    add si, 0x5
+  loop .next_entitie
 
 game_loop:
     xor di,di                   ; Clear destination address
@@ -226,7 +220,7 @@ check_keyboard:
     mov word [_CURRENT_LEVEL_], 0x0
     .ok:
     mov word [_PLAYER_POS_], PLAYER_START_POSITION
-
+    jmp spawn_entities
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
@@ -276,7 +270,7 @@ check_keyboard:
 
 draw_entities:
   mov si, _ENTITIES_
-  mov cx, 4
+  mov cx, ENTITIES
   .next:
     push cx
     push si
@@ -286,9 +280,27 @@ draw_entities:
     cmp byte  [si+4],1
     jnz .skip_explore
 ; EXPLORE
+      rdtsc
+      and ax, 300
+      cmp ax, 300
+      jnz .skip_move
 
-      .savepos:
-      mov word [si],cx
+        rdtsc
+        and ax, 0x3
+        cmp ax, 0x3
+        jnz .check_y
+          add cl,1
+          jmp .savepos
+        .check_y:
+        rdtsc
+        and ax, 0x1f
+        cmp ax, 0x1f
+        jnz .skip_move
+          add ch,1
+
+        .savepos:
+        mov word [si],cx
+      .skip_move:
 
     .skip_explore:
     cmp byte [si+4],1
