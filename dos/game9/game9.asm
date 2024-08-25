@@ -51,6 +51,18 @@ restart_game:
     mov word [_CURRENT_LEVEL_], 0x0000
     mov word [_PLAYER_POS_], PLAYER_START_POSITION
 
+; ENTITE
+;    0x0000 - Position YY/XX
+; +2 0x00 - Mirror Y/X
+; +3 0x00 - 0 eyes, 0x0c submerged
+; +4 0x00 - Status
+;    0000 - 0 stopped
+;    0001 - 1 exploring
+;    0010 - 2 waiting for placing order
+;    0100 - 4 8waiting for food
+;    1001 - 9 served, back
+;
+; +5 0x0000 - status timer
 spawn_entities:
   mov si, _ENTITIES_
   mov cl, ENTITIES
@@ -65,7 +77,7 @@ spawn_entities:
       mov byte [si+3], 0x01     ; Mirror Y/X
     .skip_right:
     mov word [si], ax     ; YY/XX
-    mov byte [si+2], 0x00     ; ID: 0 eyes, 0x0c submerged
+    mov byte [si+2], 0x00
     mov byte [si+4], 0x01     ; State
     add si, 0x5
   loop .next_entitie
@@ -285,12 +297,14 @@ ai_entities:
     call conv_pos2mem
     sub di, 320*4
 
-    cmp byte  [si+3],1
+    cmp byte  [si+3], 1
     jnz .skip_adjust
       sub di, 2
     .skip_adjust:
 
-    cmp byte  [si+4],1
+    mov byte al, [si+4]
+    and ax, 0x1
+    cmp ax, 0x1
     jnz .skip_explore
 ; EXPLORE
       rdtsc
@@ -324,8 +338,12 @@ ai_entities:
 
           call check_bounds
           cmp ax, 0x1
+          jz .is_ok
+          cmp byte [si+4], 9
           jnz .skip_move
-
+          mov byte [si+4], 0
+          jmp .skip_move
+          .is_ok:
           call check_friends
           cmp ax, 0x1
           jnz .skip_move
@@ -337,8 +355,13 @@ ai_entities:
             jmp .skip_move
         .skip_save:
           ; check if not served yet
+          mov byte al, [si+4]
+          and al, 0x8
+          cmp al, 0x8
+          jz .skip_set_wait
           mov byte [si+4],0x02
           mov byte [si+2],0x0c
+          .skip_set_wait:
           mov word cx, [si]
           call conv_pos2mem
           sub di, 320*4
@@ -346,7 +369,16 @@ ai_entities:
 
     .skip_explore:
 ; WAITING
+     cmp byte [si+4], 0x2
+     jnz .skip_waiting
 
+       call check_player
+       cmp ax, 0x0
+       jz .no_player
+          mov byte [si+4],0x09
+          mov byte [si+2],0x00
+          xor byte [si+3],0x01
+       .no_player:
     .skip_waiting:
     pop si
     add si, 5
@@ -393,6 +425,9 @@ draw_entities:
     push cx
     push si
 
+    cmp byte [si+4], 0x0
+    jz .skip_entitie
+
     mov word cx, [si]
     call conv_pos2mem
     sub di, 320*4
@@ -418,6 +453,7 @@ draw_entities:
       call draw_caption
     .skip_caption:
 
+    .skip_entitie:
     pop si
     add si, 5
     pop cx
@@ -547,6 +583,39 @@ ret
   mov ax, 0x1
 ret
 
+
+check_player:
+   mov ax, [_PLAYER_POS_]
+
+   dec ah
+   cmp ch, ah
+   jz .pass_y
+   inc ah
+   cmp ch, ah
+   jz .pass_y
+   inc ah
+   cmp ch, ah
+   jz .pass_y
+   mov ax, 0x0
+   ret
+
+   .pass_y:
+
+   dec al
+   cmp cl, al
+   jz .pass_x
+   inc al
+   cmp cl, al
+   jz .pass_x
+   inc al
+   cmp cl, al
+   jz .pass_x
+
+   mov ax, 0x0
+   ret
+   .pass_x:
+   mov ax, 0x1
+ret
 ; =========================================== DRAW CAPTION =====================
 ; DI - memory position
 ; Return: -
