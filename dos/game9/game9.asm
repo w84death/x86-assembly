@@ -22,6 +22,8 @@ _PLAYER_MIRROR_ equ 0x7006
 _ENTITIES_ equ 0x70a0
 
 ; Constants
+BEEPER_ENABLED equ 0x0
+BEEPER_FREQ equ 4800
 LEVEL_START_POSITION equ 320*80
 PLAYER_START_POSITION equ 0x610            ; AH=Y, AL=X
 LEVELS_AVAILABLE equ 0x4
@@ -60,7 +62,7 @@ restart_game:
     mov byte [_ENTITIES_+12], 0x0c
     mov byte [_ENTITIES_+13], 0x01
     mov byte [_ENTITIES_+14], 0x02
-    
+
     mov word [_ENTITIES_+15], 0x031a
     mov byte [_ENTITIES_+17], 0x00
     mov byte [_ENTITIES_+18], 0x01
@@ -261,7 +263,10 @@ check_keyboard:
     mov byte [_PLAYER_MIRROR_], 0x00
 
   .no_key:
-  mov bx, 4800
+  mov bx, BEEPER_ENABLED
+  cmp bx, 0x1
+  jnz .no_key_press
+  mov bx, BEEPER_FREQ
   add bl, ah
   call set_freq
   call beep
@@ -297,7 +302,7 @@ draw_entities:
     mov byte al, [si+2]
     mov byte dl, [si+3]
     mov si, FishSpr
-    add si, ax      
+    add si, ax
     call draw_sprite
 
     cmp al, 0
@@ -343,10 +348,14 @@ wait_for_tick:
     pop es
 
 disable_speaker:
-    in al, 61h    ; Read the PIC chip
-    and al, 0FCh  ; Clear bit 0 to disable the speaker
-    out 61h, al   ; Write the updated value back to the PIC chip
-    
+  mov bx, BEEPER_ENABLED
+  cmp bx, 0x1
+  jnz .beep_disabled
+    in al, 0x61    ; Read the PIC chip
+    and al, 0x0FC  ; Clear bit 0 to disable the speaker
+    out 0x61, al   ; Write the updated value back to the PIC chip
+  .beep_disabled:
+
 ; =========================================== ESC OR LOOP =====================
 
     in al,0x60                           ; Read keyboard
@@ -383,18 +392,18 @@ draw_caption:
 ret
 
 set_freq:
-  mov al, 0B6h  ; Command to set the speaker frequency
-  out 43h, al   ; Write the command to the PIT chip
+  mov al, 0x0B6  ; Command to set the speaker frequency
+  out 0x43, al   ; Write the command to the PIT chip
   mov ax, bx  ; Frequency value for 440 Hz
-  out 42h, al   ; Write the low byte of the frequency value
+  out 0x42, al   ; Write the low byte of the frequency value
   mov al, ah
-  out 42h, al   ; Write the high byte of the frequency value
+  out 0x42, al   ; Write the high byte of the frequency value
 ret
 
 beep:
-  in al, 61h    ; Read the PIC chip
-  or al, 03h    ; Set bit 0 to enable the speaker
-  out 61h, al   ; Write the updated value back to the PIC chip
+  in al, 0x61    ; Read the PIC chip
+  or al, 0x03    ; Set bit 0 to enable the speaker
+  out 0x61, al   ; Write the updated value back to the PIC chip
 ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
