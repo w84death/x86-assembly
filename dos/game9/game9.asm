@@ -46,27 +46,25 @@ restart_game:
     mov word [_CURRENT_LEVEL_], 0x0000
     mov word [_PLAYER_POS_], PLAYER_START_POSITION
 
-    mov word [_ENTITIES_], 0x0101      ; Y/X
-    mov byte [_ENTITIES_+2], 0x00      ; ID: 0 eyes, 1 submerged
-    mov byte [_ENTITIES_+3], 0x00      ; State: 0 explore, 1 hungry, 2 waiting
-    mov byte [_ENTITIES_+4], 0x00
+    mov word [_ENTITIES_], 0x0101     ; YY/XX
+    mov byte [_ENTITIES_+2], 0x00     ; ID: 0 eyes, 1 submerged
+    mov byte [_ENTITIES_+3], 0x00     ; Mirror Y/X
+    mov byte [_ENTITIES_+4], 0x00     ; State
 
-    mov word [_ENTITIES_+5], 0x0406      ; Y/X
-    mov byte [_ENTITIES_+7], 0x00      ; ID: 0 eyes, c submerged
-    mov byte [_ENTITIES_+8], 0x00      ; State: 0 explore, 1 hungry, 2 waiting
+    mov word [_ENTITIES_+5], 0x0406
+    mov byte [_ENTITIES_+7], 0x00
+    mov byte [_ENTITIES_+8], 0x00
     mov byte [_ENTITIES_+9], 0x01
 
-    mov word [_ENTITIES_+10], 0x060b      ; Y/X
-    mov byte [_ENTITIES_+12], 0x0c      ; ID: 0 eyes, 1 submerged
-    mov byte [_ENTITIES_+13], 0x01      ; mirror
+    mov word [_ENTITIES_+10], 0x060b
+    mov byte [_ENTITIES_+12], 0x0c
+    mov byte [_ENTITIES_+13], 0x01
     mov byte [_ENTITIES_+14], 0x02
-    ; State: 0 explore, 1 hungry, 2 waiting
-
-    mov word [_ENTITIES_+15], 0x031a      ; Y/X
-    mov byte [_ENTITIES_+17], 0x00      ; ID: 0 eyes, 1 submerged
+    
+    mov word [_ENTITIES_+15], 0x031a
+    mov byte [_ENTITIES_+17], 0x00
     mov byte [_ENTITIES_+18], 0x01
     mov byte [_ENTITIES_+19], 0x01
-
 
 
 game_loop:
@@ -203,14 +201,11 @@ draw_players:
 check_keyboard:
   mov ah, 01h         ; BIOS keyboard status function
   int 16h             ; Call BIOS interrupt
-  jz .no_key           ; Jump if Zero Flag is set (no key pressed)
+  jz .no_key_press           ; Jump if Zero Flag is set (no key pressed)
 
   mov ah, 00h         ; BIOS keyboard read function
   int 16h             ; Call BIOS interrupt
 
-    mov bx, 3000
-    call set_freq
-    call beep
 
   mov si, [_PLAYER_MEM_]
   add si, 320*4+5
@@ -266,6 +261,11 @@ check_keyboard:
     mov byte [_PLAYER_MIRROR_], 0x00
 
   .no_key:
+  mov bx, 4800
+  add bl, ah
+  call set_freq
+  call beep
+  .no_key_press:
 
 ; =========================================== DRAW ENITIES ===============
 
@@ -274,42 +274,30 @@ draw_entities:
   mov cx, 4
   .next:
     push cx
-    mov word cx, [si]
     push si
-
-
+    mov word cx, [si]
+    call conv_pos2mem
 
     cmp byte  [si+4],1
     jnz .skip_explore
-
-; explore
+; EXPLORE
 
       .savepos:
       mov word [si],cx
 
     .skip_explore:
-
     cmp byte [si+4],1
     jnz .skip_waiting
-
-; waiting
+; WAITING
 
 
     .skip_waiting:
 
-    call conv_pos2mem
-    xor dx,dx
-    mov si, SplashSpr
-    call draw_sprite
-    mov dx,0x01
-    call draw_sprite
-
     xor ax,ax
     mov byte al, [si+2]
-
-    mov si, FishSpr
-    add si, ax
     mov byte dl, [si+3]
+    mov si, FishSpr
+    add si, ax      
     call draw_sprite
 
     cmp al, 0
@@ -354,6 +342,11 @@ wait_for_tick:
     jz wait_for_tick     ; If not enough time has passed, keep waiting
     pop es
 
+disable_speaker:
+    in al, 61h    ; Read the PIC chip
+    and al, 0FCh  ; Clear bit 0 to disable the speaker
+    out 61h, al   ; Write the updated value back to the PIC chip
+    
 ; =========================================== ESC OR LOOP =====================
 
     in al,0x60                           ; Read keyboard
@@ -602,7 +595,6 @@ dw 0000101111110011b
 dw 0010110001111000b
 dw 0011000001001100b
 dw 0000000101000000b
-
 
 DinoSpr:
 dw 0x8, 0x20
