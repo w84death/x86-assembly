@@ -25,10 +25,11 @@ _ENTITIES_ equ 0x70a0
 ; Constants
 BEEPER_ENABLED equ 0x0
 BEEPER_FREQ equ 4800
-ENTITIES equ 0x6
+ENTITIES equ 0x8
 LEVEL_START_POSITION equ 320*80
 PLAYER_START_POSITION equ 0x610            ; AH=Y, AL=X
 LEVELS_AVAILABLE equ 0x4
+SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3636
 
@@ -55,10 +56,16 @@ spawn_entities:
   mov cl, ENTITIES
   .next_entitie:
     mov ah, cl
-    mov al, 0x00
+    mov al, 0x01
+    mov byte [si+3], 0x00     ; Mirror Y/X
+    mov bl, cl
+    and bl, 0x01
+    jnz .skip_right
+      mov al, 0x27
+      mov byte [si+3], 0x01     ; Mirror Y/X
+    .skip_right:
     mov word [si], ax     ; YY/XX
     mov byte [si+2], 0x00     ; ID: 0 eyes, 1 submerged
-    mov byte [si+3], 0x00     ; Mirror Y/X
     mov byte [si+4], 0x01     ; State
     add si, 0x5
   loop .next_entitie
@@ -203,12 +210,12 @@ check_keyboard:
   int 16h             ; Call BIOS interrupt
 
 
-  mov si, [_PLAYER_MEM_]
-  add si, 320*4+5
+  mov di, [_PLAYER_MEM_]
+  add di, 320*4+5
   mov byte al, [_PLAYER_MIRROR_]
   shr al, 1
   jnc .skip_adjust
-    sub si, 2
+    sub di, 2
   .skip_adjust:
 
   .check_enter:
@@ -224,7 +231,7 @@ check_keyboard:
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
-    sub si, 320*6
+    sub di, 320*6
     call check_water
     jz .no_key
     sub word [_PLAYER_POS_],0x0100
@@ -233,7 +240,7 @@ check_keyboard:
   .check_down:
   cmp ah, 50h         ; Compare scan code with down arrow
   jne .check_left
-    add si, 320*6
+    add di, 320*6
     call check_water
     jz .no_key
     add word [_PLAYER_POS_],0x0100
@@ -241,7 +248,7 @@ check_keyboard:
   .check_left:
   cmp ah, 4Bh         ; Compare scan code with left arrow
   jne .check_right
-    sub si, 8
+    sub di, 8
     call check_water
     jz .no_key
     dec word [_PLAYER_POS_]
@@ -250,7 +257,7 @@ check_keyboard:
   .check_right:
   cmp ah, 4Dh         ; Compare scan code with right arrow
   jne .no_key
-    add si, 6
+    add di, 6
     call check_water
     jz .no_key
     inc word [_PLAYER_POS_]
@@ -268,7 +275,7 @@ check_keyboard:
 
 ; =========================================== DRAW ENITIES ===============
 
-draw_entities:
+ai_entities:
   mov si, _ENTITIES_
   mov cx, ENTITIES
   .next:
@@ -276,45 +283,96 @@ draw_entities:
     push si
     mov word cx, [si]
     call conv_pos2mem
+    sub di, 320*4
+
+    cmp byte  [si+3],1
+    jnz .skip_adjust
+      sub di, 2
+    .skip_adjust:
 
     cmp byte  [si+4],1
     jnz .skip_explore
 ; EXPLORE
       rdtsc
-      and ax, 300
-      cmp ax, 300
+      and ax, SPEED_EXPLORE
+      cmp ax, SPEED_EXPLORE
       jnz .skip_move
 
         rdtsc
         and ax, 0x3
         cmp ax, 0x3
         jnz .check_y
-          add cl,1
+          sub cl,1
+          cmp byte [si+3], 0x01
+          jz .skip_right
+          add cl, 0x2
+          .skip_right:
           jmp .savepos
         .check_y:
         rdtsc
-        and ax, 0x1f
-        cmp ax, 0x1f
+        and ax, 0x10
+        cmp ax, 0x10
         jnz .skip_move
-          add ch,1
+          sub ch, 1
+          rdtsc
+          and ax, 0x1
+          jz .skip_down
+            add ch, 0x2
+          .skip_down:
+
 
         .savepos:
-        mov word [si],cx
+        call check_bounds
+        cmp ax, 0x1
+        jnz .skip_move
+
+        call conv_pos2mem
+        call check_water
+        jnz .skip_save
+          mov word [si], cx
+          jmp .skip_move
+        .skip_save:
+        mov byte [si+4],0x02
+        mov byte [si+2],0x0c
+        mov word cx, [si]
+        call conv_pos2mem
+        sub di, 320*4
       .skip_move:
 
     .skip_explore:
-    cmp byte [si+4],1
-    jnz .skip_waiting
 ; WAITING
 
-
     .skip_waiting:
+    pop si
+    add si, 5
+    pop cx
+  loop .next
+
+draw_entities:
+  mov si, _ENTITIES_
+  mov cx, ENTITIES
+  .next:
+    push cx
+    push si
+
+    mov word cx, [si]
+    call conv_pos2mem
+    sub di, 320*4
+
+    cmp byte  [si+3],1
+    jnz .skip_adjust
+      sub di, 2
+    .skip_adjust:
 
     xor ax,ax
     mov byte al, [si+2]
     mov byte dl, [si+3]
     mov si, FishSpr
     add si, ax
+    cmp ax, 0
+    jz .skip_shift
+      sub di, 320*4
+    .skip_shift:
     call draw_sprite
 
     cmp al, 0
@@ -380,6 +438,9 @@ exit:
     int 0x10
     ret
 
+; =========================================== CNVERT XY TO MEM =====================
+; CX - position YY/XX
+; Return: DI memory position
 conv_pos2mem:
   mov di, LEVEL_START_POSITION
   sub di, 320*2
@@ -391,8 +452,40 @@ conv_pos2mem:
   shl dx, 3                ; DX = X * 8
   add ax, dx               ; AX = Y * 2560 + X * 8
   add di, ax               ; Move result to DI
-  ret
+ret
 
+; =========================================== CHECK WATER =====================
+; DI - memory position to check for water
+; Return: Zero if water
+check_water:
+  mov ax, [es:di]
+  ;mov word [es:di], 0x0 ;DEBUG ONLY
+  cmp ax, COLOR_WATER
+ret
+
+check_bounds:
+; CX - Positin YY/XX
+  cmp ch, 0x00
+  jl .bound
+  cmp ch, 0x0b
+  jg .bound
+  cmp cl, 0x01
+  jl .bound
+  cmp cl, 0x26
+  jg .bound
+
+  jmp .no_bound
+
+  .bound:
+  mov ax, 0x0
+ret
+  .no_bound:
+  mov ax, 0x1
+ret
+
+; =========================================== DRAW CAPTION =====================
+; DI - memory position
+; Return: -
 draw_caption:
   mov si, CaptionSpr
   sub di, 320*13-3
@@ -403,6 +496,7 @@ draw_caption:
   call draw_sprite
 ret
 
+; BX - Frequency
 set_freq:
   mov al, 0x0B6  ; Command to set the speaker frequency
   out 0x43, al   ; Write the command to the PIT chip
@@ -412,6 +506,8 @@ set_freq:
   out 0x42, al   ; Write the high byte of the frequency value
 ret
 
+; Run set_freq first
+; Start beep
 beep:
   in al, 0x61    ; Read the PIC chip
   or al, 0x03    ; Set bit 0 to enable the speaker
@@ -502,13 +598,6 @@ draw_sprite:
     popa
     ret
 
-; =========================================== CHECK WATER =====================
-; SI - memory position to check for water
-check_water:
-    mov ax, [es:si]
-    ;mov word [es:si], 0x0 ;DEBUG ONLY
-    cmp ax, COLOR_WATER
-    ret
 
 ; =========================================== CONVERT VALUE ===================
 ; AX - source
