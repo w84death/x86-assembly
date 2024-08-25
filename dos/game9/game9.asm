@@ -198,10 +198,6 @@ draw_players:
   mov dx, [_PLAYER_MIRROR_]
   call draw_sprite
 
-;  xor dx,dx
-;  mov di, [_PLAYER_MEM_]
-;  sub di, 320*13+6
-
 
 ; =========================================== KEYBOARD INPUT ==================
 check_keyboard:
@@ -211,6 +207,10 @@ check_keyboard:
 
   mov ah, 00h         ; BIOS keyboard read function
   int 16h             ; Call BIOS interrupt
+
+    mov bx, 3000
+    call set_freq
+    call beep
 
   mov si, [_PLAYER_MEM_]
   add si, 320*4+5
@@ -237,6 +237,7 @@ check_keyboard:
     call check_water
     jz .no_key
     sub word [_PLAYER_POS_],0x0100
+
 
   .check_down:
   cmp ah, 50h         ; Compare scan code with down arrow
@@ -285,6 +286,7 @@ draw_entities:
 
       .savepos:
       mov word [si],cx
+
     .skip_explore:
 
     cmp byte [si+4],1
@@ -385,6 +387,21 @@ draw_caption:
   add di, 320*2
   mov si, IconsSpr
   call draw_sprite
+ret
+
+set_freq:
+  mov al, 0B6h  ; Command to set the speaker frequency
+  out 43h, al   ; Write the command to the PIT chip
+  mov ax, bx  ; Frequency value for 440 Hz
+  out 42h, al   ; Write the low byte of the frequency value
+  mov al, ah
+  out 42h, al   ; Write the high byte of the frequency value
+ret
+
+beep:
+  in al, 61h    ; Read the PIC chip
+  or al, 03h    ; Set bit 0 to enable the speaker
+  out 61h, al   ; Write the updated value back to the PIC chip
 ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
