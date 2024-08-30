@@ -25,7 +25,7 @@ _ENTITIES_ equ 0x70a0
 ; Constants
 BEEPER_ENABLED equ 0x0
 BEEPER_FREQ equ 4800
-ENTITIES equ 0x6
+ENTITIES equ 41
 LEVEL_START_POSITION equ 320*60
 PLAYER_START_POSITION equ 0x610            ; AH=Y, AL=X
 LEVELS_AVAILABLE equ 0x2
@@ -73,24 +73,50 @@ spawn_entities:
   mov di, _ENTITIES_
   mov cl, ENTITIES
   .next_entitie:
-;    movsb
-;    movsw
-;    movsb
-;    movsb
-;    movsb
 
-    mov byte al, [si]
-    mov byte [di], al
+; 0 Player
+; 1 Palm Tree - 0x22
+; 2 grass - 0x46
+; 3a fish swim - 0/0
+; 4 monkey - 70/0x3a
+
+; pos
     mov word ax, [si+1]
     mov word [di+1], ax
-    mov byte al, [si+3]
-    mov byte [di+3], al
-    mov byte al, [si+4]
-    mov byte [di+4], al
-    mov byte al, [si+5]
-    mov byte [di+5], al
 
-    add si, 0x06
+; mirror
+    mov ah,0x0
+    cmp al, 0x10
+    jl .skip_mirror_x
+      inc ah
+    .skip_mirror_x:
+    mov byte [di+4], ah
+
+; sprite data
+    mov byte al, [si]
+    cmp al, 0x01
+    jne .n2
+      mov al, 0x22
+    .n2:
+    cmp al, 0x02
+    jne .n3
+      mov al, 0x46
+    .n3:
+    cmp al, 0x03
+    jne .n4
+      mov al, 0x00
+    .n4:
+     cmp al, 0x04
+    jne .n5
+      mov al, 0x54
+    .n5:
+
+    mov byte [di+3], al
+
+; status
+    mov byte [di+5], 0x01
+
+    add si, 0x03
     add di, 0x06
   loop .next_entitie
 
@@ -845,7 +871,7 @@ dw 1111011111100111b
 dw 0011111110111110b
 dw 1111101011111111b
 
-; Fish Waiting   - 28/0x1c
+; Fish Waiting   - 14 /0xe
 dw 0x8, 0x64
 dw 0011011100110111b
 dw 0001100111011011b
@@ -856,7 +882,8 @@ dw 1011111110010100b
 dw 1010101111111000b
 dw 0010111011101000b
 
-; Palm Tree - 34/0x22
+
+; Palm Tree - 34 / 0x22
 dw 0x10, 0x27
 dw 0010101100101011b
 dw 1010111010111000b
@@ -875,7 +902,15 @@ dw 0010110101111000b
 dw 1011010101011110b
 dw 0010111111111000b
 
-; monkey - 70/0x46
+; grass - 70/0x46
+dw 0x5,0x2a
+dw 0000001110000010b
+dw 0010001100001000b
+dw 0010111100111011b
+dw 1011111111111100b
+dw 0000111111110000b
+
+; monkey - 84/0x54
 dw 0x7,0x6e
 dw 0010101000000000b
 dw 1000000000101000b
@@ -885,13 +920,6 @@ dw 0000101001000000b
 dw 0000010100010000b
 dw 0001000100010000b
 
-; grass - 88/0x58
-dw 0x5,0x27
-dw 0000001110000000b
-dw 0010001100001000b
-dw 0010111100111011b
-dw 1011111111111100b
-dw 0000111111110000b
 
 CaptionSpr:
 dw 0x0c, 0x17
@@ -960,59 +988,154 @@ db 00000000b,00000000b,00000000b,00000000b  ; 1111 empty-filler
 LevelData:
 ; List of meta tiles, width of each level is 8x10
 ; Two words per line
-; 8x10 = 80 tiles
-; 40 bytes per level
+; 8x16 = 128 tiles
+; 64 bytes per level
       ; Custom Level, 40 bytes
 ; Made in smol.p1x.in/4bitleveleditor
 
-; Level-1
-dw 1111111100100011b,1111111111111111b
-dw 1111111110101010b,1111111111111111b
-dw 1111111100011010b,0011111111111111b
-dw 1111111111110110b,0111111111111111b
-dw 1111111100101011b,0111111111111111b
-dw 1111111101101110b,0111111111111111b
-dw 1111111101001011b,0101111111111111b
-dw 1111111111111010b,1111111111111111b
-dw 1111000011111111b,1111000011111111b
-dw 0010101011111111b,1111010000110011b
-dw 0110010111111111b,1111111101000111b
-dw 1010111111111111b,1111111111111010b
-dw 1010111111110010b,0000000000100100b
-dw 1010001100101011b,1110010110110011b
-dw 0110111001011001b,0001111111100111b
-dw 0100010111111111b,1111111101000101b
+; Custom Level mady in smol.p1x.in/4bitleveleditor
+dw 1111111100101111b,1111001111111111b
+dw 1111001001101000b,1000011100111111b
+dw 1111011010111011b,1011101101111111b
+dw 1111011011001011b,1100101101111111b
+dw 1111011010111100b,1100101101111111b
+dw 1111011010111100b,1011101101111111b
+dw 1111010001101011b,1011011101011111b
+dw 1111111101101011b,0111010111111111b
+dw 1111111111001011b,0111111111111111b
+dw 1111111101101100b,0111111111111111b
+dw 1111111101101011b,0111111111111111b
+dw 1111111101101100b,0111111111111111b
+dw 1111111101101011b,0111111111111111b
+dw 1111111101001001b,0101111111111111b
+dw 1111111111111111b,1111111111111111b
+dw 1111111111111111b,1111111111111111b
 
-
-; entities
 LevelEntities:
-;  id
-; YY/XX
-; sprite, mirror, status
+; Entities*
+db 2
+dw 0x0105
 
-db 0x01
-dw 0x0411
-db 0x022,0x00,0x01
+db 2
+dw 0x0111
 
-db 0x02
-dw 0x0512
-db 0x58,0x00,0x01
+db 3
+dw 0x0300
 
-db 0x04
-dw 0x0515
-db 0x46,0x00,0x01
+db 2
+dw 0x030B
 
-db 0x03
-dw 0x0427
-db 0x00,0x01,0x01
+db 1
+dw 0x030D
 
-db 0x03
-dw 0x0727
-db 0x00,0x01,0x01
+db 1
+dw 0x0408
 
-db 0x03
-dw 0x0927
-db 0x00,0x01,0x01
+db 2
+dw 0x0409
+
+db 2
+dw 0x040C
+
+db 2
+dw 0x040D
+
+db 3
+dw 0x0417
+
+db 2
+dw 0x0504
+
+db 2
+dw 0x0508
+
+db 2
+dw 0x0509
+
+db 2
+dw 0x0608
+
+db 0
+dw 0x060B
+
+db 2
+dw 0x0705
+
+db 2
+dw 0x070D
+
+db 2
+dw 0x0808
+
+db 2
+dw 0x0809
+
+db 2
+dw 0x0906
+
+db 4
+dw 0x090D
+
+db 3
+dw 0x0A00
+
+db 1
+dw 0x0A08
+
+db 2
+dw 0x0A09
+
+db 1
+dw 0x0A0C
+
+db 2
+dw 0x0A10
+
+db 2
+dw 0x0B0B
+
+db 2
+dw 0x0B0C
+
+db 2
+dw 0x0B0F
+
+db 3
+dw 0x0B16
+
+db 2
+dw 0x0C05
+
+db 2
+dw 0x0C07
+
+db 2
+dw 0x0C0D
+
+db 2
+dw 0x0C0E
+
+db 2
+dw 0x0D05
+
+db 2
+dw 0x0D06
+
+db 2
+dw 0x0D07
+
+db 2
+dw 0x0D08
+
+db 2
+dw 0x0D09
+
+db 2
+dw 0x0D0F
+
+db 2
+dw 0x0E06
+
 
 ; End of Level-1
 
