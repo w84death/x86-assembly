@@ -52,7 +52,7 @@ restart_game:
     mov word [_PLAYER_POS_], PLAYER_START_POSITION
 
 ; ENTITE
-;  0 0x00 - type: 0 pit, 1 tree, 2 snake, 3 fish
+;  0 0x00 - type: 1 player, 1 tree, 2 snake, 3 fish, 4 pit
 ; +1 0x0000 - Position YY/XX
 ; +2 ----
 ; +3 0x00 - Mirror Y/X
