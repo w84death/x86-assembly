@@ -315,6 +315,12 @@ ai_entities:
       cmp ax, 0x1
       jnz .skip_explore
 
+      rdtsc
+      and ax, SPEED_EXPLORE
+      cmp ax, SPEED_EXPLORE
+      jnz .skip_entity
+
+      .explore:
         mov cx, [si+1]
         call random_move
 
@@ -328,8 +334,15 @@ ai_entities:
 
         call conv_pos2mem
         call check_water
-        jnz .can_not_move
+        jz .move_to_new_pos
 
+          mov byte al, [si+5]
+          and al, 0x8
+          cmp al, 0x8 ; already served
+          jz .can_not_move
+          mov byte [si+3], 0x0e ; second fish sprite
+          mov byte [si+5], 0x02 ; waiting
+          jmp .can_not_move
         .move_to_new_pos:
           mov word [si+1], cx
         .can_not_move:
@@ -339,12 +352,14 @@ ai_entities:
       and ax, 0x2
       cmp ax, 0x2
       jnz .skip_waiting
+
+      .waiting:
         call check_player
         cmp ax, 0x0
         jz .wait_more
-          mov byte [si+3],0x00
-          xor byte [si+4],0x01
-          mov byte [si+5],0x09
+          mov byte [si+3],0x00 ; First fish sprite
+          xor byte [si+4],0x01 ; Reverse
+          mov byte [si+5],0x09 ; Served
        .wait_more:
       .skip_waiting:
 
@@ -354,115 +369,6 @@ ai_entities:
   loop .next_entity
 
 jmp skip_me
-
-ai_entities_old:
-  mov cx, [EntityCount]
-  mov si, _ENTITIES_
-  .next:
-    push cx
-    ;push si
-
-    cmp byte [si], 0x3  ; Fish
-    jne .skip_entity
-
-    mov word cx, [si+1]  ; Pos
-    call conv_pos2mem
-    ;sub di, 320*4
-
-    cmp byte  [si+4], 1  ; Mirror
-    jnz .skip_adjust
-      sub di, 2
-    .skip_adjust:
-
-    mov byte al, [si+5]   ; State
-    and ax, 0x1
-    cmp ax, 0x1
-    jnz .skip_explore
-; EXPLORE
-      rdtsc
-      and ax, SPEED_EXPLORE
-      cmp ax, SPEED_EXPLORE
-      jnz .skip_move
-
-        rdtsc
-        and ax, 0x3
-        cmp ax, 0x3
-        jnz .check_y
-          sub cl,1
-          cmp byte [si+4], 0x01
-          jz .skip_right
-          add cl, 0x2
-          .skip_right:
-          jmp .savepos
-        .check_y:
-        rdtsc
-        and ax, 0x10
-        cmp ax, 0x10
-        jnz .skip_move
-          sub ch, 1
-          rdtsc
-          and ax, 0x1
-          jz .skip_down
-            add ch, 0x2
-          .skip_down:
-
-        .savepos:
-
-          call check_bounds
-          cmp ax, 0x1
-          jz .is_ok
-          cmp byte [si+5], 0x9 ; served, back
-          jnz .skip_move
-          mov byte [si+5], 0x0 ; disable
-          jmp .skip_move
-          .is_ok:
-
-          call check_friends
-          cmp ax, 0x1
-          jnz .skip_move
-
-          call conv_pos2mem
-          call check_water
-          jnz .skip_save
-            mov word [si+1], cx
-            jmp .skip_move
-        .skip_save:
-          ; check if not served yet
-          mov byte al, [si+5]
-          and al, 0x8
-          cmp al, 0x8
-          jz .skip_set_wait
-          mov byte [si+3],0x0e ; second fish sprite
-          mov byte [si+5],0x02 ; waiting
-          .skip_set_wait:
-          mov word cx, [si+1]
-          call conv_pos2mem
-          ;sub di, 320*4
-        .skip_move:
-
-    .skip_explore:
-; WAITING
-     cmp byte [si+5], 0x2
-     jnz .skip_waiting
-
-       call check_player
-       cmp ax, 0x0
-       jz .no_player
-          mov byte [si+3],0x00
-          xor byte [si+4],0x01
-          mov byte [si+5],0x09
-       .no_player:
-    .skip_waiting:
-
-    .skip_entity:
-    ;pop si
-    add si, 0x6
-    pop cx
-    dec cx
-  jnz .next
-
-
-;skip_me:
 
 ; =========================================== SORT ENITIES ===============
 
@@ -524,7 +430,6 @@ draw_entities:
 
     mov word cx, [si+1]
     call conv_pos2mem
-    ;sub di, 320*4
 
     mov byte dl, [si+4]
     jnz .skip_adjust
