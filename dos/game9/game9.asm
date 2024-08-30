@@ -52,8 +52,9 @@ restart_game:
     mov word [_PLAYER_POS_], PLAYER_START_POSITION
 
 ; ENTITE
-;    0x00 - type: 0 pit, 1 tree, 2 snake, 3 fish
+;  0 0x00 - type: 0 pit, 1 tree, 2 snake, 3 fish
 ; +1 0x0000 - Position YY/XX
+; +2 ----
 ; +3 0x00 - Mirror Y/X
 ; +4 0x00 - 0 eyes, 0x0c submerged
 ; +5 0x00 - Status
@@ -62,13 +63,22 @@ restart_game:
 ;    0010 - 2 waiting for placing order
 ;    0100 - 4 waiting for food
 ;    1001 - 9 served, back
-;
-; +5 0x0000 - status timer
+; +6 0x0000 - status timer
+; +7 ----
+
 spawn_entities:
   mov si, _ENTITIES_
-  mov cl, ENTITIES-2
+  mov cl, ENTITIES
   .next_entitie:
-    mov word [si], 0x3     ; fish
+      mov byte [si], 0x01     ; tree
+      mov byte [si+3], 0x22   ; sprite addrr
+    cmp cl, 6
+    jle .skip_fish
+      mov byte [si], 0x03     ; fish
+      mov byte [si+3], 0x00   ; sprite addrr
+    .skip_fish:
+
+    .cont:
     mov ah, cl
     mov al, 0x01
     mov byte [si+4], 0x00     ; Mirror Y/X
@@ -79,24 +89,10 @@ spawn_entities:
       mov byte [si+4], 0x01     ; Mirror Y/X
     .skip_right:
     mov word [si+1], ax     ; YY/XX
-    mov byte [si+3], 0x00   ; sprite addrr
+
     mov byte [si+5], 0x01     ; State
-    add si, 0x6
+    add si, 0x06
   loop .next_entitie
-
-
-    mov byte [si],   0x01     ; tree
-    mov word [si+1], 0x0101 ;  pos
-    mov byte [si+3], 0x22  ; +34
-    mov byte [si+4], 0x01
-    mov byte [si+5], 0x01
-
-    add si, 0x6
-    mov byte [si],   0x01     ; tree
-    mov word [si+1], 0x0505 ;  pos
-    mov byte [si+3], 0x22  ; +34
-    mov byte [si+4], 0x00
-    mov byte [si+5], 0x01
 
 
 game_loop:
@@ -346,9 +342,9 @@ ai_entities:
           call check_bounds
           cmp ax, 0x1
           jz .is_ok
-          cmp byte [si+5], 9
+          cmp byte [si+5], 0x9 ; served, back
           jnz .skip_move
-          mov byte [si+5], 0
+          mov byte [si+5], 0x0 ; disable
           jmp .skip_move
           .is_ok:
           call check_friends
@@ -366,8 +362,8 @@ ai_entities:
           and al, 0x8
           cmp al, 0x8
           jz .skip_set_wait
-          mov byte [si+5],0x02
-          mov byte [si+3],0x0e
+          mov byte [si+3],0x0e ; second fish sprite
+          mov byte [si+5],0x02 ; waiting
           .skip_set_wait:
           mov word cx, [si+1]
           call conv_pos2mem
@@ -382,11 +378,12 @@ ai_entities:
        call check_player
        cmp ax, 0x0
        jz .no_player
-          mov byte [si+5],0x09
           mov byte [si+3],0x00
           xor byte [si+4],0x01
+          mov byte [si+5],0x09
        .no_player:
     .skip_waiting:
+
     .skip_entitie:
     pop si
     add si, 0x6
@@ -454,18 +451,21 @@ draw_entities:
       sub di, 2
     .skip_adjust:
 
+    mov byte bl, [si+5]
+
     xor ax,ax
     mov byte al, [si+3]
     mov si, EntitiesSpr
     add si, ax
-    cmp ax, 0
+    cmp al, 0x0
     jz .skip_shift
       sub di, 320*4
     .skip_shift:
     call draw_sprite
 
-    cmp al, 0
-    jz .skip_caption
+    and bl, 0x2 ; waiting
+    cmp bl, 0x2
+    jne .skip_caption
       call draw_caption
     .skip_caption:
 
