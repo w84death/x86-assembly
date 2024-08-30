@@ -25,7 +25,7 @@ _ENTITIES_ equ 0x70a0
 ; Constants
 BEEPER_ENABLED equ 0x0
 BEEPER_FREQ equ 4800
-ENTITIES equ 0x8
+ENTITIES equ 0xa
 LEVEL_START_POSITION equ 320*80
 PLAYER_START_POSITION equ 0x610            ; AH=Y, AL=X
 LEVELS_AVAILABLE equ 0x4
@@ -52,35 +52,52 @@ restart_game:
     mov word [_PLAYER_POS_], PLAYER_START_POSITION
 
 ; ENTITE
-;    0x0000 - Position YY/XX
-; +2 0x00 - Mirror Y/X
-; +3 0x00 - 0 eyes, 0x0c submerged
-; +4 0x00 - Status
-;    0000 - 0 stopped
-;    0001 - 1 exploring
+;    0x00 - type: 0 pit, 1 tree, 2 snake, 3 fish
+; +1 0x0000 - Position YY/XX
+; +3 0x00 - Mirror Y/X
+; +4 0x00 - 0 eyes, 0x0c submerged
+; +5 0x00 - Status
+;    0000 - 0 stopped ; do not drawn
+;    0001 - 1 exploring ; draw
 ;    0010 - 2 waiting for placing order
-;    0100 - 4 8waiting for food
+;    0100 - 4 waiting for food
 ;    1001 - 9 served, back
 ;
 ; +5 0x0000 - status timer
 spawn_entities:
   mov si, _ENTITIES_
-  mov cl, ENTITIES
+  mov cl, ENTITIES-2
   .next_entitie:
+    mov word [si], 0x3     ; fish
     mov ah, cl
     mov al, 0x01
-    mov byte [si+3], 0x00     ; Mirror Y/X
+    mov byte [si+4], 0x00     ; Mirror Y/X
     mov bl, cl
     and bl, 0x01
     jnz .skip_right
       mov al, 0x27
-      mov byte [si+3], 0x01     ; Mirror Y/X
+      mov byte [si+4], 0x01     ; Mirror Y/X
     .skip_right:
-    mov word [si], ax     ; YY/XX
-    mov byte [si+2], 0x00
-    mov byte [si+4], 0x01     ; State
-    add si, 0x5
+    mov word [si+1], ax     ; YY/XX
+    mov byte [si+3], 0x00   ; sprite addrr
+    mov byte [si+5], 0x01     ; State
+    add si, 0x6
   loop .next_entitie
+
+
+    mov byte [si],   0x01     ; tree
+    mov word [si+1], 0x0101 ;  pos
+    mov byte [si+3], 0x22  ; +34
+    mov byte [si+4], 0x01
+    mov byte [si+5], 0x01
+
+    add si, 0x6
+    mov byte [si],   0x01     ; tree
+    mov word [si+1], 0x0505 ;  pos
+    mov byte [si+3], 0x22  ; +34
+    mov byte [si+4], 0x00
+    mov byte [si+5], 0x01
+
 
 game_loop:
     xor di,di                   ; Clear destination address
@@ -280,16 +297,19 @@ ai_entities:
   .next:
     push cx
     push si
-    mov word cx, [si]
+    cmp byte [si], 0x3  ; Fish
+    jne .skip_entitie
+
+    mov word cx, [si+1]  ; Pos
     call conv_pos2mem
     sub di, 320*4
 
-    cmp byte  [si+3], 1
+    cmp byte  [si+4], 1  ; Mirror
     jnz .skip_adjust
       sub di, 2
     .skip_adjust:
 
-    mov byte al, [si+4]
+    mov byte al, [si+5]   ; Statte
     and ax, 0x1
     cmp ax, 0x1
     jnz .skip_explore
@@ -304,7 +324,7 @@ ai_entities:
         cmp ax, 0x3
         jnz .check_y
           sub cl,1
-          cmp byte [si+3], 0x01
+          cmp byte [si+4], 0x01
           jz .skip_right
           add cl, 0x2
           .skip_right:
@@ -326,9 +346,9 @@ ai_entities:
           call check_bounds
           cmp ax, 0x1
           jz .is_ok
-          cmp byte [si+4], 9
+          cmp byte [si+5], 9
           jnz .skip_move
-          mov byte [si+4], 0
+          mov byte [si+5], 0
           jmp .skip_move
           .is_ok:
           call check_friends
@@ -338,71 +358,81 @@ ai_entities:
           call conv_pos2mem
           call check_water
           jnz .skip_save
-            mov word [si], cx
+            mov word [si+1], cx
             jmp .skip_move
         .skip_save:
           ; check if not served yet
-          mov byte al, [si+4]
+          mov byte al, [si+5]
           and al, 0x8
           cmp al, 0x8
           jz .skip_set_wait
-          mov byte [si+4],0x02
-          mov byte [si+2],0x0e
+          mov byte [si+5],0x02
+          mov byte [si+3],0x0e
           .skip_set_wait:
-          mov word cx, [si]
+          mov word cx, [si+1]
           call conv_pos2mem
           sub di, 320*4
         .skip_move:
 
     .skip_explore:
 ; WAITING
-     cmp byte [si+4], 0x2
+     cmp byte [si+5], 0x2
      jnz .skip_waiting
 
        call check_player
        cmp ax, 0x0
        jz .no_player
-          mov byte [si+4],0x09
-          mov byte [si+2],0x00
-          xor byte [si+3],0x01
+          mov byte [si+5],0x09
+          mov byte [si+3],0x00
+          xor byte [si+4],0x01
        .no_player:
     .skip_waiting:
+    .skip_entitie:
     pop si
-    add si, 5
+    add si, 0x6
     pop cx
     dec cx
   jnz .next
 
+;jmp draw_entities
+
+; 0, 1, 3, 4, 5
+; 6, 7, 9, 10, 11
 sort_entities:
   mov si, _ENTITIES_
   .sort_loop:
     mov cx, ENTITIES-1
     .next_entitie:
-      mov word ax, [si]
-      mov word bx, [si+5]
+      mov word ax, [si+1]
+      mov word bx, [si+7]
       cmp ah, bh
       jle .skip_swap
-        mov word [si], bx
-        mov word [si+5], ax
+        mov word [si+1], bx
+        mov word [si+7], ax
 
-        mov byte al, [si+2]
-        mov byte bl, [si+7]
-        mov byte [si+2], bl
-        mov byte [si+7], al
+        mov byte al, [si]
+        mov byte bl, [si+6]
+        mov byte [si], bl
+        mov byte [si+6], al
 
         mov byte al, [si+3]
-        mov byte bl, [si+8]
+        mov byte bl, [si+9]
         mov byte [si+3], bl
-        mov byte [si+8], al
+        mov byte [si+9], al
 
         mov byte al, [si+4]
-        mov byte bl, [si+9]
+        mov byte bl, [si+10]
         mov byte [si+4], bl
-        mov byte [si+9], al
+        mov byte [si+10], al
+
+        mov byte al, [si+5]
+        mov byte bl, [si+11]
+        mov byte [si+5], bl
+        mov byte [si+11], al
 
         .skip_swap:
 
-      add si, 0x5
+      add si, 0x6
     loop .next_entitie
 
 draw_entities:
@@ -412,22 +442,21 @@ draw_entities:
     push cx
     push si
 
-    cmp byte [si+4], 0x0
+    cmp byte [si+5], 0x0
     jz .skip_entitie
 
-    mov word cx, [si]
+    mov word cx, [si+1]
     call conv_pos2mem
     sub di, 320*4
 
-    cmp byte  [si+3],1
+    mov byte dl, [si+4]
     jnz .skip_adjust
       sub di, 2
     .skip_adjust:
 
     xor ax,ax
-    mov byte al, [si+2]
-    mov byte dl, [si+3]
-    mov si, FishSpr
+    mov byte al, [si+3]
+    mov si, EntitiesSpr
     add si, ax
     cmp ax, 0
     jz .skip_shift
@@ -442,7 +471,7 @@ draw_entities:
 
     .skip_entitie:
     pop si
-    add si, 5
+    add si, 0x6
     pop cx
   loop .next
 
@@ -554,11 +583,11 @@ check_friends:
   mov si, _ENTITIES_
   mov cx, ENTITIES
   .next_entitie:
-    cmp word [si], ax
+    cmp word [si+1], ax
     jnz .different
     inc bx
     .different:
-    add si, 0x5
+    add si, 0x6
   loop .next_entitie
   pop cx
   pop si
@@ -800,23 +829,6 @@ dw 1111111101000000b
 dw 0111110100000000b
 dw 0000000000000000b
 
-TreeSpr:
-dw 0x0f, 0x27
-dw 0000100000101111b
-dw 0010101010110000b
-dw 0000101010100010b
-dw 0010101010101000b
-dw 0010111010101011b
-dw 1110011010001111b
-dw 0011110111110011b
-dw 0011000111110011b
-dw 0011001101001100b
-dw 1100001101010011b
-dw 1100000000010011b
-dw 0000000001010000b
-dw 0000000101000000b
-dw 0010110101101100b
-dw 1011010101011110b
 
 DinoSpr:
 dw 0x8, 0x20
@@ -829,7 +841,8 @@ dw 0001101011100000b
 dw 0000001010100000b
 dw 0000010000010000b
 
-FishSpr:
+EntitiesSpr:
+; Fish Swim
 dw 0x5, 0x64
 dw 0011010000110100b
 dw 1101110111011101b
@@ -837,6 +850,7 @@ dw 1111011111100111b
 dw 0011111110111110b
 dw 1111101011111111b
 
+; Fish Waiting
 dw 0x8, 0x64
 dw 0011011100110111b
 dw 0001100111011011b
@@ -846,6 +860,25 @@ dw 1110111001101001b
 dw 1011111110010100b
 dw 1010101111111000b
 dw 0010111011101000b
+
+; Tree
+dw 0x10, 0x27
+dw 0010101100101011b
+dw 1010111010111000b
+dw 1000111010101110b
+dw 0011101010101000b
+dw 0010101011101010b
+dw 1010101101101111b
+dw 0010110110111011b
+dw 0010000111110010b
+dw 1011001101100011b
+dw 1100001101011000b
+dw 1100001011011100b
+dw 0000001101011000b
+dw 0000100101110000b
+dw 0010110101111000b
+dw 1011010101011110b
+dw 0010111111111000b
 
 CaptionSpr:
 dw 0x0c, 0x17
