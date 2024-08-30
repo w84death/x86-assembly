@@ -25,10 +25,10 @@ _ENTITIES_ equ 0x70a0
 ; Constants
 BEEPER_ENABLED equ 0x0
 BEEPER_FREQ equ 4800
-ENTITIES equ 0xa
-LEVEL_START_POSITION equ 320*80
+ENTITIES equ 0x6
+LEVEL_START_POSITION equ 320*60
 PLAYER_START_POSITION equ 0x610            ; AH=Y, AL=X
-LEVELS_AVAILABLE equ 0x4
+LEVELS_AVAILABLE equ 0x2
 SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3636
@@ -63,35 +63,35 @@ restart_game:
 ;    0010 - 2 waiting for placing order
 ;    0100 - 4 waiting for food
 ;    1001 - 9 served, back
+;
+; NOT IMPLEMENTED YET:
 ; +6 0x0000 - status timer
 ; +7 ----
-
+;
 spawn_entities:
-  mov si, _ENTITIES_
+  mov si, LevelEntities
+  mov di, _ENTITIES_
   mov cl, ENTITIES
   .next_entitie:
-      mov byte [si], 0x01     ; tree
-      mov byte [si+3], 0x22   ; sprite addrr
-    cmp cl, 6
-    jle .skip_fish
-      mov byte [si], 0x03     ; fish
-      mov byte [si+3], 0x00   ; sprite addrr
-    .skip_fish:
+;    movsb
+;    movsw
+;    movsb
+;    movsb
+;    movsb
 
-    .cont:
-    mov ah, cl
-    mov al, 0x01
-    mov byte [si+4], 0x00     ; Mirror Y/X
-    mov bl, cl
-    and bl, 0x01
-    jnz .skip_right
-      mov al, 0x27
-      mov byte [si+4], 0x01     ; Mirror Y/X
-    .skip_right:
-    mov word [si+1], ax     ; YY/XX
+    mov byte al, [si]
+    mov byte [di], al
+    mov word ax, [si+1]
+    mov word [di+1], ax
+    mov byte al, [si+3]
+    mov byte [di+3], al
+    mov byte al, [si+4]
+    mov byte [di+4], al
+    mov byte al, [si+5]
+    mov byte [di+5], al
 
-    mov byte [si+5], 0x01     ; State
     add si, 0x06
+    add di, 0x06
   loop .next_entitie
 
 
@@ -126,11 +126,11 @@ draw_terrain:
 
   ; draw metatiles
   mov si, LevelData
-  mov word ax, [_CURRENT_LEVEL_]
- imul ax, 0x28
-  add si, ax
+;  mov word ax, [_CURRENT_LEVEL_]
+; imul ax, 0x28
+;  add si, ax
 
-  mov cl, 0x14 ; 20 reads, 2 per line
+  mov cl, 0x20 ; 20 reads, 2 per line - 16 lines, 32 reads
   .draw_meta_tiles:
   push cx
   push si
@@ -233,11 +233,6 @@ check_keyboard:
   .check_enter:
   cmp ah, 1ch         ; Compare scan code with enter
   jne .check_up
-    inc word [_CURRENT_LEVEL_]
-    cmp word [_CURRENT_LEVEL_], LEVELS_AVAILABLE
-    jl .ok
-    mov word [_CURRENT_LEVEL_], 0x0
-    .ok:
     mov word [_PLAYER_POS_], PLAYER_START_POSITION
     jmp spawn_entities
   .check_up:
@@ -289,7 +284,7 @@ check_keyboard:
 
 ai_entities:
   mov si, _ENTITIES_
-  mov cx, ENTITIES
+  mov byte cl, ENTITIES
   .next:
     push cx
     push si
@@ -398,7 +393,7 @@ ai_entities:
 sort_entities:
   mov si, _ENTITIES_
   .sort_loop:
-    mov cx, ENTITIES-1
+    mov cl, ENTITIES
     .next_entitie:
       mov word ax, [si+1]
       mov word bx, [si+7]
@@ -961,13 +956,6 @@ dw 1111111100101011b,0111111111111111b
 dw 1111111101101110b,0111111111111111b
 dw 1111111101001011b,0101111111111111b
 dw 1111111111111010b,1111111111111111b
-dw 1111111111111010b,1111111111111111b
-dw 1111111111110001b,1111111111111111b
-
-
-; Level-2 (40b)
-
-dw 1111111111111111b,1111111111111111b
 dw 1111000011111111b,1111000011111111b
 dw 0010101011111111b,1111010000110011b
 dw 0110010111111111b,1111111101000111b
@@ -976,32 +964,41 @@ dw 1010111111110010b,0000000000100100b
 dw 1010001100101011b,1110010110110011b
 dw 0110111001011001b,0001111111100111b
 dw 0100010111111111b,1111111101000101b
-dw 1111111111111111b,1111111111111111b
 
-; Level-3 (40b)
-dw 1111111111111111b,1111111111111111b
-dw 1111111111111111b,1111111111111111b
-dw 1111111100101000b,1000001111111111b
-dw 0010100001101100b,1100011110000011b
-dw 0110110011001100b,1100110011000111b
-dw 0100110001110100b,1100100111000101b
-dw 1111101000011111b,1010111110101111b
-dw 1111101011111111b,1010111110101111b
-dw 1111111011111111b,1110111111101111b
-dw 1111000111111111b,0001111100011111b
 
-; Level-4 (40b)
-dw 1111111111111111b,1111111111111111b
-dw 1111001011111111b,1111111100001111b
-dw 1111011000110000b,1111001001111111b
-dw 1111011010111011b,0011011001111111b
-dw 1111011010111011b,1011111001111111b
-dw 1111000110101001b,1001101101111111b
-dw 1111111110101111b,1111010001111111b
-dw 1111111110101111b,1111111100011111b
-dw 1111111111101111b,1111111111111111b
-dw 1111111100011111b,1111111111111111b
+; entities
+LevelEntities:
+;  id
+; YY/XX
+; sprite, mirror, status
 
+db 0x01
+dw 0x0411
+db 0x022,0x00,0x01
+
+db 0x01
+dw 0x0512
+db 0x22,0x00,0x01
+
+db 0x01
+dw 0x0513
+db 0x22,0x00,0x01
+
+db 0x03
+dw 0x0427
+db 0x00,0x01,0x01
+
+db 0x03
+dw 0x0727
+db 0x00,0x01,0x01
+
+db 0x03
+dw 0x0927
+db 0x00,0x01,0x01
+
+; End of Level-1
 
 Logo:
 db "P1X"
+; Thanks for reading the source code!
+; Visit http://smol.p1x.in for more.
