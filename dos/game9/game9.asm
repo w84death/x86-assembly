@@ -16,19 +16,17 @@ use16
 ; Memory adresses
 _VGA_MEMORY_ equ 0xA000
 _DBUFFER_MEMORY_ equ 0x8000
-_CURRENT_LEVEL_ equ 0x7000
+;_CURRENT_LEVEL_ equ 0x7000
 _PLAYER_POS_ equ 0x7002
 _PLAYER_MEM_ equ 0x7004
 _PLAYER_MIRROR_ equ 0x7006
-_ENTITIES_ equ 0x70a0
+_ENTITIES_ equ 0x7010
 
 ; Constants
 BEEPER_ENABLED equ 0x0
 BEEPER_FREQ equ 4800
-ENTITIES equ 28
 LEVEL_START_POSITION equ 320*60
 PLAYER_START_POSITION equ 0x080f           ; AH=Y, AL=X
-LEVELS_AVAILABLE equ 0x2
 SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3636
@@ -48,7 +46,6 @@ set_keyboard_rate:
     int 16h
 
 restart_game:
-    mov word [_CURRENT_LEVEL_], 0x0000
     mov word [_PLAYER_POS_], PLAYER_START_POSITION
 
 ; ENTITE
@@ -71,14 +68,13 @@ restart_game:
 spawn_entities:
   mov si, EntityData
   mov di, _ENTITIES_
-  mov byte cl, [si]
-  inc si
+  mov cx, [EntityCount]
   .next_entitie:
 
 ; 0 Player
 ; 1 Palm Tree - 0x22
 ; 2 grass - 0x46
-; 3a fish swim - 0/0
+; 3 fish swim - 0/0
 ; 4 monkey - 70/0x3a
 
 ; pos
@@ -95,6 +91,7 @@ spawn_entities:
 
 ; sprite data
     mov byte al, [si]
+    mov byte [di],al
     cmp al, 0x01
     jne .n2
       mov al, 0x22
@@ -153,10 +150,6 @@ draw_terrain:
 
   ; draw metatiles
   mov si, LevelData
-;  mov word ax, [_CURRENT_LEVEL_]
-; imul ax, 0x28
-;  add si, ax
-
   mov cl, 0x20 ; 20 reads, 2 per line - 16 lines, 32 reads
   .draw_meta_tiles:
   push cx
@@ -307,12 +300,63 @@ check_keyboard:
   call beep
   .no_key_press:
 
-; =========================================== DRAW ENITIES ===============
+; =========================================== AI ENITIES ===============
 
 ai_entities:
-  mov si, EntityData
-  xor cx, cx
-  mov byte cl, [si]
+  mov si, _ENTITIES_
+  mov cx, [EntityCount]
+  .next_entity:
+    push cx
+
+    cmp byte [si], 0x3  ; Fish
+    jne .skip_entity
+      mov byte al, [si+5]   ; State
+      and ax, 0x1
+      cmp ax, 0x1
+      jnz .skip_explore
+
+        mov cx, [si+1]
+        call random_move
+
+        call check_bounds
+        cmp ax, 0x1
+        jnz .can_not_move
+
+        call check_friends
+        cmp ax, 0x1
+        jnz .can_not_move
+
+        call conv_pos2mem
+        call check_water
+        jnz .can_not_move
+
+        .move_to_new_pos:
+          mov word [si+1], cx
+        .can_not_move:
+
+      .skip_explore:
+      mov byte al, [si+5]   ; State
+      and ax, 0x2
+      cmp ax, 0x2
+      jnz .skip_waiting
+        call check_player
+        cmp ax, 0x0
+        jz .wait_more
+          mov byte [si+3],0x00
+          xor byte [si+4],0x01
+          mov byte [si+5],0x09
+       .wait_more:
+      .skip_waiting:
+
+    .skip_entity:
+    add si,0x6
+    pop cx
+  loop .next_entity
+
+jmp skip_me
+
+ai_entities_old:
+  mov cx, [EntityCount]
   mov si, _ENTITIES_
   .next:
     push cx
@@ -417,16 +461,21 @@ ai_entities:
     dec cx
   jnz .next
 
+
+;skip_me:
+
+; =========================================== SORT ENITIES ===============
+
+
 ; SORT
 ; 0, 1, 3, 4, 5
 ; 6, 7, 9, 10, 11
 sort_entities:
-  mov si, EntityData
-  mov byte dl, [si]
-  dec dl
+  mov dx, [EntityCount]
+  dec dx
   mov si, _ENTITIES_
   .sort_loop:
-    mov byte cl, dl
+    mov cx, dx
     .next_entitie:
       mov word ax, [si+1]
       mov word bx, [si+7]
@@ -460,10 +509,12 @@ sort_entities:
       add si, 0x6
     loop .next_entitie
 
+skip_me:
+
+; =========================================== DRAW ENITIES ===============
 draw_entities:
-  mov si, EntityData
-  mov byte cl, [si]
   mov si, _ENTITIES_
+  mov cx, [EntityCount]
   .next:
     push cx
     push si
@@ -477,7 +528,7 @@ draw_entities:
 
     mov byte dl, [si+4]
     jnz .skip_adjust
-      sub di, 2
+      sub di, 4
     .skip_adjust:
 
     mov byte bl, [si+5]
@@ -573,6 +624,32 @@ conv_pos2mem:
   add di, ax               ; Move result to DI
 ret
 
+; CX pos
+random_move:
+  rdtsc
+  and ax, 0x3
+  cmp ax, 0x3
+  jnz .check_y
+    sub cl,1
+    cmp byte [si+4], 0x01
+    jz .skip_right
+      add cl, 0x2
+    .skip_right:
+  ret
+  .check_y:
+    rdtsc
+    and ax, 0x10
+    cmp ax, 0x10
+    jnz .skip_move
+      sub ch, 1
+      rdtsc
+      and ax, 0x1
+      jz .skip_down
+         add ch, 0x2
+     .skip_down:
+  .skip_move:
+ret
+
 ; =========================================== CHECK WATER =====================
 ; DI - memory position to check for water
 ; Return: Zero if water
@@ -609,10 +686,8 @@ check_friends:
   push cx
   xor bx, bx
   mov ax, cx
-  xor cx, cx
 
-  mov si, EntityData
-  mov byte cl, [si]
+  mov cx, [EntityCount]
   mov si, _ENTITIES_
   .next_entity:
     cmp word [si+1], ax
@@ -1015,9 +1090,10 @@ dw 1111111111111111b,1111111111111111b
 dw 0010001111111111b,1111111100100011b
 dw 0100010111111111b,1111111101000101b
 
-EntityData:
-db 15
+EntityCount:
+dw 15
 
+EntityData:
 db 4
 dw 0x0000
 db 4
