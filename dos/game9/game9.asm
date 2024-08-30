@@ -25,9 +25,9 @@ _ENTITIES_ equ 0x70a0
 ; Constants
 BEEPER_ENABLED equ 0x0
 BEEPER_FREQ equ 4800
-ENTITIES equ 41
+ENTITIES equ 28
 LEVEL_START_POSITION equ 320*60
-PLAYER_START_POSITION equ 0x610            ; AH=Y, AL=X
+PLAYER_START_POSITION equ 0x080f           ; AH=Y, AL=X
 LEVELS_AVAILABLE equ 0x2
 SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
@@ -69,9 +69,10 @@ restart_game:
 ; +7 ----
 ;
 spawn_entities:
-  mov si, LevelEntities
+  mov si, EntityData
   mov di, _ENTITIES_
-  mov cl, ENTITIES
+  mov byte cl, [si]
+  inc si
   .next_entitie:
 
 ; 0 Player
@@ -226,6 +227,7 @@ draw_players:
   mov si, DinoSpr
   mov cx, [_PLAYER_POS_]   ; Load player position into CX (Y in CH, X in CL)
   call conv_pos2mem
+
   mov word [_PLAYER_MEM_], di
 
   rdtsc
@@ -259,8 +261,7 @@ check_keyboard:
   .check_enter:
   cmp ah, 1ch         ; Compare scan code with enter
   jne .check_up
-    mov word [_PLAYER_POS_], PLAYER_START_POSITION
-    jmp spawn_entities
+    jmp restart_game
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
@@ -309,24 +310,27 @@ check_keyboard:
 ; =========================================== DRAW ENITIES ===============
 
 ai_entities:
+  mov si, EntityData
+  xor cx, cx
+  mov byte cl, [si]
   mov si, _ENTITIES_
-  mov byte cl, ENTITIES
   .next:
     push cx
-    push si
+    ;push si
+
     cmp byte [si], 0x3  ; Fish
-    jne .skip_entitie
+    jne .skip_entity
 
     mov word cx, [si+1]  ; Pos
     call conv_pos2mem
-    sub di, 320*4
+    ;sub di, 320*4
 
     cmp byte  [si+4], 1  ; Mirror
     jnz .skip_adjust
       sub di, 2
     .skip_adjust:
 
-    mov byte al, [si+5]   ; Statte
+    mov byte al, [si+5]   ; State
     and ax, 0x1
     cmp ax, 0x1
     jnz .skip_explore
@@ -368,6 +372,7 @@ ai_entities:
           mov byte [si+5], 0x0 ; disable
           jmp .skip_move
           .is_ok:
+
           call check_friends
           cmp ax, 0x1
           jnz .skip_move
@@ -388,7 +393,7 @@ ai_entities:
           .skip_set_wait:
           mov word cx, [si+1]
           call conv_pos2mem
-          sub di, 320*4
+          ;sub di, 320*4
         .skip_move:
 
     .skip_explore:
@@ -405,21 +410,23 @@ ai_entities:
        .no_player:
     .skip_waiting:
 
-    .skip_entitie:
-    pop si
+    .skip_entity:
+    ;pop si
     add si, 0x6
     pop cx
     dec cx
   jnz .next
 
-;jmp draw_entities
-
+; SORT
 ; 0, 1, 3, 4, 5
 ; 6, 7, 9, 10, 11
 sort_entities:
+  mov si, EntityData
+  mov byte dl, [si]
+  dec dl
   mov si, _ENTITIES_
   .sort_loop:
-    mov cl, ENTITIES
+    mov byte cl, dl
     .next_entitie:
       mov word ax, [si+1]
       mov word bx, [si+7]
@@ -454,8 +461,9 @@ sort_entities:
     loop .next_entitie
 
 draw_entities:
+  mov si, EntityData
+  mov byte cl, [si]
   mov si, _ENTITIES_
-  mov cx, ENTITIES
   .next:
     push cx
     push si
@@ -465,7 +473,7 @@ draw_entities:
 
     mov word cx, [si+1]
     call conv_pos2mem
-    sub di, 320*4
+    ;sub di, 320*4
 
     mov byte dl, [si+4]
     jnz .skip_adjust
@@ -554,7 +562,7 @@ exit:
 ; Return: DI memory position
 conv_pos2mem:
   mov di, LEVEL_START_POSITION
-  sub di, 320*2
+  add di, 320*8+32
   xor ax, ax               ; Clear AX
   mov al, ch               ; Move Y coordinate to AL
  imul ax, 320*8
@@ -570,7 +578,7 @@ ret
 ; Return: Zero if water
 check_water:
   mov ax, [es:di]
-  ;mov word [es:di], 0x0 ;DEBUG ONLY
+  mov word [es:di], 0x0 ;DEBUG ONLY
   cmp ax, COLOR_WATER
 ret
 
@@ -578,11 +586,11 @@ check_bounds:
 ; CX - Positin YY/XX
   cmp ch, 0x00
   jl .bound
-  cmp ch, 0x0b
+  cmp ch, 0x0f
   jg .bound
-  cmp cl, 0x01
+  cmp cl, 0x00
   jl .bound
-  cmp cl, 0x26
+  cmp cl, 0x20
   jg .bound
 
   jmp .no_bound
@@ -601,15 +609,19 @@ check_friends:
   push cx
   xor bx, bx
   mov ax, cx
+  xor cx, cx
+
+  mov si, EntityData
+  mov byte cl, [si]
   mov si, _ENTITIES_
-  mov cx, ENTITIES
-  .next_entitie:
+  .next_entity:
     cmp word [si+1], ax
     jnz .different
     inc bx
     .different:
     add si, 0x6
-  loop .next_entitie
+  loop .next_entity
+
   pop cx
   pop si
   cmp bx,0x1
@@ -623,8 +635,6 @@ ret
 
 check_player:
    mov ax, [_PLAYER_POS_]
-
-   ;dec ah
 
    cmp ch, ah
    jz .pass_y
@@ -985,159 +995,62 @@ db 00000000b,00000000b,00000000b,00000000b  ; 1101 ???
 db 00000000b,00000000b,00000000b,00000000b  ; 1101 ???
 db 00000000b,00000000b,00000000b,00000000b  ; 1111 empty-filler
 
-LevelData:
-; List of meta tiles, width of each level is 8x10
-; Two words per line
-; 8x16 = 128 tiles
-; 64 bytes per level
-      ; Custom Level, 40 bytes
-; Made in smol.p1x.in/4bitleveleditor
-
 ; Custom Level mady in smol.p1x.in/4bitleveleditor
-dw 1111111100101111b,1111001111111111b
-dw 1111001001101000b,1000011100111111b
-dw 1111011010111011b,1011101101111111b
-dw 1111011011001011b,1100101101111111b
-dw 1111011010111100b,1100101101111111b
-dw 1111011010111100b,1011101101111111b
-dw 1111010001101011b,1011011101011111b
-dw 1111111101101011b,0111010111111111b
-dw 1111111111001011b,0111111111111111b
-dw 1111111101101100b,0111111111111111b
-dw 1111111101101011b,0111111111111111b
-dw 1111111101101100b,0111111111111111b
-dw 1111111101101011b,0111111111111111b
-dw 1111111101001001b,0101111111111111b
+
+LevelData:
+dw 0010001111111111b,1111111100100011b
+dw 0100010111111111b,1111111101000101b
 dw 1111111111111111b,1111111111111111b
 dw 1111111111111111b,1111111111111111b
+dw 1111111111110000b,1111111111111111b
+dw 1111111111111010b,1111111111111111b
+dw 1111111111111010b,1111111111111111b
+dw 1111111111111010b,1111111111111111b
+dw 1111111111111010b,1111111111111111b
+dw 1111111111110001b,1111111111111111b
+dw 1111111111111111b,1111111111111111b
+dw 1111111111111111b,1111111111111111b
+dw 1111111111111111b,1111111111111111b
+dw 1111111111111111b,1111111111111111b
+dw 0010001111111111b,1111111100100011b
+dw 0100010111111111b,1111111101000101b
 
-LevelEntities:
-; Entities*
-db 2
-dw 0x0105
-
-db 2
-dw 0x0111
-
-db 3
-dw 0x0300
-
-db 2
-dw 0x030B
-
-db 1
-dw 0x030D
-
-db 1
-dw 0x0408
-
-db 2
-dw 0x0409
-
-db 2
-dw 0x040C
-
-db 2
-dw 0x040D
-
-db 3
-dw 0x0417
-
-db 2
-dw 0x0504
-
-db 2
-dw 0x0508
-
-db 2
-dw 0x0509
-
-db 2
-dw 0x0608
-
-db 0
-dw 0x060B
-
-db 2
-dw 0x0705
-
-db 2
-dw 0x070D
-
-db 2
-dw 0x0808
-
-db 2
-dw 0x0809
-
-db 2
-dw 0x0906
+EntityData:
+db 15
 
 db 4
-dw 0x090D
-
+dw 0x0000
+db 4
+dw 0x001F
+db 0x3
+dw 0x0300
 db 3
-dw 0x0A00
-
+dw 0x031F
+db 2
+dw 0x050D
+db 2
+dw 0x060C
 db 1
-dw 0x0A08
-
+dw 0x060D
 db 2
-dw 0x0A09
-
-db 1
-dw 0x0A0C
-
+dw 0x060E
 db 2
-dw 0x0A10
-
+dw 0x070D
 db 2
-dw 0x0B0B
-
-db 2
-dw 0x0B0C
-
-db 2
-dw 0x0B0F
-
+dw 0x070E
+db 4
+dw 0x080C
 db 3
-dw 0x0B16
-
-db 2
-dw 0x0C05
-
-db 2
-dw 0x0C07
-
-db 2
-dw 0x0C0D
-
-db 2
-dw 0x0C0E
-
-db 2
-dw 0x0D05
-
-db 2
-dw 0x0D06
-
-db 2
-dw 0x0D07
-
-db 2
-dw 0x0D08
-
-db 2
-dw 0x0D09
-
-db 2
-dw 0x0D0F
-
-db 2
-dw 0x0E06
+dw 0x0C00
+db 3
+dw 0x0C1F
+db 4
+dw 0x0F00
+db 4
+dw 0x0F1F
 
 
-; End of Level-1
+; End of Level Data
 
 Logo:
 db "P1X"
