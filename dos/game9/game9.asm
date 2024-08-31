@@ -46,14 +46,12 @@ set_keyboard_rate:
     int 16h
 
 restart_game:
-    mov word [_PLAYER_POS_], PLAYER_START_POSITION
-
-; ENTITE
+; ENTITES
 ;  0 0x00 - type: 1 player, 1 tree, 2 grass, 3 fish, 4 monkey
 ; +1 0x0000 - Position YY/XX
 ; +2 ----
 ; +3 0x00 - Mirror Y/X
-; +4 0x00 - 0 eyes, 0x0c submerged
+; +4 0x00 - Sprite data offset
 ; +5 0x00 - Status
 ;    0000 - 0 stopped ; do not drawn
 ;    0001 - 1 exploring ; draw
@@ -68,6 +66,7 @@ restart_game:
 spawn_entities:
   mov si, EntityData
   mov di, _ENTITIES_
+
   mov cx, [EntityCount]
   .next_entitie:
 
@@ -92,6 +91,11 @@ spawn_entities:
 ; sprite data
     mov byte al, [si]
     mov byte [di],al
+    .nz:
+    cmp al, 0x00
+    jne .n1
+      mov al, 0x66
+    .n1:
     cmp al, 0x01
     jne .n2
       mov al, 0x22
@@ -216,21 +220,6 @@ draw_terrain:
 loop .draw_meta_tiles
 
 ; =========================================== DRAW PLAYERS =====================
-draw_players:
-  mov si, DinoSpr
-  mov cx, [_PLAYER_POS_]   ; Load player position into CX (Y in CH, X in CL)
-  call conv_pos2mem
-
-  mov word [_PLAYER_MEM_], di
-
-  rdtsc
-  shr ax, 0x1
-  jnc .skip_jump
-  sub di, 320
-  .skip_jump:
-
-  mov dx, [_PLAYER_MIRROR_]
-  call draw_sprite
 
 
 ; =========================================== KEYBOARD INPUT ==================
@@ -239,30 +228,27 @@ check_keyboard:
   int 16h             ; Call BIOS interrupt
   jz .no_key_press           ; Jump if Zero Flag is set (no key pressed)
 
+  mov si, _ENTITIES_
+  mov cx, [si+1]   ; Load player position into CX (Y in CH, X in CL)
+  call conv_pos2mem
+
   mov ah, 00h         ; BIOS keyboard read function
   int 16h             ; Call BIOS interrupt
-
-
-  mov di, [_PLAYER_MEM_]
-  add di, 320*4+5
-  mov byte al, [_PLAYER_MIRROR_]
-  shr al, 1
-  jnc .skip_adjust
-    sub di, 2
-  .skip_adjust:
 
   .check_enter:
   cmp ah, 1ch         ; Compare scan code with enter
   jne .check_up
     jmp restart_game
+
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
     sub di, 320*6
     call check_water
     jz .no_key
-    sub word [_PLAYER_POS_],0x0100
-
+    ;call  check_friends
+    ;jz .no_key
+    sub word [si+1],0x0100
 
   .check_down:
   cmp ah, 50h         ; Compare scan code with down arrow
@@ -270,7 +256,9 @@ check_keyboard:
     add di, 320*6
     call check_water
     jz .no_key
-    add word [_PLAYER_POS_],0x0100
+    ;call  check_friends
+    ;jz .no_key
+    add word [si+1],0x0100
 
   .check_left:
   cmp ah, 4Bh         ; Compare scan code with left arrow
@@ -278,8 +266,10 @@ check_keyboard:
     sub di, 8
     call check_water
     jz .no_key
-    dec word [_PLAYER_POS_]
-    mov byte [_PLAYER_MIRROR_], 0x01
+    ;call  check_friends
+    ;jz .no_key
+    sub word [si+1],0x0001
+    mov byte [si+4], 0x01
 
   .check_right:
   cmp ah, 4Dh         ; Compare scan code with right arrow
@@ -287,17 +277,20 @@ check_keyboard:
     add di, 6
     call check_water
     jz .no_key
-    inc word [_PLAYER_POS_]
-    mov byte [_PLAYER_MIRROR_], 0x00
+    ;call  check_friends
+    ;jz .no_key
+
+    add word [si+1],0x0001
+    mov byte [si+4], 0x00
 
   .no_key:
   mov bx, BEEPER_ENABLED
   cmp bx, 0x1
   jnz .no_key_press
-  mov bx, BEEPER_FREQ
-  add bl, ah
-  call set_freq
-  call beep
+    mov bx, BEEPER_FREQ
+    add bl, ah
+    call set_freq
+    call beep
   .no_key_press:
 
 ; =========================================== AI ENITIES ===============
@@ -368,11 +361,11 @@ ai_entities:
     pop cx
   loop .next_entity
 
-jmp skip_me
+
 
 ; =========================================== SORT ENITIES ===============
 
-
+jmp skip_me
 ; SORT
 ; 0, 1, 3, 4, 5
 ; 6, 7, 9, 10, 11
@@ -614,7 +607,7 @@ ret
 
 
 check_player:
-   mov ax, [_PLAYER_POS_]
+   mov ax, [_ENTITIES_+1]
 
    cmp ch, ah
    jz .pass_y
@@ -842,15 +835,6 @@ dw 0000000000000000b
 
 
 DinoSpr:
-dw 0x8, 0x20
-dw 0000011011111100b
-dw 0000001010010111b
-dw 1100000010101010b
-dw 1000001010010000b
-dw 0110101010101100b
-dw 0001101011100000b
-dw 0000001010100000b
-dw 0000010000010000b
 
 EntitiesSpr:
 ; Fish Swim  -  0x00
@@ -910,6 +894,16 @@ dw 0000101001000000b
 dw 0000010100010000b
 dw 0001000100010000b
 
+; dino - 102/0x66
+dw 0x8, 0x20
+dw 0000011011111100b
+dw 0000001010010111b
+dw 1100000010101010b
+dw 1000001010010000b
+dw 0110101010101100b
+dw 0001101011100000b
+dw 0000001010100000b
+dw 0000010000010000b
 
 CaptionSpr:
 dw 0x0c, 0x17
@@ -978,57 +972,66 @@ db 00000000b,00000000b,00000000b,00000000b  ; 1111 empty-filler
 ; Custom Level mady in smol.p1x.in/4bitleveleditor
 
 LevelData:
-dw 0010001111111111b,1111111100100011b
-dw 0100010111111111b,1111111101000101b
+dw 1111111111111111b,1111111111111111b
+dw 1111111111111111b,1111111111111111b
 dw 1111111111111111b,1111111111111111b
 dw 1111111111111111b,1111111111111111b
 dw 1111111111110000b,1111111111111111b
 dw 1111111111111010b,1111111111111111b
-dw 1111111111111010b,1111111111111111b
-dw 1111111111111010b,1111111111111111b
+dw 1111001010001010b,1000100000111111b
+dw 1111011010111010b,1011110001111111b
+dw 1111011010111010b,1100101101111111b
+dw 1111010010011010b,1001100101011111b
 dw 1111111111111010b,1111111111111111b
 dw 1111111111110001b,1111111111111111b
 dw 1111111111111111b,1111111111111111b
 dw 1111111111111111b,1111111111111111b
 dw 1111111111111111b,1111111111111111b
 dw 1111111111111111b,1111111111111111b
-dw 0010001111111111b,1111111100100011b
-dw 0100010111111111b,1111111101000101b
 
 EntityCount:
-dw 15
+dw 18
+
 
 EntityData:
-db 4
-dw 0x0000
-db 4
-dw 0x001F
-db 0x3
-dw 0x0300
+db 0
+dw 0x080d
 db 3
-dw 0x031F
-db 2
+dw 0x0211
+db 3
+dw 0x0403
+db 3
+dw 0x041C
+db 1
 dw 0x050D
+db 1
+dw 0x050E
 db 2
-dw 0x060C
+dw 0x0515
+db 2
+dw 0x0516
 db 1
 dw 0x060D
-db 2
+db 1
 dw 0x060E
 db 2
-dw 0x070D
+dw 0x0716
 db 2
-dw 0x070E
-db 4
-dw 0x080C
+dw 0x0807
+db 2
+dw 0x080A
+db 2
+dw 0x091A
 db 3
-dw 0x0C00
+dw 0x0A02
+db 2
+dw 0x0A09
+db 1
+dw 0x0A0D
+db 4
+dw 0x0A0E
 db 3
-dw 0x0C1F
-db 4
-dw 0x0F00
-db 4
-dw 0x0F1F
+dw 0x0D14
 
 
 ; End of Level Data
