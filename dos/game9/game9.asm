@@ -16,17 +16,13 @@ use16
 ; Memory adresses
 _VGA_MEMORY_ equ 0xA000
 _DBUFFER_MEMORY_ equ 0x8000
-;_CURRENT_LEVEL_ equ 0x7000
-_PLAYER_POS_ equ 0x7002
-_PLAYER_MEM_ equ 0x7004
-_PLAYER_MIRROR_ equ 0x7006
 _ENTITIES_ equ 0x7010
+_TERRAIN_TILES equ 0x7a00
 
 ; Constants
 BEEPER_ENABLED equ 0x0
 BEEPER_FREQ equ 4800
 LEVEL_START_POSITION equ 320*60
-PLAYER_START_POSITION equ 0x080f           ; AH=Y, AL=X
 SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3636
@@ -47,7 +43,7 @@ set_keyboard_rate:
 
 restart_game:
 ; ENTITES
-;  0 0x00 - type: 1 player, 1 tree, 2 grass, 3 fish, 4 monkey
+;  0 0x00 - type: 0 player, 1 tree, 2 grass, 3 fish, 4 monkey
 ; +1 0x0000 - Position YY/XX
 ; +2 ----
 ; +3 0x00 - Mirror Y/X
@@ -246,8 +242,9 @@ check_keyboard:
     sub di, 320*6
     call check_water
     jz .no_key
-    ;call  check_friends
-    ;jz .no_key
+    dec ch
+    call check_friends
+    jz .no_key
     sub word [si+1],0x0100
 
   .check_down:
@@ -256,8 +253,9 @@ check_keyboard:
     add di, 320*6
     call check_water
     jz .no_key
-    ;call  check_friends
-    ;jz .no_key
+    inc ch
+    call  check_friends
+    jz .no_key
     add word [si+1],0x0100
 
   .check_left:
@@ -266,8 +264,9 @@ check_keyboard:
     sub di, 8
     call check_water
     jz .no_key
-    ;call  check_friends
-    ;jz .no_key
+    dec  cl
+    call  check_friends
+    jz .no_key
     sub word [si+1],0x0001
     mov byte [si+4], 0x01
 
@@ -277,8 +276,9 @@ check_keyboard:
     add di, 6
     call check_water
     jz .no_key
-    ;call  check_friends
-    ;jz .no_key
+    inc cl
+    call  check_friends
+    jz .no_key
 
     add word [si+1],0x0001
     mov byte [si+4], 0x00
@@ -425,20 +425,27 @@ draw_entities:
     call conv_pos2mem
 
     mov byte dl, [si+4]
-    jnz .skip_adjust
-      sub di, 4
-    .skip_adjust:
+    ;jnz .skip_adjust
+    ;  sub di, 4
+    ;.skip_adjust:
 
     mov byte bl, [si+5]
+    mov byte al, [si]
+    cmp al, 0x1
+    jnz .not_tree
+      sub di, 320*8
+    .not_tree:
 
-    xor ax,ax
+    cmp al, 0x02
+    jnz .not_grass
+      add di, 320*3
+    .not_grass:
+
+    xor ax, ax
     mov byte al, [si+3]
     mov si, EntitiesSpr
     add si, ax
-    cmp al, 0x0
-    jz .skip_shift
-      sub di, 320*4
-    .skip_shift:
+
     call draw_sprite
 
     and bl, 0x2 ; waiting
