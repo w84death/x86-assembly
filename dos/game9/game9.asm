@@ -54,6 +54,7 @@ restart_game:
 ;    0010 - 2 waiting for placing order
 ;    0100 - 4 waiting for food
 ;    1001 - 9 served, back
+;   10000 - source
 ;
 ; NOT IMPLEMENTED YET:
 ; +6 0x0000 - status timer
@@ -87,14 +88,16 @@ spawn_entities:
 ; sprite data
     mov byte al, [si]
     mov byte [di],al
+    mov ah, 0x01
     .nz:
     cmp al, 0x00
     jne .n1
-      mov al, 0x66
+      mov al, 0x6a
     .n1:
     cmp al, 0x01
     jne .n2
       mov al, 0x22
+
     .n2:
     cmp al, 0x02
     jne .n3
@@ -106,18 +109,18 @@ spawn_entities:
     .n4:
      cmp al, 0x04
     jne .n5
-      mov al, 0x54
+      mov al, 0x58
     .n5:
-
     mov byte [di+3], al
-
-; status
-    mov byte [di+5], 0x01
+    mov byte [di+5], ah
 
     add si, 0x03
     add di, 0x06
   loop .next_entitie
 
+
+mov di, _ENTITIES_
+mov byte [di+5], 0x10
 
 game_loop:
     xor di,di                   ; Clear destination address
@@ -195,6 +198,7 @@ draw_terrain:
       call convert_value
 
       mov dx, bx
+      xor bp, bp
       call draw_sprite
 
       .skip_tile:
@@ -443,18 +447,23 @@ draw_entities:
       add di, 320*3
     .not_grass:
 
+
     xor ax, ax
     mov byte al, [si+3]
     mov si, EntitiesSpr
     add si, ax
-
+    xor bp, bp
     call draw_sprite
 
-    and bl, 0x2 ; waiting
-    cmp bl, 0x2
+    cmp bl, 0x2 ; draw order
     jne .skip_caption
       call draw_caption
     .skip_caption:
+
+    cmp bl, 0x10 ; show surce / stash
+    jne .skip_source
+      call draw_source
+    .skip_source:
 
     .skip_entitie:
     pop si
@@ -646,18 +655,40 @@ check_player:
    .pass_x:
    mov ax, 0x1
 ret
+
+draw_source:
+  mov si, CaptionSpr
+  sub di, 320*2
+  mov cx, 0x3
+  .next_color:
+    add bp, 0x8
+    call draw_sprite
+    sub di, 320*4
+  loop .next_color
+
 ; =========================================== DRAW CAPTION =====================
 ; DI - memory position
 ; Return: -
 draw_caption:
+  xor dx, dx
+  xor bp, bp
+
+;  mov si, CaptionSpr
+;  sub di, 320*9-2
+;  call draw_sprite
+
+;  mov si, IconsSpr
+;  add di, 320*4
+;  call draw_sprite
+
   mov si, CaptionSpr
-  sub di, 320*13-3
+  sub di, 320*14-2
+  call draw_sprite
+  add di, 320*5-2
+  mov bp, 0x8
   call draw_sprite
 
-  add di, 320*2
-  mov si, IconsSpr
-  call draw_sprite
-ret
+ ret
 
 ; BX - Frequency
 set_freq:
@@ -678,6 +709,7 @@ beep:
 ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
+; BP - color shit
 ; DI - positon (linear)
 ; SI - sprite data addr
 ; DX - settings
@@ -690,10 +722,9 @@ draw_sprite:
     mov cx, [si]        ; Get the sprite lines
     inc si
     inc si              ; Mov si to the color data
-    mov bp, [si]        ; Get the start color of the palette
+    add bp, [si]        ; Get the start color of the palette
     inc si
     inc si              ; Mov si to the sprite data
-
     mov bx, dx
     and bx, 1
     jz .revX3
@@ -886,14 +917,16 @@ dw 1011010101011110b
 dw 0010111111111000b
 
 ; grass - 70/0x46
-dw 0x5,0x2a
-dw 0000001110000010b
+dw 0x7,0x2a
+dw 0000011000000000b
+dw 0000001101000010b
+dw 0010001110000010b
 dw 0010001100001000b
 dw 0010111100111011b
 dw 1011111111111100b
 dw 0000111111110000b
 
-; monkey - 84/0x54
+; monkey - 84+4/0x58
 dw 0x7,0x6e
 dw 0010101000000000b
 dw 1000000000101000b
@@ -903,7 +936,7 @@ dw 0000101001000000b
 dw 0000010100010000b
 dw 0001000100010000b
 
-; dino - 102/0x66
+; dino - 102+4/0x6a
 dw 0x8, 0x20
 dw 0000011011111100b
 dw 0000001010010111b
@@ -915,48 +948,16 @@ dw 0000001010100000b
 dw 0000010000010000b
 
 CaptionSpr:
-dw 0x0c, 0x17
-dw 0010101010100100b
-dw 1011111111111101b
-dw 1011111111111110b
-dw 0111111111111101b
-dw 1011111111111110b
-dw 1011111111111101b
-dw 0111111111111101b
-dw 0111111111111110b
-dw 1101101010101001b
-dw 0011111101100111b
-dw 0000001110111100b
-dw 0000001111000000b
-
-IconsSpr:
-dw 0x5, 0x16
-dw 0000001111000000b
-dw 0000001110000000b
-dw 0000001001000000b
-dw 0000000000000000b
-dw 0000001110000000b
-
-dw 0x5, 0x3b
-dw 0000010000000000b
-dw 0000101100000000b
-dw 0000111111000000b
-dw 0000111111000000b
-dw 0000001111100000b
-
-dw 0x5, 0x6b
-dw 0000001111000000b
-dw 0000111110010000b
-dw 0000111010010000b
-dw 0000111010010000b
-dw 0000000101000000b
-
-dw 0x4, 0x22
-dw 0000000111000000b
-dw 0011011001111000b
-dw 0001011110100100b
-dw 0000001001000000b
-
+dw 0x09, 0x15
+dw 0011111111111100b
+dw 1100111111111111b
+dw 1111111111111111b
+dw 1111111111111111b
+dw 1111111111111111b
+dw 1111111111111111b
+dw 0011111111111100b
+dw 0000000011110000b
+dw 0000000011000000b
 
 MetaTiles:
 ; List of tiles, one row of 4 tiles per meta-tile
