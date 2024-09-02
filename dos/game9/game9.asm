@@ -16,12 +16,11 @@ use16
 ; Memory adresses
 _VGA_MEMORY_ equ 0xA000
 _DBUFFER_MEMORY_ equ 0x8000
-_ENTITIES_ equ 0x7010
-_TERRAIN_TILES equ 0x7a00
+_ENTITIES_ equ 0x7000
 
 ; Constants
-BEEPER_ENABLED equ 0x0
-BEEPER_FREQ equ 4800
+BEEPER_ENABLED equ 0x0        ; 0 - disabled, 1 - enabled PC Speaker Sound
+BEEPER_FREQ equ 4800          ; Frequency for the PC Speaker Sound
 LEVEL_START_POSITION equ 320*60
 SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
@@ -61,10 +60,10 @@ restart_game:
 ; +7 ----
 ;
 spawn_entities:
-  mov si, EntityData
-  mov di, _ENTITIES_
+  mov si, EntityData    ; Load entity data (type, position, sprite data)
+  mov di, _ENTITIES_    ; Load destination address
 
-  mov cx, [EntityCount]
+  mov cx, [EntityCount] ; Load number of entities
   .next_entitie:
 
 ; 0 Player
@@ -73,11 +72,11 @@ spawn_entities:
 ; 3 fish swim - 0/0
 ; 4 monkey - 70/0x3a
 
-; pos
+; Copy position
     mov word ax, [si+1]
     mov word [di+1], ax
 
-; mirror
+; Set mirror based on screen position (left/right)
     mov ah,0x0
     cmp al, 0x10
     jl .skip_mirror_x
@@ -85,7 +84,8 @@ spawn_entities:
     .skip_mirror_x:
     mov byte [di+4], ah
 
-; sprite data
+; Set sprite data offset
+; TODO: Refactoring
     mov byte al, [si]
     mov byte [di],al
     mov ah, 0x01
@@ -97,7 +97,6 @@ spawn_entities:
     cmp al, 0x01
     jne .n2
       mov al, 0x22
-
     .n2:
     cmp al, 0x02
     jne .n3
@@ -111,16 +110,20 @@ spawn_entities:
     jne .n5
       mov al, 0x58
     .n5:
+; Copy sprite data offset
     mov byte [di+3], al
+; Copy status
     mov byte [di+5], ah
 
-    add si, 0x03
-    add di, 0x06
+    add si, 0x03      ; Move to the next entity data
+    add di, 0x06      ; Move to the next destination address
   loop .next_entitie
 
 
+; TEST STATUS
 mov di, _ENTITIES_
 mov byte [di+5], 0x10
+; TEST STATUS
 
 game_loop:
     xor di,di                   ; Clear destination address
@@ -128,7 +131,7 @@ game_loop:
 
 ; =========================================== DRAW BACKGROUND ==================
 draw_bg:
-  mov ax, COLOR_SKY               ; Set color to 3b
+  mov ax, COLOR_SKY             ; Set color of the sky
   mov cl, 0xa                  ; 16 bars to draw
   .draw_bars:
      push cx
@@ -219,10 +222,8 @@ draw_terrain:
   pop cx
 loop .draw_meta_tiles
 
-; =========================================== DRAW PLAYERS =====================
-
-
 ; =========================================== KEYBOARD INPUT ==================
+
 check_keyboard:
   mov ah, 01h         ; BIOS keyboard status function
   int 16h             ; Call BIOS interrupt
@@ -369,10 +370,6 @@ ai_entities:
 
 ; =========================================== SORT ENITIES ===============
 
-;jmp skip_me
-; SORT
-; 0, 1, 3, 4, 5
-; 6, 7, 9, 10, 11
 sort_entities:
   mov dx, [EntityCount]
   dec dx
@@ -414,9 +411,8 @@ sort_entities:
       add si, 0x6
     loop .next_entitie
 
-;skip_me:
-
 ; =========================================== DRAW ENITIES ===============
+
 draw_entities:
   mov si, _ENTITIES_
   mov cx, [EntityCount]
@@ -455,12 +451,12 @@ draw_entities:
     xor bp, bp
     call draw_sprite
 
-    cmp bl, 0x2 ; draw order
+    cmp bl, 0x2 ; draw caption for order (waiting)
     jne .skip_caption
       call draw_caption
     .skip_caption:
 
-    cmp bl, 0x10 ; show surce / stash
+    cmp bl, 0x10 ; Draw caption for source
     jne .skip_source
       call draw_source
     .skip_source:
@@ -470,7 +466,6 @@ draw_entities:
     add si, 0x6
     pop cx
   loop .next
-
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 
@@ -503,6 +498,7 @@ wait_for_tick:
     jz wait_for_tick     ; If not enough time has passed, keep waiting
     pop es
 
+; =========================================== SFX END ============================
 disable_speaker:
   mov bx, BEEPER_ENABLED
   cmp bx, 0x1
@@ -540,7 +536,9 @@ conv_pos2mem:
   add di, ax               ; Move result to DI
 ret
 
-; CX pos
+; =========================================== RANDOM MOVE =====================
+; CX - position YY/XX
+; Return: CX new position
 random_move:
   rdtsc
   and ax, 0x3
@@ -575,8 +573,10 @@ check_water:
   cmp ax, COLOR_WATER
 ret
 
-check_bounds:
+; =========================================== CHECK BOUNDS =====================
 ; CX - Positin YY/XX
+; Return: AX 0 - out of bounds, 1 - in bounds
+check_bounds:
   cmp ch, 0x00
   jl .bound
   cmp ch, 0x0f
@@ -595,8 +595,9 @@ ret
   mov ax, 0x1
 ret
 
-; CX - pos
-; Return: AX
+; =========================================== CHECK FRIENDS =====================
+; CX - Position YY/XX
+; Return: AX 0 - no friends, 1 - friends
 check_friends:
   push si
   push cx
@@ -623,7 +624,9 @@ ret
   mov ax, 0x1
 ret
 
-
+; =========================================== CHECK PLAYER =====================
+; CX - Position YY/XX
+; Return: AX 0 - no player, 1 - player
 check_player:
    mov ax, [_ENTITIES_+1]
 
@@ -690,6 +693,7 @@ draw_caption:
 
  ret
 
+; =========================================== SET FREQUENCY =====================
 ; BX - Frequency
 set_freq:
   mov al, 0x0B6  ; Command to set the speaker frequency
@@ -700,6 +704,7 @@ set_freq:
   out 0x42, al   ; Write the high byte of the frequency value
 ret
 
+; =========================================== BEEP ============================
 ; Run set_freq first
 ; Start beep
 beep:
@@ -807,9 +812,7 @@ convert_value:
     shr bx, 1           ; Adjust final result (undo last shift)
     ret
 
-
 ; =========================================== SPRITE DATA ======================
-
 Tiles:
 ; Set of 8x8 tiles for constructing meta-tiles
 ; word lines
@@ -818,166 +821,76 @@ Tiles:
 
 ; Dense grass
 dw 0x8,0x56
-dw 1010101010101010b
-dw 1001101001100110b
-dw 1010101010101001b
-dw 0110011010011010b
-dw 1010101010101010b
-dw 0101101001101110b
-dw 1010101010101010b
-dw 1010011010011010b
-
+dw 0xAAAA, 0x9B9B, 0xAAA9, 0x6D6A, 0xAAAA, 0x5B7A, 0xAAAA, 0xA6AA
 
 ; Light grass
 dw 0x8,0x56
-dw 1010101010101010b
-dw 1010101010101010b
-dw 1001101010100110b
-dw 1010101010101010b
-dw 1010100110101010b
-dw 1010101010101010b
-dw 1010101001101010b
-dw 0110101010101010b
-
-
+dw 0xAAAA, 0xAAAA, 0x9AA6, 0xAAAA, 0xA4AA, 0xAAAA, 0xA2AA, 0x6AAA
 ; Right bank
 dw 0x8,0x56
-dw 1010100111011111b
-dw 1010101001111111b
-dw 1001101001111111b
-dw 1010101001111111b
-dw 1010011001111111b
-dw 1010101001111111b
-dw 1010101001111111b
-dw 1001100111011111b
+dw 0x55FF, 0x54FF, 0x4DFF, 0x54FF, 0x4CFF, 0x54FF, 0x54FF, 0x4CFF
 
 ; Bottom bank
 dw 0x8,0x56
-dw 1001101010101001b
-dw 1010101010101010b
-dw 1010011010011010b
-dw 0101101010010111b
-dw 1101010101111111b
-dw 1111111111111111b
-dw 0111111111110100b
-dw 0001010101010000b
+dw 0x9A95, 0xAAAA, 0xAA6A, 0x5A57, 0xD57F, 0xFFFF, 0x7FF4, 0x1510
 
 ; Corner
 dw 0x8,0x56
-dw 1010100111110100b
-dw 1010010111111100b
-dw 1010011111111100b
-dw 0101111111110100b
-dw 1111111111010000b
-dw 1111111101000000b
-dw 0111110100000000b
-dw 0000000000000000b
+dw 0x54F4, 0x52FC, 0x53FC, 0x2FF4, 0xFFA0, 0xFE80, 0x7A00, 0x0000
 
-
-DinoSpr:
-
+; ================================ ENTITIES SPRITE DATA ======================
 EntitiesSpr:
 ; Fish Swim  -  0x00
 dw 0x5, 0x64
-dw 0011010000110100b
-dw 1101110111011101b
-dw 1111011111100111b
-dw 0011111110111110b
-dw 1111101011111111b
+dw 0x34, 0x34, 0x7D, 0x7D, 0x7F, 0x7F, 0x3E, 0x3E, 0xFA, 0xFA
 
 ; Fish Waiting   - 14 /0xe
 dw 0x8, 0x64
-dw 0011011100110111b
-dw 0001100111011011b
-dw 0011011111010111b
-dw 0011111001101001b
-dw 1110111001101001b
-dw 1011111110010100b
-dw 1010101111111000b
-dw 0010111011101000b
+dw 0x37, 0x37, 0x33, 0x37, 0x0C, 0x0D, 0x1D, 0x1B
 
 
 ; Palm Tree - 34 / 0x22
 dw 0x10, 0x27
-dw 0010101100101011b
-dw 1010111010111000b
-dw 1000111010101110b
-dw 0011101010101000b
-dw 0010101011101010b
-dw 1010101101101111b
-dw 0010110110111011b
-dw 0010000111110010b
-dw 1011001101100011b
-dw 1100001101011000b
-dw 1100001011011100b
-dw 0000001101011000b
-dw 0000100101110000b
-dw 0010110101111000b
-dw 1011010101011110b
-dw 0010111111111000b
+dw 0x2ABB, 0xAE78, 0x8EAE, 0x3A88, 0x2AB2, 0xAE6F, 0x2B6B, 0x03F2, 0xB633, 0xC6D8, 0xC6DC, 0x06D8, 0x0920, 0x2AD8, 0xBA5E, 0x2B78
 
 ; grass - 70/0x46
 dw 0x7,0x2a
-dw 0000011000000000b
-dw 0000001101000010b
-dw 0010001110000010b
-dw 0010001100001000b
-dw 0010111100111011b
-dw 1011111111111100b
-dw 0000111111110000b
+dw 0x0600, 0x0224, 0x0E20, 0x0C08, 0x1F3B, 0xFCFF, 0x0FF0
 
 ; monkey - 84+4/0x58
 dw 0x7,0x6e
-dw 0010101000000000b
-dw 1000000000101000b
-dw 0110000010111000b
-dw 0001101010010100b
-dw 0000101001000000b
-dw 0000010100010000b
-dw 0001000100010000b
+dw 0x2A00,0x80A0,0x60B8,0x54A4,0x5000,0x1400,0x1100
 
 ; dino - 102+4/0x6a
 dw 0x8, 0x20
-dw 0000011011111100b
-dw 0000001010010111b
-dw 1100000010101010b
-dw 1000001010010000b
-dw 0110101010101100b
-dw 0001101011100000b
-dw 0000001010100000b
-dw 0000010000010000b
+dw 0x0DFC, 0x0A97, 0xC02A, 0x8490, 0x6AAC, 0x1AE0, 0x0140, 0x0400
 
 CaptionSpr:
 dw 0x09, 0x15
-dw 0011111111111100b
-dw 1100111111111111b
-dw 1111111111111111b
-dw 1111111111111111b
-dw 1111111111111111b
-dw 1111111111111111b
-dw 0011111111111100b
-dw 0000000011110000b
-dw 0000000011000000b
+dw 0x3FFC, 0xCFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x3FFC, 0x00F0, 0x00C0
 
+; =========================================== META TILES ======================
 MetaTiles:
 ; List of tiles, one row of 4 tiles per meta-tile
 db 0b
-db 11001100b,10111000b,10111100b,11001000b  ; 0000 up-ball
-db 11000100b,10110100b,10110000b,11000000b  ; 0001 down-ball
-db 11001100b,10111000b,10111100b,10111000b  ; 0010 up-left-long-ball
-db 10111000b,10111100b,10111000b,11001000b  ; 0011 up-right-long-ball
-db 11000100b,10110000b,10110100b,10110000b  ; 0100 down-left-long-ball
-db 10110000b,10110100b,10110000b,11000000b  ; 0101 down-right-long-ball
-db 10100100b,10000100b,10000100b,10000100b  ; 0110 left-bank
-db 10000000b,10000100b,10000000b,10100000b  ; 0111 right-bank
-db 10111100b,10111000b,10111100b,10111000b  ; 1000 top-bank
-db 10110100b,10110100b,10110100b,10110100b  ; 1001 bottom-bank
-db 10100100b,10000100b,10000100b,10100000b  ; 1010 both-banks
-db 10000100b,10000000b,10000000b,10000100b  ; 1011 light-terrain
-db 10010100b,10010000b,10010100b,10010000b  ; 1100 dense-terrain
-db 00000000b,00000000b,00000000b,00000000b  ; 1101 ???
-db 00000000b,00000000b,00000000b,00000000b  ; 1101 ???
-db 00000000b,00000000b,00000000b,00000000b  ; 1111 empty-filler
+db 0xCC, 0xB8, 0xBC, 0xC8  ; 0000 up-ball
+db 0xC4, 0xB4, 0xB0, 0xC0  ; 0001 down-ball
+db 0xCC, 0xB8, 0xBC, 0xB8  ; 0010 up-left-long-ball
+db 0xB8, 0xBC, 0xB8, 0xC8  ; 0011 up-right-long-ball
+db 0xC4, 0xB0, 0xB4, 0xB0  ; 0100 down-left-long-ball
+db 0xB0, 0xB4, 0xB0, 0xC0  ; 0101 down-right-long-ball
+db 0xA4, 0x84, 0x84, 0x84  ; 0110 left-bank
+db 0x80, 0x84, 0x80, 0xA0  ; 0111 right-bank
+db 0xBC, 0xB8, 0xBC, 0xB8  ; 1000 top-bank
+db 0xB4, 0xB4, 0xB4, 0xB4  ; 1001 bottom-bank
+db 0xA4, 0x84, 0x84, 0xA0  ; 1010 both-banks
+db 0x84, 0x80, 0x80, 0x84  ; 1011 light-terrain
+db 0x94, 0x90, 0x94, 0x90  ; 1100 dense-terrain
+db 0x00, 0x00, 0x00, 0x00  ; 1101 ???
+db 0x00, 0x00, 0x00, 0x00  ; 1101 ???
+db 0x00, 0x00, 0x00, 0x00  ; 1111 empty-filler
+
+; =========================================== LEVEL DATA ======================
 
 ; Custom Level mady in smol.p1x.in/4bitleveleditor
 
