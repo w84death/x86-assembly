@@ -16,11 +16,12 @@ use16
 ; Memory adresses
 _VGA_MEMORY_ equ 0xA000
 _DBUFFER_MEMORY_ equ 0x8000
-_ENTITIES_ equ 0x7000
+_ENTITIES_ equ 0x7010
+_TERRAIN_TILES equ 0x7a00
 
 ; Constants
-BEEPER_ENABLED equ 0x0        ; 0 - disabled, 1 - enabled PC Speaker Sound
-BEEPER_FREQ equ 4800          ; Frequency for the PC Speaker Sound
+BEEPER_ENABLED equ 0x0
+BEEPER_FREQ equ 4800
 LEVEL_START_POSITION equ 320*60
 SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
@@ -41,51 +42,26 @@ set_keyboard_rate:
     int 16h
 
 restart_game:
-; ENTITES
-;  0 0x00 - type: 0 player, 1 tree, 2 grass, 3 fish, 4 monkey
-; +1 0x0000 - Position YY/XX
-; +2 ----
-; +3 0x00 - Mirror Y/X
-; +4 0x00 - Sprite data offset
-; +5 0x00 - Status
-;    0000 - 0 stopped ; do not drawn
-;    0001 - 1 exploring ; draw
-;    0010 - 2 waiting for placing order
-;    0100 - 4 waiting for food
-;    1001 - 9 served, back
-;   10000 - source
-;
-; NOT IMPLEMENTED YET:
-; +6 0x0000 - status timer
-; +7 ----
-;
+
+
 spawn_entities:
-  mov si, EntityData    ; Load entity data (type, position, sprite data)
-  mov di, _ENTITIES_    ; Load destination address
+  mov si, EntityData
+  mov di, _ENTITIES_
 
-  mov cx, [EntityCount] ; Load number of entities
+  mov cx, [EntityCount]
   .next_entitie:
+    mov word ax, [si+1]         ; Get position
+    mov word [di+1], ax         ; Save position
 
-; 0 Player
-; 1 Palm Tree - 0x22
-; 2 grass - 0x46
-; 3 fish swim - 0/0
-; 4 monkey - 70/0x3a
 
-; Copy position
-    mov word ax, [si+1]
-    mov word [di+1], ax
-
-; Set mirror based on screen position (left/right)
     mov ah,0x0
-    cmp al, 0x10
-    jl .skip_mirror_x
-      inc ah
+    cmp al, 0x10               ; Check side of tehe screen (16 points as middle)
+    jl .skip_mirror_x          ; mirror if on the left side
+      inc ah                   ; 01 for X mirroring
     .skip_mirror_x:
-    mov byte [di+4], ah
+    mov byte [di+4], ah        ;  Save mirror
 
-; Set sprite data offset
-; TODO: Refactoring
+; sprite data
     mov byte al, [si]
     mov byte [di],al
     mov ah, 0x01
@@ -97,6 +73,7 @@ spawn_entities:
     cmp al, 0x01
     jne .n2
       mov al, 0x22
+
     .n2:
     cmp al, 0x02
     jne .n3
@@ -110,20 +87,16 @@ spawn_entities:
     jne .n5
       mov al, 0x58
     .n5:
-; Copy sprite data offset
     mov byte [di+3], al
-; Copy status
     mov byte [di+5], ah
 
-    add si, 0x03      ; Move to the next entity data
-    add di, 0x06      ; Move to the next destination address
+    add si, 0x03
+    add di, 0x06
   loop .next_entitie
 
 
-; TEST STATUS
-mov di, _ENTITIES_
-mov byte [di+5], 0x10
-; TEST STATUS
+;mov di, _ENTITIES_
+;mov byte [di+5], 0x10
 
 game_loop:
     xor di,di                   ; Clear destination address
@@ -131,7 +104,7 @@ game_loop:
 
 ; =========================================== DRAW BACKGROUND ==================
 draw_bg:
-  mov ax, COLOR_SKY             ; Set color of the sky
+  mov ax, COLOR_SKY               ; Set color to 3b
   mov cl, 0xa                  ; 16 bars to draw
   .draw_bars:
      push cx
@@ -222,8 +195,10 @@ draw_terrain:
   pop cx
 loop .draw_meta_tiles
 
-; =========================================== KEYBOARD INPUT ==================
+; =========================================== DRAW PLAYERS =====================
 
+
+; =========================================== KEYBOARD INPUT ==================
 check_keyboard:
   mov ah, 01h         ; BIOS keyboard status function
   int 16h             ; Call BIOS interrupt
@@ -451,12 +426,12 @@ draw_entities:
     xor bp, bp
     call draw_sprite
 
-    cmp bl, 0x2 ; draw caption for order (waiting)
+    cmp bl, 0x2 ; draw order
     jne .skip_caption
       call draw_caption
     .skip_caption:
 
-    cmp bl, 0x10 ; Draw caption for source
+    cmp bl, 0x10 ; show surce / stash
     jne .skip_source
       call draw_source
     .skip_source:
@@ -466,6 +441,7 @@ draw_entities:
     add si, 0x6
     pop cx
   loop .next
+
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 
@@ -498,7 +474,6 @@ wait_for_tick:
     jz wait_for_tick     ; If not enough time has passed, keep waiting
     pop es
 
-; =========================================== SFX END ============================
 disable_speaker:
   mov bx, BEEPER_ENABLED
   cmp bx, 0x1
@@ -515,14 +490,14 @@ disable_speaker:
     jnz game_loop
 
 ; =========================================== TERMINATE PROGRAM ================
-exit:
+  exit:
     mov ax, 0x0003
     int 0x10
     ret
 
 ; =========================================== CNVERT XY TO MEM =====================
-; CX - position YY/XX
-; Return: DI memory position
+                                              ; CX - position YY/XX
+                                              ; Return: DI memory position
 conv_pos2mem:
   mov di, LEVEL_START_POSITION
   add di, 320*8+32
@@ -536,9 +511,11 @@ conv_pos2mem:
   add di, ax               ; Move result to DI
 ret
 
-; =========================================== RANDOM MOVE =====================
-; CX - position YY/XX
-; Return: CX new position
+
+; =========================================== RANDOM MOVE  =====================
+                                              ; CX - position YY/XX
+                                              ; Return: CX - updated pos
+
 random_move:
   rdtsc
   and ax, 0x3
@@ -574,8 +551,8 @@ check_water:
 ret
 
 ; =========================================== CHECK BOUNDS =====================
-; CX - Positin YY/XX
-; Return: AX 0 - out of bounds, 1 - in bounds
+; CX - Position YY/XX
+; Return: AX - Zero if hit bound, 1 if no bunds at this location
 check_bounds:
   cmp ch, 0x00
   jl .bound
@@ -595,9 +572,9 @@ ret
   mov ax, 0x1
 ret
 
-; =========================================== CHECK FRIENDS =====================
-; CX - Position YY/XX
-; Return: AX 0 - no friends, 1 - friends
+; =========================================== CHECK FRIEDS =====================
+; ; CX - Position YY/XX
+; Return: AX - Zero if hit bound, 1 if no bunds at this location
 check_friends:
   push si
   push cx
@@ -624,9 +601,7 @@ ret
   mov ax, 0x1
 ret
 
-; =========================================== CHECK PLAYER =====================
-; CX - Position YY/XX
-; Return: AX 0 - no player, 1 - player
+
 check_player:
    mov ax, [_ENTITIES_+1]
 
@@ -661,13 +636,14 @@ ret
 
 draw_source:
   mov si, CaptionSpr
-  sub di, 320*2
+  sub di, 320*6-2
   mov cx, 0x3
   .next_color:
-    add bp, 0x8
+    add bp, 0xa
     call draw_sprite
     sub di, 320*4
   loop .next_color
+ret
 
 ; =========================================== DRAW CAPTION =====================
 ; DI - memory position
@@ -693,7 +669,6 @@ draw_caption:
 
  ret
 
-; =========================================== SET FREQUENCY =====================
 ; BX - Frequency
 set_freq:
   mov al, 0x0B6  ; Command to set the speaker frequency
@@ -704,7 +679,6 @@ set_freq:
   out 0x42, al   ; Write the high byte of the frequency value
 ret
 
-; =========================================== BEEP ============================
 ; Run set_freq first
 ; Start beep
 beep:
@@ -714,9 +688,8 @@ beep:
 ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
-; BP - color shit
-; DI - positon (linear)
-; SI - sprite data addr
+                                              ; BP - color shift
+                                              ; DI - positon (linear)
 ; DX - settings
 ;    - 00 - normal
 ;    - 01 - mirrored x
@@ -812,9 +785,15 @@ convert_value:
     shr bx, 1           ; Adjust final result (undo last shift)
     ret
 
+
 ; =========================================== SPRITE DATA ======================
 
 Tiles:
+; Set of 8x8 tiles for constructing meta-tiles
+; word lines
+; word palette id
+; word per line (8 pixels) of palette indexes
+
 ; Dense grass
 dw 0x8,0x56
 dw 1010101010101010b
@@ -826,6 +805,7 @@ dw 0101101001101110b
 dw 1010101010101010b
 dw 1010011010011010b
 
+
 ; Light grass
 dw 0x8,0x56
 dw 1010101010101010b
@@ -836,6 +816,7 @@ dw 1010100110101010b
 dw 1010101010101010b
 dw 1010101001101010b
 dw 0110101010101010b
+
 
 ; Right bank
 dw 0x8,0x56
@@ -871,7 +852,7 @@ dw 0111110100000000b
 dw 0000000000000000b
 
 
-; =========================================== SPRITE DATA ======================
+DinoSpr:
 
 EntitiesSpr:
 ; Fish Swim  -  0x00
@@ -892,6 +873,7 @@ dw 1110111001101001b
 dw 1011111110010100b
 dw 1010101111111000b
 dw 0010111011101000b
+
 
 ; Palm Tree - 34 / 0x22
 dw 0x10, 0x27
@@ -955,8 +937,6 @@ dw 0011111111111100b
 dw 0000000011110000b
 dw 0000000011000000b
 
-; =========================================== META TILES ======================
-
 MetaTiles:
 ; List of tiles, one row of 4 tiles per meta-tile
 db 0b
@@ -976,8 +956,6 @@ db 10010100b,10010000b,10010100b,10010000b  ; 1100 dense-terrain
 db 00000000b,00000000b,00000000b,00000000b  ; 1101 ???
 db 00000000b,00000000b,00000000b,00000000b  ; 1101 ???
 db 00000000b,00000000b,00000000b,00000000b  ; 1111 empty-filler
-
-; =========================================== LEVEL DATA ======================
 
 ; Custom Level mady in smol.p1x.in/4bitleveleditor
 
@@ -1001,6 +979,7 @@ dw 1111111111111111b,1111111111111111b
 
 EntityCount:
 dw 24
+
 
 EntityData:
 db 0
