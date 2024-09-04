@@ -385,19 +385,18 @@ draw_entities:
       add di, 320*3     ; Shift grass sprite 3 lines down
     .not_grass:
 
-    
     xor ax, ax
     mov byte al, [si+3] ; Get sprite data offset
     mov si, EntitiesSpr
-    add si, ax
+    add si, ax          ; Apply offset
     call draw_sprite
 
-    cmp bl, 0x2 ; draw order
+    cmp bl, 0x2 ; Waiting for Dino
     jne .skip_caption
       call draw_caption
     .skip_caption:
 
-    cmp bl, 0x10 ; show surce / stash
+    cmp bl, 0x10 ; Show source / stash
     jne .skip_source
       call draw_source
     .skip_source:
@@ -440,6 +439,8 @@ wait_for_tick:
     jz wait_for_tick     ; If not enough time has passed, keep waiting
     pop es
 
+; =========================================== SOUND PROCEDURE ==================
+
 disable_speaker:
   mov bx, BEEPER_ENABLED
   cmp bx, 0x1
@@ -462,8 +463,8 @@ disable_speaker:
     ret                       ; Return to DOS
 
 ; =========================================== CNVERT XY TO MEM =====================
-                                              ; CX - position YY/XX
-                                              ; Return: DI memory position
+; Expects: CX - position YY/XX
+; Return: DI memory position
 conv_pos2mem:
   mov di, LEVEL_START_POSITION
   add di, 320*8+32
@@ -479,9 +480,8 @@ ret
 
 
 ; =========================================== RANDOM MOVE  =====================
-                                              ; CX - position YY/XX
-                                              ; Return: CX - updated pos
-
+; Expects: CX - position YY/XX
+; Return: CX - updated pos
 random_move:
   rdtsc
   and ax, 0x3
@@ -508,7 +508,7 @@ random_move:
 ret
 
 ; =========================================== CHECK WATER =====================
-; DI - memory position to check for water
+; Expects: DI - memory position to check for water
 ; Return: Zero if water
 check_water:
   mov ax, [es:di]
@@ -517,7 +517,7 @@ check_water:
 ret
 
 ; =========================================== CHECK BOUNDS =====================
-; CX - Position YY/XX
+; Expects: CX - Position YY/XX
 ; Return: AX - Zero if hit bound, 1 if no bunds at this location
 check_bounds:
   cmp ch, 0x00
@@ -539,7 +539,7 @@ ret
 ret
 
 ; =========================================== CHECK FRIEDS =====================
-; ; CX - Position YY/XX
+; Expects: CX - Position YY/XX
 ; Return: AX - Zero if hit bound, 1 if no bunds at this location
 check_friends:
   push si
@@ -559,7 +559,7 @@ check_friends:
 
   pop cx
   pop si
-  cmp bx,0x1
+  cmp b,0x1
   jnz .no_friend
   mov ax, 0x0
 ret
@@ -568,7 +568,7 @@ ret
 ret
 
 ; =========================================== CHECK PLAYER =====================
-; CX - Position YY/XX
+; Expects: CX - Position YY/XX
 ; Return: AX - Zero if not player, 1 if player at this location
 check_player:
    mov ax, [_ENTITIES_+1]
@@ -603,7 +603,7 @@ check_player:
 ret
 
 ; =========================================== DRAW SOURCE =====================
-; DI - memory position
+; Expects: DI - memory position
 ; Return: -
 draw_source:
   mov si, CaptionSpr
@@ -617,7 +617,7 @@ draw_source:
 ret
 
 ; =========================================== DRAW CAPTION =====================
-; DI - memory position
+; Expects: DI - memory position
 ; Return: -
 draw_caption:
   xor dx, dx
@@ -642,7 +642,7 @@ draw_caption:
 
 ; =========================================== SET FREQUENCY =====================
 ; Set the speaker frequency
-; BX - frequency value
+; Expects: BX - frequency value
 ; Return: -
 set_freq:
   mov al, 0x0B6  ; Command to set the speaker frequency
@@ -654,7 +654,8 @@ set_freq:
 ret
 
 ; =========================================== BEEP ============================
-; Run the speaker for a short period
+; Run the speaker for a short period. Run set_freq first.
+; Expects: -
 ; Return: -
 beep:
   in al, 0x61    ; Read the PIC chip
@@ -663,9 +664,11 @@ beep:
 ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
+; Expects: 
 ; BP - color shift
 ; DI - positon (linear)
 ; DX - settings: 00 normal, 01 mirrored x, 10 mirrored y, 11 mirrored x&y
+; Return: -
 draw_sprite:
     pusha
     mov cx, [si]        ; Get the sprite lines
@@ -741,6 +744,7 @@ draw_sprite:
 
 
 ; =========================================== CONVERT VALUE ===================
+; Expects: 
 ; AX - source
 ; CL - number of bits to convert
 ; Return: BX
@@ -757,9 +761,7 @@ convert_value:
 
 ; =========================================== SPRITE DATA ======================
 ; Set of 8x8 tiles for constructing meta-tiles
-; word lines
-; word palette id
-; word per line (8 pixels) of palette indexes
+; Data: number of lines, palette id, lines (8 pixels) of palette indexes
 
 Tiles:
 
