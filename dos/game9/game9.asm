@@ -149,7 +149,6 @@ draw_terrain:
       call convert_value  ; Convert value to bits (save in BX)
 
       mov dx, bx      ; Get tile color index
-      xor bp, bp      ; Clear color shift option
       call draw_sprite  
 
       .skip_tile:
@@ -367,8 +366,7 @@ draw_entities:
     push cx
     push si
 
-    mov byte bl, [si+5]
-    cmp bl, 0x0
+    cmp byte [si+5], 0x0
     jz .skip_entitie
 
     mov word cx, [si+1]
@@ -382,16 +380,16 @@ draw_entities:
       sub di, 320*9
     .not_tree:
 
-    cmp al, 0x02
+    cmp al, 0x02        ; Check if grass sprite
     jnz .not_grass
-      add di, 320*3
+      add di, 320*3     ; Shift grass sprite 3 lines down
     .not_grass:
 
+    
     xor ax, ax
-    mov byte al, [si+3]
+    mov byte al, [si+3] ; Get sprite data offset
     mov si, EntitiesSpr
     add si, ax
-    xor bp, bp
     call draw_sprite
 
     cmp bl, 0x2 ; draw order
@@ -453,15 +451,15 @@ disable_speaker:
 
 ; =========================================== ESC OR LOOP =====================
 
-    in al,0x60                           ; Read keyboard
-    dec al
-    jnz game_loop
+    in al,0x60                  ; Read keyboard
+    dec al                      ; Decrement AL (esc is 1, after decrement is 0)
+    jnz game_loop               ; If not zero, loop again
 
 ; =========================================== TERMINATE PROGRAM ================
   exit:
-    mov ax, 0x0003
-    int 0x10
-    ret
+    mov ax, 0x0003             ; Return to text mode
+    int 0x10                   ; Video BIOS interrupt
+    ret                       ; Return to DOS
 
 ; =========================================== CNVERT XY TO MEM =====================
                                               ; CX - position YY/XX
@@ -623,7 +621,6 @@ ret
 ; Return: -
 draw_caption:
   xor dx, dx
-  xor bp, bp
 
 ;  mov si, CaptionSpr
 ;  sub di, 320*9-2
@@ -739,6 +736,7 @@ draw_sprite:
     pop cx                   ; Restore line counter
     loop .plot_line
     popa
+    xor bp, bp
     ret
 
 
