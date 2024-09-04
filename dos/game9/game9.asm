@@ -559,7 +559,7 @@ check_friends:
 
   pop cx
   pop si
-  cmp b,0x1
+  cmp bx,0x1
   jnz .no_friend
   mov ax, 0x0
 ret
