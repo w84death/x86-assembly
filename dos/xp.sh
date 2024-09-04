@@ -11,4 +11,4 @@ qemu-system-i386 \
 -netdev user,id=lan \
 -device rtl8139,netdev=lan \
 -usb \
--device usb-tableb-tablet
+-device usb-tablet
