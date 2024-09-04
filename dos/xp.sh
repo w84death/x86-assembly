@@ -3,7 +3,7 @@ qemu-system-i386 \
 -m 2048M \
 -k en-us \
 -rtc base=localtime \
--device cirrus-vga \
+-vga std \
 -display gtk \
 -hda ~/OS/xp-dev.img \
 -drive file=fat:rw:~/Code/ \
@@ -11,4 +11,6 @@ qemu-system-i386 \
 -netdev user,id=lan \
 -device rtl8139,netdev=lan \
 -usb \
--device usb-tablet
+-device usb-tablet \
+-audio driver=pa,model=ac97,id=audio0 \
+-smp 2

@@ -368,6 +368,7 @@ draw_entities:
     push si
 
     mov byte bl, [si+5]
+    cmp bl, 0x0
     jz .skip_entitie
 
     mov word cx, [si+1]
