@@ -17,7 +17,7 @@ use16
 _VGA_MEMORY_ equ 0xA000
 _DBUFFER_MEMORY_ equ 0x8000
 _PLAYER_ENTITY_ID_ equ 0x7000
-_REQUEST_POSITION_ equ 0x0000
+_REQUEST_POSITION_ equ 0x7002
 _ENTITIES_ equ 0x7010
 
 ; =========================================== CONSTANTS =======================
@@ -217,13 +217,17 @@ check_keyboard:
     ;jmp .check_move    
   
   .check_move:
-  call check_water_tile
-  jz .no_key
-  call check_bounds
-  jz .no_key
   call check_friends
-  jz .no_key
+  jz .collision
+  call check_water_tile
+  jz .collision
+  call check_bounds
+  jz .collision
+ 
   mov word [si+1], cx
+
+  .collision:  
+  mov word [_REQUEST_POSITION_], cx
 
   .no_key:
   mov bx, BEEPER_ENABLED
@@ -281,17 +285,17 @@ ai_entities:
 
       .skip_explore:
       mov byte al, [si+5]   ; State
-      and ax, 0x2
-      cmp ax, 0x2
+      and al, 0x2
+      cmp al, 0x2
       jnz .skip_waiting
-
-      .waiting:
-        call check_player
-        cmp ax, 0x0
-        jz .wait_more
+      .waiting: 
+      mov word  cx,[si+1]
+        cmp word cx, [_REQUEST_POSITION_]
+        jne .wait_more
           mov byte [si+3],0x00 ; First fish sprite
           xor byte [si+4],0x01 ; Reverse
           mov byte [si+5],0x09 ; Served
+          mov word [_REQUEST_POSITION_], 0x0000 
        .wait_more:
       .skip_waiting:
 
@@ -808,7 +812,7 @@ db 0x6a, 0x22, 0x46, 0x00, 0x58
 ; Sprite shift table: 320 * shift amount
 SpriteShiftTable:
     dw -320*2       ; Type 0: player No shift
-    dw -320*8   ; Type 1: Tree (320 * -9)
+    dw -320*10   ; Type 1: Tree (320 * -9)
     dw -320*2     ; Type 2: Grass (320 * 3)
     dw 0       ; Type 3: fish No shift
     dw 0       ; Type 4: monkey No shift
