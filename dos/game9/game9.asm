@@ -190,48 +190,51 @@ check_keyboard:
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
-    sub di, 320*6
-    call check_water
-    jz .no_key
     dec ch
-    call check_friends
+    call check_water_tile
     jz .no_key
-    sub word [si+1],0x0100
-
+    call check_bounds
+    jz .no_key
+    ;call check_friends
+    ;jz .no_key
+    sub word [si+1], 0x0100
   .check_down:
   cmp ah, 50h         ; Compare scan code with down arrow
   jne .check_left
-    add di, 320*6
-    call check_water
-    jz .no_key
     inc ch
-    call  check_friends
+    call check_water_tile
     jz .no_key
-    add word [si+1],0x0100
+    call check_bounds
+    jz .no_key
+    ;call  check_friends
+   ; jz .no_key
+    add word [si+1], 0x0100
 
   .check_left:
   cmp ah, 4Bh         ; Compare scan code with left arrow
   jne .check_right
-    sub di, 8
-    call check_water
+    dec cl
+    call check_water_tile
     jz .no_key
-    dec  cl
-    call  check_friends
+    call check_bounds
     jz .no_key
-    sub word [si+1],0x0001
+    ;call  check_friends
+    ;jz .no_key
+    sub word [si+1], 0x0001
     mov byte [si+4], 0x01
 
   .check_right:
   cmp ah, 4Dh         ; Compare scan code with right arrow
   jne .no_key
-    add di, 6
-    call check_water
-    jz .no_key
     inc cl
-    call  check_friends
+    call check_water_tile
     jz .no_key
+    call check_bounds
+    jz .no_key
+    ;call check_friends
+   ; jz .no_key
 
-    add word [si+1],0x0001
+    add word [si+1], 0x0001
     mov byte [si+4], 0x00
 
   .no_key:
@@ -269,15 +272,12 @@ ai_entities:
         call random_move
 
         call check_bounds
-        cmp ax, 0x1
-        jnz .can_not_move
+        jz .can_not_move
 
         call check_friends
-        cmp ax, 0x1
-        jnz .can_not_move
+        jz .can_not_move
 
-        call conv_pos2mem
-        call check_water
+        call check_water_tile
         jz .move_to_new_pos
 
           mov byte al, [si+5]
@@ -481,44 +481,32 @@ random_move:
 .skip_move:
   ret
 
-; =========================================== CHECK WATER =====================
-; Expects: DI - memory position to check for water
-; Return: Zero if water
-check_water:
-  mov ax, [es:di]
-  mov word [es:di], 0x0 ;DEBUG ONLY
-  cmp ax, COLOR_WATER
-ret
-
 ; =========================================== CHECK WATER TILE ================
-; Expects: CH - Y position (0-15), CL - X position (0-31)
-; Returns: ZF set if water (1111b), clear otherwise
+; Expects: CX - Player position (CH: Y 0-15, CL: X 0-31)
+; Returns: AL - 1 if water (0xF), 0 otherwise
 check_water_tile:
-    pusha
+    push cx
 
-    mov si, LevelData
-    xor ax, ax
-    mov al, ch
-    shl ax, 2                               ; Multiply Y by 4 (2 words per row)
-    add si, ax                              ; SI now points to the correct row
-
-    mov al, cl
-    shr al, 3                               ; Divide X by 8 to get word offset
-    shl ax, 1                               ; Multiply by 2 for word size
-    add si, ax                              ; SI now points to the correct word
-
-    mov ax, [si]                            ; Load the word containing our tile
-    mov bl, cl
-    and bl, 0x07                            ; X mod 8 to get position within word
-    mov cl, bl
-    shl cl, 2                               ; Multiply by 4 to get bit shift
-    ror ax, cl                              ; Rotate right to get our 4 bits in the lowest position
-    and ax, 0x000F                          ; Mask off everything but lowest 4 bits
-    cmp ax, 0x000F                          ; Compare with 1111b (water)
-
-    popa
-    ret
+    mov ax, cx
+    shl ah, 2       ; Y * 4
+    mov bl, ah      ; add shift to target position
+    cmp al, 0x0f    ; check if X is > 15
+    jle .no_shift   ; if not, skip
+      sub al, 0x10    ; if yes, subtract 16 from X
+      add bx, 0x2     ; add 2 to target position
+    .no_shift:
+    mov dx, [LevelData + bx] ; get target data
+    shr al, 0x2     ; X / 4
+    inc al
+    shl al, 0x2       ; cl * 4
+    mov cl, al      ; move X / 4 to cl
+    rol dx, cl      ; rotate left by cl
+    and dl, 0x0F    ; Check last nibble
+    cmp dl, 0x0F    ; Check if it's water (0xF)
     
+    pop cx
+    ret
+
 ; =========================================== CHECK BOUNDS =====================
 ; Expects: CX - Position YY/XX
 ; Return: AX - Zero if hit bound, 1 if no bounds at this location
@@ -530,6 +518,7 @@ check_bounds:
   ja .return
   inc ax                                    ; No bound hit (AX = 1)
 .return:
+  cmp ax, 0x0
   ret
 
 ; =========================================== CHECK FRIEDS =====================
@@ -803,11 +792,10 @@ db 0x6a, 0x22, 0x46, 0x00, 0x58
 
 ; Sprite shift table: 320 * shift amount
 SpriteShiftTable:
-    dw 0       ; Type 0: Player No shift
+    dw 0       ; Type 0: No shift
     dw -2880   ; Type 1: Tree (320 * -9)
     dw 960     ; Type 2: Grass (320 * 3)
-    dw 0       ; Type 3: FishNo shift
-    dw 0       ; Type 4: Monkey No shift
+    dw 0       ; Type 3: No shift
 
 EntitiesSpr:          ; Fish Swim  -  0x00
 dw 0x5, 0x64
