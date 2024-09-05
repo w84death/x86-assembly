@@ -117,6 +117,7 @@ draw_bg:
      pop cx                  ; Decrement bar counter
      loop .draw_water
 
+;
 ; =========================================== DRAW TERRAIN =====================
 
 draw_terrain:
@@ -436,18 +437,18 @@ vga_blit:
     pop ds
     pop es
 
-; =========================================== DELAY CYCLE ======================
+; =========================================== V-SYNC ======================
 
-delay:
-    push es
-    push 0x0040
-    pop es
-    mov bx, [es:0x006C]  ; Load the current tick count into BX
-wait_for_tick:
-    mov ax, [es:0x006C]  ; Load the current tick count
-    sub ax, bx           ; Calculate elapsed ticks
-    jz wait_for_tick     ; If not enough time has passed, keep waiting
-    pop es
+wait_for_vsync:
+    mov dx, 03DAh
+    .wait1:
+        in al, dx
+        and al, 08h
+        jnz .wait1
+    .wait2:
+        in al, dx
+        and al, 08h
+        jz .wait2
 
 ; =========================================== SOUND PROCEDURE ==================
 
