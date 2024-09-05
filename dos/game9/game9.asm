@@ -46,6 +46,8 @@ set_keyboard_rate:
 restart_game:
 
 ; =========================================== SPAWN ENTITIES ==================
+; Expects: entities array from level data
+; Returns: entities in memory array
 spawn_entities:
   mov si, EntityData
   mov di, _ENTITIES_
@@ -75,7 +77,7 @@ add si, 0x03            ; Move to the next entity in code
 add di, 0x06            ; Move to the next entity in memory
 loop .next_entitie
 
-mov word [_PLAYER_ENTITY_ID_], _ENTITIES_
+mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
 
 game_loop:
     xor di,di                   ; Clear destination address
@@ -84,8 +86,8 @@ game_loop:
 ; =========================================== DRAW BACKGROUND ==================
 draw_bg:
   mov ax, COLOR_SKY               ; Set starting sky color
-  mov cl, 0xa                  ; 16 bars to draw
-  .draw_bars:
+  mov cl, 0x9                  ; 10 bars to draw
+  .draw_sky:
      push cx
 
      mov cx, 320*3           ; 3 pixels high
@@ -94,11 +96,26 @@ draw_bg:
      xchg al, ah             ; Swap colors
 
      pop cx                  ; Decrement bar counter
-     loop .draw_bars
+     loop .draw_sky
 
-  mov cx, 320*70              ; Clear the rest of the screen
-  mov ax, COLOR_WATER         ; Set water color
-  rep stosw                   ; Write to the doublebuffer
+  mov ax, 0x3737
+  mov bx, 160
+  mov cl, 0x2a                ; 34 bars to draw
+  .draw_water:
+     push cx
+
+     mov cx, bx           ; 3 pixels high
+     rep stosw               ; Write to the doublebuffer
+     
+     dec ah                  ; Increment color index for next bar
+     xchg al, ah             ; Swap colors
+     cmp ax, 0x3434
+     jge .skip_recolor
+     mov ax, 0x3737
+     add bx, 160
+     .skip_recolor:
+     pop cx                  ; Decrement bar counter
+     loop .draw_water
 
 ; =========================================== DRAW TERRAIN =====================
 
@@ -180,7 +197,6 @@ check_keyboard:
 
   mov si, [_PLAYER_ENTITY_ID_]
   mov cx, [si+1]   ; Load player position into CX (Y in CH, X in CL)
-  call conv_pos2mem
 
   mov ah, 00h         ; BIOS keyboard read function
   int 16h             ; Call BIOS interrupt
@@ -305,9 +321,10 @@ ai_entities:
   loop .next_entity
 
 
-
 ; =========================================== SORT ENITIES ===============
-
+; Sort entities by Y position
+; Expects: entities array
+; Returns: sorted entities array
 sort_entities:
   xor ax, ax
 
@@ -330,18 +347,15 @@ sort_entities:
         mov di, si
         add di, 6
         
-        ; [_PLAYER_ENTITY_ID_] - memory adrress of player entity
         mov ax, [_PLAYER_ENTITY_ID_]
         cmp ax, si
         jne .check_next_entity
-        mov [_PLAYER_ENTITY_ID_], di
-        jmp .swap_entities
-
-
+          mov [_PLAYER_ENTITY_ID_], di
+          jmp .swap_entities
         .check_next_entity:
         cmp ax, di
         jne .swap_entities
-        mov [_PLAYER_ENTITY_ID_], si
+          mov [_PLAYER_ENTITY_ID_], si
         .swap_entities:
 
         mov cx, 6       ; 6 bytes per entity, so we move 3 words
