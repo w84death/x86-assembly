@@ -16,8 +16,9 @@ use16
 ; =========================================== MEMORY ADDRESSES ===============
 _VGA_MEMORY_ equ 0xA000
 _DBUFFER_MEMORY_ equ 0x8000
+_PLAYER_ENTITY_ID_ equ 0x7000
+_REQUEST_POSITION_ equ 0x0000
 _ENTITIES_ equ 0x7010
-_TERRAIN_TILES equ 0x7a00
 
 ; =========================================== CONSTANTS =======================
 BEEPER_ENABLED equ 0x01
@@ -73,6 +74,8 @@ spawn_entities:
 add si, 0x03            ; Move to the next entity in code
 add di, 0x06            ; Move to the next entity in memory
 loop .next_entitie
+
+mov word [_PLAYER_ENTITY_ID_], _ENTITIES_
 
 game_loop:
     xor di,di                   ; Clear destination address
@@ -175,7 +178,7 @@ check_keyboard:
   int 16h             ; Call BIOS interrupt
   jz .no_key_press           ; Jump if Zero Flag is set (no key pressed)
 
-  mov si, _ENTITIES_
+  mov si, [_PLAYER_ENTITY_ID_]
   mov cx, [si+1]   ; Load player position into CX (Y in CH, X in CL)
   call conv_pos2mem
 
@@ -302,31 +305,58 @@ ai_entities:
 ; =========================================== SORT ENITIES ===============
 
 sort_entities:
+  xor ax, ax
+
   mov cx, [EntityCount]
-  dec cx           
-  dec cx
+  dec cx  ; We'll do n-1 passes
+
   .outer_loop:
     push cx
     mov si, _ENTITIES_
-    add si, 0x6
+
     .inner_loop:
-      mov ax, [si+1]
-      cmp ah, [si+7]                        ; Compare Y coordinates
-      jle .skip_swap
+      push cx
+      mov bx, [si+1]  ; Get Y of current entity
+      mov dx, [si+7]  ; Get Y of next entity
+
+      cmp bh, dh      ; Compare Y values
+      jle .no_swap
+      
+        
         mov di, si
-        mov dx, 0x6                         ; 6 bytes per entity
+        add di, 6
+        
+        ; [_PLAYER_ENTITY_ID_] - memory adrress of player entity
+        mov ax, [_PLAYER_ENTITY_ID_]
+        cmp ax, si
+        jne .check_next_entity
+        mov [_PLAYER_ENTITY_ID_], di
+        jmp .swap_entities
+
+
+        .check_next_entity:
+        cmp ax, di
+        jne .swap_entities
+        mov [_PLAYER_ENTITY_ID_], si
+        .swap_entities:
+
+        mov cx, 6       ; 6 bytes per entity, so we move 3 words
         .swap_loop:
-          mov al, [di]
-          xchg al, [di+6]
-          mov [di], al
+          mov al, [si]
+          xchg al, [di]
+          mov [si], al
+          inc si
           inc di
-          dec dx
-          jnz .swap_loop
-      .skip_swap:
-      add si, 0x6
-    loop .inner_loop
+          loop .swap_loop
+        sub si, 6       ; Reset SI to start of current entity
+
+      .no_swap:
+      add si, 6       ; Move to next entity
+      pop cx
+      loop .inner_loop
+
     pop cx
-  loop .outer_loop
+    loop .outer_loop
 
 ; =========================================== DRAW ENITIES ===============
 
@@ -777,10 +807,11 @@ db 0x6a, 0x22, 0x46, 0x00, 0x58
 
 ; Sprite shift table: 320 * shift amount
 SpriteShiftTable:
-    dw 0       ; Type 0: No shift
-    dw -2880   ; Type 1: Tree (320 * -9)
-    dw 960     ; Type 2: Grass (320 * 3)
-    dw 0       ; Type 3: No shift
+    dw -320*2       ; Type 0: player No shift
+    dw -320*8   ; Type 1: Tree (320 * -9)
+    dw -320*2     ; Type 2: Grass (320 * 3)
+    dw 0       ; Type 3: fish No shift
+    dw 0       ; Type 4: monkey No shift
 
 EntitiesSpr:          ; Fish Swim  -  0x00
 dw 0x5, 0x64
@@ -847,10 +878,9 @@ dw 0000001010100000b
 dw 0000010000010000b
 
 CaptionSpr:
-dw 0x09, 0x15
+dw 0x08, 0x15
 dw 0011111111111100b
 dw 1100111111111111b
-dw 1111111111111111b
 dw 1111111111111111b
 dw 1111111111111111b
 dw 1111111111111111b
