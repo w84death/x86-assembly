@@ -317,45 +317,31 @@ ai_entities:
 ; =========================================== SORT ENITIES ===============
 
 sort_entities:
-  mov dx, [EntityCount]
-  dec dx
-  dec dx
-  mov si, _ENTITIES_
-  add si, 0x6
-  .sort_loop:
-    mov cx, dx
-    .next_entitie:
-      mov word ax, [si+1]
-      mov word bx, [si+7]
-      cmp ah, bh
+  mov cx, [EntityCount]
+  dec cx           
+  dec cx
+  .outer_loop:
+    push cx
+    mov si, _ENTITIES_
+    add si, 0x6
+    .inner_loop:
+      mov ax, [si+1]
+      cmp ah, [si+7]                        ; Compare Y coordinates
       jle .skip_swap
-        mov word [si+1], bx
-        mov word [si+7], ax
-
-        mov byte al, [si]
-        mov byte bl, [si+6]
-        mov byte [si], bl
-        mov byte [si+6], al
-
-        mov byte al, [si+3]
-        mov byte bl, [si+9]
-        mov byte [si+3], bl
-        mov byte [si+9], al
-
-        mov byte al, [si+4]
-        mov byte bl, [si+10]
-        mov byte [si+4], bl
-        mov byte [si+10], al
-
-        mov byte al, [si+5]
-        mov byte bl, [si+11]
-        mov byte [si+5], bl
-        mov byte [si+11], al
-
-        .skip_swap:
-
+        mov di, si
+        mov dx, 0x6                         ; 6 bytes per entity
+        .swap_loop:
+          mov al, [di]
+          xchg al, [di+6]
+          mov [di], al
+          inc di
+          dec dx
+          jnz .swap_loop
+      .skip_swap:
       add si, 0x6
-    loop .next_entitie
+    loop .inner_loop
+    pop cx
+  loop .outer_loop
 
 ; =========================================== DRAW ENITIES ===============
 
@@ -484,28 +470,25 @@ ret
 ; Return: CX - updated pos
 random_move:
   rdtsc
-  and ax, 0x3
-  cmp ax, 0x3
-  jnz .check_y
-    sub cl,1
-    cmp byte [si+4], 0x01
-    jz .skip_right
-      add cl, 0x2
-    .skip_right:
-  ret
-  .check_y:
-    rdtsc
-    and ax, 0x10
-    cmp ax, 0x10
+  and ax, 0x13
+  jz .skip_move
+
+  test ax, 0x3
+  jz .move_y
+    dec cl
+    test byte [si+4], 0x01
     jnz .skip_move
-      sub ch, 1
-      rdtsc
-      and ax, 0x1
-      jz .skip_down
-         add ch, 0x2
-     .skip_down:
-  .skip_move:
-ret
+    add cl, 2
+  ret
+
+.move_y:
+  dec ch
+  test ax, 0x10
+  jz .skip_move
+  add ch, 2
+
+.skip_move:
+  ret
 
 ; =========================================== CHECK WATER =====================
 ; Expects: DI - memory position to check for water
@@ -516,27 +499,47 @@ check_water:
   cmp ax, COLOR_WATER
 ret
 
+; =========================================== CHECK WATER TILE ================
+; Expects: CH - Y position (0-15), CL - X position (0-31)
+; Returns: ZF set if water (1111b), clear otherwise
+check_water_tile:
+    pusha
+
+    mov si, LevelData
+    xor ax, ax
+    mov al, ch
+    shl ax, 2                               ; Multiply Y by 4 (2 words per row)
+    add si, ax                              ; SI now points to the correct row
+
+    mov al, cl
+    shr al, 3                               ; Divide X by 8 to get word offset
+    shl ax, 1                               ; Multiply by 2 for word size
+    add si, ax                              ; SI now points to the correct word
+
+    mov ax, [si]                            ; Load the word containing our tile
+    mov bl, cl
+    and bl, 0x07                            ; X mod 8 to get position within word
+    mov cl, bl
+    shl cl, 2                               ; Multiply by 4 to get bit shift
+    ror ax, cl                              ; Rotate right to get our 4 bits in the lowest position
+    and ax, 0x000F                          ; Mask off everything but lowest 4 bits
+    cmp ax, 0x000F                          ; Compare with 1111b (water)
+
+    popa
+    ret
+    
 ; =========================================== CHECK BOUNDS =====================
 ; Expects: CX - Position YY/XX
-; Return: AX - Zero if hit bound, 1 if no bunds at this location
+; Return: AX - Zero if hit bound, 1 if no bounds at this location
 check_bounds:
-  cmp ch, 0x00
-  jl .bound
+  xor ax, ax                                ; Assume bound hit (AX = 0)
   cmp ch, 0x0f
-  jg .bound
-  cmp cl, 0x00
-  jl .bound
+  ja .return
   cmp cl, 0x20
-  jg .bound
-
-  jmp .no_bound
-
-  .bound:
-  mov ax, 0x0
-ret
-  .no_bound:
-  mov ax, 0x1
-ret
+  ja .return
+  inc ax                                    ; No bound hit (AX = 1)
+.return:
+  ret
 
 ; =========================================== CHECK FRIEDS =====================
 ; Expects: CX - Position YY/XX
@@ -569,38 +572,27 @@ ret
 
 ; =========================================== CHECK PLAYER =====================
 ; Expects: CX - Position YY/XX
-; Return: AX - Zero if not player, 1 if player at this location
+; Return: AX - Zero if not player, 1 if player near this location
 check_player:
    mov ax, [_ENTITIES_+1]
 
-   cmp ch, ah
-   jz .pass_y
-   inc ah
-   cmp ch, ah
-   jz .pass_y
-   inc ah
-   cmp ch, ah
-   jz .pass_y
-   mov ax, 0x0
-   ret
+   ; Check Y position
+   sub ch, ah
+   cmp ch, 2
+   ja .not_player
 
-   .pass_y:
+   ; Check X position
+   mov al, [_ENTITIES_]
+   sub cl, al
+   cmp cl, 2
+   ja .not_player
 
-   dec al
-   cmp cl, al
-   jz .pass_x
-   inc al
-   cmp cl, al
-   jz .pass_x
-   inc al
-   cmp cl, al
-   jz .pass_x
-
-   mov ax, 0x0
-   ret
-   .pass_x:
    mov ax, 0x1
-ret
+   ret
+
+.not_player:
+   mov ax, 0x0
+   ret
 
 ; =========================================== DRAW SOURCE =====================
 ; Expects: DI - memory position
