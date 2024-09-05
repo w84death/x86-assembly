@@ -186,56 +186,41 @@ check_keyboard:
   cmp ah, 1ch         ; Compare scan code with enter
   jne .check_up
     jmp restart_game
-
+  
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
     dec ch
-    call check_water_tile
-    jz .no_key
-    call check_bounds
-    jz .no_key
-    ;call check_friends
-    ;jz .no_key
-    sub word [si+1], 0x0100
+    jmp .check_move
+
   .check_down:
   cmp ah, 50h         ; Compare scan code with down arrow
   jne .check_left
     inc ch
-    call check_water_tile
-    jz .no_key
-    call check_bounds
-    jz .no_key
-    ;call  check_friends
-   ; jz .no_key
-    add word [si+1], 0x0100
+    jmp .check_move
 
   .check_left:
   cmp ah, 4Bh         ; Compare scan code with left arrow
   jne .check_right
     dec cl
-    call check_water_tile
-    jz .no_key
-    call check_bounds
-    jz .no_key
-    ;call  check_friends
-    ;jz .no_key
-    sub word [si+1], 0x0001
     mov byte [si+4], 0x01
+    jmp .check_move
 
   .check_right:
   cmp ah, 4Dh         ; Compare scan code with right arrow
   jne .no_key
     inc cl
-    call check_water_tile
-    jz .no_key
-    call check_bounds
-    jz .no_key
-    ;call check_friends
-   ; jz .no_key
-
-    add word [si+1], 0x0001
     mov byte [si+4], 0x00
+    ;jmp .check_move    
+  
+  .check_move:
+  call check_water_tile
+  jz .no_key
+  call check_bounds
+  jz .no_key
+  call check_friends
+  jz .no_key
+  mov word [si+1], cx
 
   .no_key:
   mov bx, BEEPER_ENABLED
