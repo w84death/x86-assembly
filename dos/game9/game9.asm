@@ -353,26 +353,18 @@ draw_entities:
     push si
 
     cmp byte [si+5], 0x0
-    jz .skip_entitie
+    jz .skip_entity
 
-    mov word cx, [si+1]
-    call conv_pos2mem
+    mov cx, [si+1]
+    call conv_pos2mem ; Convert position to memory
 
-    mov byte dl, [si+4]
+    movzx bx, byte [si]  ; Get entity type
+    imul bx, 0x2
+    add di, [SpriteShiftTable + bx]  ; Apply shift based on type
 
-    mov byte al, [si]
-    cmp al, 0x1
-    jnz .not_tree
-      sub di, 320*9
-    .not_tree:
-
-    cmp al, 0x02        ; Check if grass sprite
-    jnz .not_grass
-      add di, 320*3     ; Shift grass sprite 3 lines down
-    .not_grass:
-
-    xor ax, ax
-    mov byte al, [si+3] ; Get sprite data offset
+    mov dl, [si+4] ; Get sprite mirror flag
+    mov bl, [si+5] ; Get sprite state
+    movzx ax, byte [si+3] ; Get sprite data offset
     mov si, EntitiesSpr
     add si, ax          ; Apply offset
     call draw_sprite
@@ -387,12 +379,11 @@ draw_entities:
       call draw_source
     .skip_source:
 
-    .skip_entitie:
+    .skip_entity:
     pop si
     add si, 0x6
     pop cx
   loop .next
-
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 
@@ -572,7 +563,7 @@ ret
 
 ; =========================================== CHECK PLAYER =====================
 ; Expects: CX - Position YY/XX
-; Return: AX - Zero if not player, 1 if player near this location
+; Return: AX - Zero if not player, 1 if player at this location
 check_player:
    mov ax, [_ENTITIES_+1]
 
@@ -809,6 +800,14 @@ dw 0000000000000000b
 
 SpriteOffsetTable:
 db 0x6a, 0x22, 0x46, 0x00, 0x58
+
+; Sprite shift table: 320 * shift amount
+SpriteShiftTable:
+    dw 0       ; Type 0: Player No shift
+    dw -2880   ; Type 1: Tree (320 * -9)
+    dw 960     ; Type 2: Grass (320 * 3)
+    dw 0       ; Type 3: FishNo shift
+    dw 0       ; Type 4: Monkey No shift
 
 EntitiesSpr:          ; Fish Swim  -  0x00
 dw 0x5, 0x64
