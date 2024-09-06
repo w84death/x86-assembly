@@ -96,36 +96,30 @@ draw_bg:
      xchg al, ah             ; Swap colors
 
      pop cx                  ; Decrement bar counter
-     loop .draw_sky
-
-  ;mov ax, 0x4d52
-  mov ax, 0x383a
+     loop .draw_s
+  mov ax, 0x7d7c
   mov bx, 160
   mov cx, 24
+
   .draw_water:
-    push cx 
+    push cx
+
+    inc ah
+    dec al
 
     and cx, 0x08
     cmp cx, 0x04
-    jge .inccol
-      inc ah
-      dec al
-      jmp .draw_bar
-    .inccol:
-      inc ah
-      dec al
-    .draw_bar:
-
-    cmp cx, 0x04
     jl .skip_inc
       add bx, 160
-    .skip_inc: 
-
+      inc ah
+      xchg al, ah
+    .skip_inc:
+      xchg al, ah
+      inc al
     mov cx, bx           ; bar size
     rep stosw               ; Write to the doublebuffer
-    xchg al, ah            ; Swap colors
-    
-    pop cx                  ; Decrement bar counter    
+    pop cx                  ; Decrement bar counter
+
   loop .draw_water
 
 ; palloop:
@@ -145,13 +139,13 @@ draw_terrain:
   mov di, LEVEL_START_POSITION
   sub di, 32    ; bug?
 
-  mov si, LevelData         ; Load level data (meta-tiles)  
+  mov si, LevelData         ; Load level data (meta-tiles)
   mov cl, 0x20              ; 32 reads, 2 per line - 16 lines
   .draw_meta_tiles:
   push cx
   push si
 
-  dec cx          ; Decrease counter  
+  dec cx          ; Decrease counter
   shr cx, 0x1     ; Divide by 2
   jnc .no_new_line  ; Check if even, if not - new line
     add di, 320*8-(32*8)  ; Move to the next line
@@ -171,7 +165,7 @@ draw_terrain:
    imul ax, 0x4         ; Multiply inde by 4 (4 bytes per meta-tile)
     add si, ax          ; Move to the meta-tile set
     mov ax, [si]        ; AX - Meta-Tile
-    mov cl, 0x4         
+    mov cl, 0x4
     .draw_tile:
       push cx
       push si
@@ -191,7 +185,7 @@ draw_terrain:
       call convert_value  ; Convert value to bits (save in BX)
 
       mov dx, bx      ; Get tile color index
-      call draw_sprite  
+      call draw_sprite
 
       .skip_tile:
 
@@ -227,7 +221,7 @@ check_keyboard:
   cmp ah, 1ch         ; Compare scan code with enter
   jne .check_up
     jmp restart_game
-  
+
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
@@ -252,8 +246,8 @@ check_keyboard:
   jne .no_key
     inc cl
     mov byte [si+4], 0x00
-    ;jmp .check_move    
-  
+    ;jmp .check_move
+
   .check_move:
   call check_friends
   jz .collision
@@ -261,10 +255,10 @@ check_keyboard:
   jz .collision
   call check_bounds
   jz .collision
- 
+
   mov word [si+1], cx
 
-  .collision:  
+  .collision:
   mov word [_REQUEST_POSITION_], cx
 
   .no_key:
@@ -326,14 +320,14 @@ ai_entities:
       and al, 0x2
       cmp al, 0x2
       jnz .skip_waiting
-      .waiting: 
+      .waiting:
       mov word  cx,[si+1]
         cmp word cx, [_REQUEST_POSITION_]
         jne .wait_more
           mov byte [si+3],0x00 ; First fish sprite
           xor byte [si+4],0x01 ; Reverse
           mov byte [si+5],0x09 ; Served
-          mov word [_REQUEST_POSITION_], 0x0000 
+          mov word [_REQUEST_POSITION_], 0x0000
        .wait_more:
       .skip_waiting:
 
@@ -364,11 +358,11 @@ sort_entities:
 
       cmp bh, dh      ; Compare Y values
       jle .no_swap
-      
-        
+
+
         mov di, si
         add di, 6
-        
+
         mov ax, [_PLAYER_ENTITY_ID_]
         cmp ax, si
         jne .check_next_entity
@@ -558,7 +552,7 @@ check_water_tile:
     rol dx, cl      ; rotate left by cl
     and dl, 0x0F    ; Check last nibble
     cmp dl, 0x0F    ; Check if it's water (0xF)
-    
+
     pop cx
     ret
 
@@ -691,7 +685,7 @@ beep:
 ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
-; Expects: 
+; Expects:
 ; BP - color shift
 ; DI - positon (linear)
 ; DX - settings: 00 normal, 01 mirrored x, 10 mirrored y, 11 mirrored x&y
@@ -771,7 +765,7 @@ draw_sprite:
 
 
 ; =========================================== CONVERT VALUE ===================
-; Expects: 
+; Expects:
 ; AX - source
 ; CL - number of bits to convert
 ; Return: BX
@@ -906,7 +900,7 @@ dw 0000101001000000b
 dw 0000010100010000b
 dw 0001000100010000b
 
-dw 0x8, 0x20          ; dino - 102+4/0x6a 
+dw 0x8, 0x20          ; dino - 102+4/0x6a
 dw 0000011011111100b
 dw 0000001010010111b
 dw 1100000010101010b
