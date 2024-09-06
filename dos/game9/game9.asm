@@ -86,7 +86,7 @@ game_loop:
 ; =========================================== DRAW BACKGROUND ==================
 draw_bg:
   mov ax, COLOR_SKY               ; Set starting sky color
-  mov cl, 0x9                  ; 10 bars to draw
+  mov cl, 0xa                  ; 10 bars to draw
   .draw_sky:
      push cx
 
@@ -100,24 +100,32 @@ draw_bg:
 
   mov ax, 0x3737
   mov bx, 160
-  mov cl, 0x2a                ; 34 bars to draw
+  mov cx, 24
   .draw_water:
-     push cx
+    push cx 
 
-     mov cx, bx           ; 3 pixels high
-     rep stosw               ; Write to the doublebuffer
-     
-     dec ah                  ; Increment color index for next bar
-     xchg al, ah             ; Swap colors
-     cmp ax, 0x3434
-     jge .skip_recolor
-     mov ax, 0x3737
-     add bx, 160
-     .skip_recolor:
-     pop cx                  ; Decrement bar counter
-     loop .draw_water
+    and cx, 0x08
+    cmp cx, 0x04
+    jge .inccol
+      dec ah
+      jmp .draw_bar
+    .inccol:
+      inc ah
+    .draw_bar:
 
-;
+    cmp cx, 0x08
+    jl .skip_inc
+      add bx, 160
+    .skip_inc: 
+
+      mov cx, bx           ; bar size
+      rep stosw               ; Write to the doublebuffer
+      xchg al, ah            ; Swap colors
+
+      pop cx                  ; Decrement bar counter    
+  loop .draw_water
+
+
 ; =========================================== DRAW TERRAIN =====================
 
 draw_terrain:
