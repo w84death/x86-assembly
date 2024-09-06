@@ -98,7 +98,8 @@ draw_bg:
      pop cx                  ; Decrement bar counter
      loop .draw_sky
 
-  mov ax, 0x3737
+  ;mov ax, 0x4d52
+  mov ax, 0x383a
   mov bx, 160
   mov cx, 24
   .draw_water:
@@ -107,23 +108,35 @@ draw_bg:
     and cx, 0x08
     cmp cx, 0x04
     jge .inccol
-      dec ah
+      inc ah
+      dec al
       jmp .draw_bar
     .inccol:
       inc ah
+      dec al
     .draw_bar:
 
-    cmp cx, 0x08
+    cmp cx, 0x04
     jl .skip_inc
       add bx, 160
     .skip_inc: 
 
-      mov cx, bx           ; bar size
-      rep stosw               ; Write to the doublebuffer
-      xchg al, ah            ; Swap colors
-
-      pop cx                  ; Decrement bar counter    
+    mov cx, bx           ; bar size
+    rep stosw               ; Write to the doublebuffer
+    xchg al, ah            ; Swap colors
+    
+    pop cx                  ; Decrement bar counter    
   loop .draw_water
+
+; palloop:
+; mov ax,cx
+; mov dx,0x3c8
+; out dx,al    ; select palette color
+; inc dx
+; out dx,al    ; write red value (0..63)
+; out dx,al    ; write green value (0..63)
+; out dx,al    ; write blue value (0..63)
+; loop palloop
 
 
 ; =========================================== DRAW TERRAIN =====================
@@ -771,7 +784,6 @@ convert_value:
         loop .rotate_loop
     shr bx, 1           ; Adjust final result (undo last shift)
     ret
-
 
 ; =========================================== SPRITE DATA ======================
 ; Set of 8x8 tiles for constructing meta-tiles
