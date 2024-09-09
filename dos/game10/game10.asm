@@ -49,7 +49,7 @@ restart_game:
 game_loop:
   xor di, di
   xor si, si
-  
+
 ; =========================================== DRAW BACKGROUND ==================
 draw_bg:
   mov ax, COLOR_SKY               ; Set starting sky color
@@ -73,21 +73,24 @@ draw_ocean:
   mov cx, 18
   .ll:
     push cx
+    
+    xor dx, dx
+    mov ax, cx
+    shr ax, 1
+    adc dx, 0
+    shl dx, 1
+    
     mov cx, 40
     .l: 
-      xor dx, dx
-      mov ax, cx
-      shr ax, 1
-      adc dx, 0
-      shl dx, 1
       call draw_sprite
       add di, 8
       
     loop .l
     add di, 320*7
-
-
+      
+    
     pop cx
+    
   loop .ll
 
 ; anim_ocean:
@@ -359,14 +362,14 @@ dw 0000001011101100b
 
 OceanBrush:
 db 0x8, 0x3
-dw 0100010101010001b
-dw 0101000000000101b
-dw 1010010101011010b
-dw 1111100101101111b
-dw 1011111010111110b
-dw 1110111111111011b
-dw 0111101010101101b
-dw 0001111111110100b
+dw 1111111111111111b
+dw 1011111111111011b
+dw 1110101110111110b
+dw 0110111011100110b
+dw 1001011001101001b
+dw 0001100110010001b
+dw 0100000100010100b
+dw 0000010001000000b
 
 ShipEndBrush:
 db 0x7, 0x4
