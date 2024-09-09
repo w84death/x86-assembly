@@ -69,28 +69,28 @@ draw_ocean:
   xor dx, dx
   mov di, 320*60
   mov si, OceanBrush
-  
+
   mov cx, 18
   .ll:
     push cx
-    
+
     xor dx, dx
     mov ax, cx
     shr ax, 1
     adc dx, 0
     shl dx, 1
-    
+
     mov cx, 40
-    .l: 
+    .l:
       call draw_sprite
       add di, 8
-      
+
     loop .l
     add di, 320*7
-      
-    
+
+
     pop cx
-    
+
   loop .ll
 
 ; anim_ocean:
@@ -239,7 +239,7 @@ draw_sprite:
     xor cx, cx
     mov byte cl, [si]       ; lines
     inc si
-    
+
     xor ax, ax
     mov byte al, [si]       ; Palette
     inc si
@@ -247,7 +247,7 @@ draw_sprite:
     shl ax, 0x2              ; each set is 4x 1 byte
     mov bp, ax
     add bp, PaletteSets
-    
+
     mov bl, dl              ; Check x mirror
     and bl, 0x1
     jz .no_x_mirror
@@ -270,7 +270,7 @@ draw_sprite:
         push si
         .draw_pixel:
             push cx
-            
+
             mov cl, 0x2
             call get_bits_from_word
 
@@ -280,18 +280,18 @@ draw_sprite:
 
             cmp bl, 0x0        ; transparency
             jz .skip_pixel
-              mov byte [es:di], bl  ; Write pixel color  
+              mov byte [es:di], bl  ; Write pixel color
             .skip_pixel:     ; Or skip this pixel - alpha color
 
             inc di           ; Move destination to next pixel (+1)
-            
+
             mov bl, dl
             and bl, 0x1
             jz .no_x_mirror2          ; Jump if not
               dec di           ; Remove previous shift (now it's 0)
               dec di           ; Move destination 1px left (-1)
             .no_x_mirror2:
-            
+
             pop cx
             loop .draw_pixel
 
@@ -345,7 +345,7 @@ db 0x7f, 0x7e, 0x7d, 0x7c   ; Ocean
 db 0x00, 0xb7, 0xbb, 0x8c   ; Wood
 
 IndieTopBrush:
-db 0x7, 0x1   
+db 0x7, 0x1
 dw 0000000101010000b
 dw 0000010101010100b
 dw 0000001111110000b
@@ -357,8 +357,8 @@ dw 0000001101010000b
 IndieBottomBrush:
 db 0x3, 0x2
 dw 0000000101010000b
+dw 0000000100010000b
 dw 0000001000100000b
-dw 0000001011101100b
 
 OceanBrush:
 db 0x8, 0x3
