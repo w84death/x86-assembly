@@ -62,15 +62,14 @@ game_loop:
 ;jmp skip_me
 
 draw_player:
-  xor dx, dx      ; no mirror
-  mov cx, 0x0b10
+  mov cx, 0x0110
   call conv_pos2mem
   mov si, IndieTopBrush
+  mov dl, 0x1
   call draw_sprite
   add di, 320*7
   mov si, IndieBottomBrush
   call draw_sprite
-;skip_me:
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 
@@ -189,71 +188,73 @@ draw_sprite:
     mov byte al, [si]       ; Palette
     inc si
 
-  imul ax, 0x3              ; each set is 3x 1 bytes
+    shl ax, 0x2              ; each set is 4x 1 byte
     mov bp, ax
     add bp, PaletteSets
     
-    ; mov bx, dx              ; Check
-    ; and bx, 0x1             ; mirror X?
-    ; jz .no_x_mirror
-    ;   add di, 0x7             ; Move point to the last right pixel
-    ; .no_x_mirror:
+    mov bl, dl              ; Check x mirror
+    and bl, 0x1
+    jz .no_x_mirror
+      add di, 0x7             ; Move point to the last right pixel
+    .no_x_mirror:
 
-    ; mov bx, dx              ; Check
-    ; and bx, 0x2             ; mirror Y?
-    ; jz .no_y_mirror
-    ;   shl cx, 1               ; Lines*2
-    ;   add si, cx              ; Move to the last position
-    ;   sub si, 0x2             ; Back one word
-    ; .no_y_mirror:
+    mov bl, dl              ; Check
+    and bl, 0x2
+    jz .no_y_mirror
+      add si, cx
+      add si, cx              ; Move to the last position
+      sub si, 0x2             ; Back one word
+    .no_y_mirror:
 
     .plot_line:
         push cx           ; Save lines couter
         mov ax, [si]      ; Get sprite line
         xor bx, bx
         mov cl, 0x08      ; 8 pixels in line
+        push si
         .draw_pixel:
             push cx
-
+            
             mov cl, 0x2
             call get_bits_from_word
 
-            cmp bl, 0        ; transparency
+            mov si, bp      ; Palette Set
+            add si, bx      ; Palette color
+            mov byte bl, [si] ; Get color from the palette
+
+            cmp bl, 0x0        ; transparency
             jz .skip_pixel
-              push si
-              mov si, bp      ; Palette Set
-              add si, bx      ; Palette color
-              mov byte bl, [si] ; Get color from the palette
-              mov byte [es:di], bl  ; Write pixel color
-              pop si
+              mov byte [es:di], bl  ; Write pixel color  
             .skip_pixel:     ; Or skip this pixel - alpha color
+
             inc di           ; Move destination to next pixel (+1)
             
-            ; mov bx, dx
-            ; and bx, 1
-            ; jz .no_x_mirror2          ; Jump if not
-            ; dec di           ; Remove previous shift (now it's 0)
-            ; dec di           ; Move destination 1px left (-1)
-            ; .no_x_mirror2:
+            mov bl, dl
+            and bl, 0x1
+            jz .no_x_mirror2          ; Jump if not
+              dec di           ; Remove previous shift (now it's 0)
+              dec di           ; Move destination 1px left (-1)
+            .no_x_mirror2:
             
             pop cx
             loop .draw_pixel
 
+        pop si
         add si, 0x2               ; Move to the next sprite line data
 
-        ; mov bx, dx
-        ; and bx, 2
-        ; jz .no_y_mirror2
-        ;   sub si, 4
-        ; .no_y_mirror2:
+        mov bl, dl
+        and bl, 0x2
+        jz .no_y_mirror2
+          sub si, 0x4
+        .no_y_mirror2:
 
         add di, 312          ; Move to next line in destination
 
-        ; mov bx, dx
-        ; and bx, 1
-        ; jz .no_x_mirror3
-        ;   add di, 0x10           ; If mirrored adjust next line position
-        ; .no_x_mirror3:
+        mov bl, dl
+        and bl, 0x1
+        jz .no_x_mirror3
+          add di, 0x10           ; If mirrored adjust next line position
+        .no_x_mirror3:
 
     pop cx                   ; Restore line counter
     loop .plot_line
@@ -281,9 +282,12 @@ get_bits_from_word:
 ; Data: number of lines, palette id, lines (8 pixels) of palette color id
 
 PaletteSets:
-db 0x0, 0x10, 0x18, 0x1f
+db 0x0, 0x10, 0x7e, 0x1f
 db 0x0, 0x06, 0x27, 0x43
 db 0x0, 0x7e, 0x13, 0x15
+
+db 0x10, 0x06, 0x27, 0x43
+db 0x10, 0x7e, 0x13, 0x15
 
 IndieTopBrush:
 db 0x7, 0x1   
@@ -297,6 +301,22 @@ dw 0000001101010000b
 
 IndieBottomBrush:
 db 0x3, 0x2
+dw 0000000101010000b
+dw 0000001000100000b
+dw 0000001011101100b
+
+IndieTop2Brush:
+db 0x7, 0x3
+dw 0000000101010000b
+dw 0000010101010100b
+dw 0000001111110000b
+dw 0000000011110000b
+dw 0000001010000000b
+dw 0000001010100000b
+dw 0000001101010000b
+
+IndieBottom2Brush:
+db 0x3, 0x4
 dw 0000000101010000b
 dw 0000001000100000b
 dw 0000001011101100b
