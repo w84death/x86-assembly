@@ -1,8 +1,8 @@
-; GAME9 - DINOPIX
+; GAME10 - The X Project
 ; DOS VERSION
 ;
 ; Description:
-;   Dino cook serving food to sea creatures.
+;   Hi-end terrain rendering 32x24 with meta-tiles
 ;
 ; Size category: 2KB
 ;
