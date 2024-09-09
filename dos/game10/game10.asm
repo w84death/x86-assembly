@@ -48,22 +48,58 @@ restart_game:
 ; =========================================== GAME LOGIC =======================
 game_loop:
 
-.draw_bg:
-  mov cx, 320*100
-  mov si, PaletteSets
-  xor di,di
-  .l:
-    mov byte bl, [si+2]
-    mov bh, bl
-    mov [es:di], bx
-    add di, 0x2
-  loop .l
+; =========================================== DRAW BACKGROUND ==================
+draw_bg:
+  mov ax, COLOR_SKY               ; Set starting sky color
+  mov cl, 0xa                  ; 10 bars to draw
+  .draw_sky:
+     push cx
 
-;jmp skip_me
+     mov cx, 320*3           ; 3 pixels high
+     rep stosw               ; Write to the doublebuffer
+     inc ax                  ; Increment color index for next bar
+     xchg al, ah             ; Swap colors
+
+     pop cx                  ; Decrement bar counter
+     loop .draw_sky
+
+draw_ocean:
+  xor dx, dx
+  mov di, 320*60
+  mov si, OceanBrush
+  
+  mov cx, 18
+  .ll:
+  push cx
+  mov cx, 40
+  .l: 
+    
+    call draw_sprite
+    add di, 8
+
+  loop .l
+  add di, 320*7
+  pop cx
+  loop .ll
+
+
+draw_ship:
+  mov cx, 0x040f
+  call conv_pos2mem
+  sub di, 8
+  mov si, ShipEndBrush
+  call draw_sprite
+  add di, 16
+  mov dx, 0x01
+  call draw_sprite
+  mov si, ShipMiddleBrush
+  sub di, 8
+  call draw_sprite
 
 draw_player:
-  mov cx, 0x0110
+  ;mov cx, 0x0110
   call conv_pos2mem
+  sub di, 320*6
   mov si, IndieTopBrush
   mov dl, 0x1
   call draw_sprite
@@ -282,12 +318,11 @@ get_bits_from_word:
 ; Data: number of lines, palette id, lines (8 pixels) of palette color id
 
 PaletteSets:
-db 0x0, 0x10, 0x7e, 0x1f
-db 0x0, 0x06, 0x27, 0x43
-db 0x0, 0x7e, 0x13, 0x15
-
-db 0x10, 0x06, 0x27, 0x43
-db 0x10, 0x7e, 0x13, 0x15
+db 0x18, 0x1a, 0x1d, 0x1f   ; Default
+db 0x00, 0x06, 0x27, 0x43   ; Indie top
+db 0x00, 0x7e, 0x13, 0x15   ; Indie bottom
+db 0x7f, 0x7e, 0x7d, 0x7c   ; Ocean
+db 0x00, 0xb7, 0xbb, 0x8c   ; Wood
 
 IndieTopBrush:
 db 0x7, 0x1   
@@ -305,21 +340,37 @@ dw 0000000101010000b
 dw 0000001000100000b
 dw 0000001011101100b
 
-IndieTop2Brush:
-db 0x7, 0x3
-dw 0000000101010000b
-dw 0000010101010100b
-dw 0000001111110000b
-dw 0000000011110000b
-dw 0000001010000000b
-dw 0000001010100000b
-dw 0000001101010000b
+OceanBrush:
+db 0x8, 0x3
+dw 0100010101010001b
+dw 0101000000000101b
+dw 1010010101011010b
+dw 1111100101101111b
+dw 1011111010111110b
+dw 1110111111111011b
+dw 0111101010101101b
+dw 0001111111110100b
 
-IndieBottom2Brush:
-db 0x3, 0x4
-dw 0000000101010000b
-dw 0000001000100000b
-dw 0000001011101100b
+ShipEndBrush:
+db 0x7, 0x4
+dw 0000101010101111b
+dw 0000111111111010b
+dw 0000101111111111b
+dw 0000010101011011b
+dw 0000000111111111b
+dw 0000011010101010b
+dw 0000000101010101b
+
+ShipMiddleBrush:
+db 0x7, 0x4
+dw 1111101010111111b
+dw 1111111111111111b
+dw 1111111111111111b
+dw 1111111111111111b
+dw 1010111110101011b
+dw 1010100110101010b
+dw 0101010101010101b
+
 
 Logo:
 db "P1X"
