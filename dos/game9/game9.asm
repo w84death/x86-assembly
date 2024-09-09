@@ -96,7 +96,8 @@ draw_bg:
      xchg al, ah             ; Swap colors
 
      pop cx                  ; Decrement bar counter
-     loop .draw_s
+     loop .draw_sky
+
   mov ax, 0x7d7c
   mov bx, 160
   mov cx, 24
@@ -842,7 +843,7 @@ db 0x6a, 0x22, 0x46, 0x00, 0x58
 SpriteShiftTable:
     dw -320*2       ; Type 0: player No shift
     dw -320*10   ; Type 1: Tree (320 * -9)
-    dw -320*2     ; Type 2: Grass (320 * 3)
+    dw 0     ; Type 2: Tomb (320 * 3)
     dw 0       ; Type 3: fish No shift
     dw 0       ; Type 4: monkey No shift
 
@@ -882,14 +883,14 @@ dw 0010110101111000b
 dw 1011010101011110b
 dw 0010111111111000b
 
-dw 0x7,0x2a           ; grass - 70/0x46
-dw 0000011000000000b
-dw 0000001101000010b
-dw 0010001110000010b
-dw 0010001100001000b
-dw 0010111100111011b
-dw 1011111111111100b
-dw 0000111111110000b
+dw 0x7,0x15           ; tomb - 70/0x46
+dw 0000101010000000b
+dw 0010111110010000b
+dw 0010111110010000b
+dw 0010111010010000b
+dw 0000010101000000b
+dw 0000000000000000b
+dw 0000000000000000b
 
 dw 0x7,0x6e           ; monkey - 84+4/0x58
 dw 0010101000000000b
