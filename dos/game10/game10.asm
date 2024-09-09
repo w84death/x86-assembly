@@ -47,7 +47,9 @@ restart_game:
 
 ; =========================================== GAME LOGIC =======================
 game_loop:
-
+  xor di, di
+  xor si, si
+  
 ; =========================================== DRAW BACKGROUND ==================
 draw_bg:
   mov ax, COLOR_SKY               ; Set starting sky color
@@ -70,17 +72,31 @@ draw_ocean:
   
   mov cx, 18
   .ll:
-  push cx
-  mov cx, 40
-  .l: 
-    
-    call draw_sprite
-    add di, 8
+    push cx
+    mov cx, 40
+    .l: 
+      xor dx, dx
+      mov ax, cx
+      shr ax, 1
+      adc dx, 0
+      shl dx, 1
+      call draw_sprite
+      add di, 8
+      
+    loop .l
+    add di, 320*7
 
-  loop .l
-  add di, 320*7
-  pop cx
+
+    pop cx
   loop .ll
+
+; anim_ocean:
+;   add si, 2
+;   mov cx, 8
+;   .anim:
+;     ror word [si], 2
+;     add si, 2
+;   loop .anim
 
 
 draw_ship:
@@ -138,6 +154,7 @@ wait_for_vsync:
         and al, 08h
         jz .wait2
 
+inc word [GameCounter]
 
 ; =========================================== ESC OR LOOP =====================
 
@@ -371,6 +388,8 @@ dw 1010111110101011b
 dw 1010100110101010b
 dw 0101010101010101b
 
+GameCounter:
+dw 0x0
 
 Logo:
 db "P1X"
