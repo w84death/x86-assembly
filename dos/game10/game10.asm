@@ -157,7 +157,7 @@ wait_for_vsync:
         and al, 08h
         jz .wait2
 
-inc word [GameCounter]
+inc word [GameTick]
 
 ; =========================================== ESC OR LOOP =====================
 
@@ -333,9 +333,9 @@ get_bits_from_word:
     shr bx, 1           ; Adjust final result (undo last shift)
     ret
 
-; =========================================== BRUSHES DATA ======================
-; Set of 8x8 tiles for constructing meta-tiles
-; Data: number of lines, palette id, lines (8 pixels) of palette color id
+
+; =========================================== COLOR PALETTES ===================
+; Set of four colors per palette. 0x00 is transparency; use 0x10 for black.
 
 PaletteSets:
 db 0x18, 0x1a, 0x1d, 0x1f   ; Default
@@ -343,6 +343,10 @@ db 0x00, 0x06, 0x27, 0x43   ; Indie top
 db 0x00, 0x7e, 0x13, 0x15   ; Indie bottom
 db 0x7f, 0x7e, 0x7d, 0x7c   ; Ocean
 db 0x00, 0xb7, 0xbb, 0x8c   ; Wood
+
+; =========================================== BRUSHES DATA =====================
+; Set of 8x8 tiles for constructing meta-tiles
+; Data: number of lines, palette id, lines (8 pixels) of palette color id
 
 IndieTopBrush:
 db 0x7, 0x1
@@ -391,7 +395,20 @@ dw 1010111110101011b
 dw 1010100110101010b
 dw 0101010101010101b
 
-GameCounter:
+
+; TERRAIN TILES
+
+TerrainTiles:
+db 0x8, 0x1
+
+; META TILES
+; 2x2; SPRITE ID	- MIRROR- SPAWN SMTH
+
+MetaTiles:
+dw 0x0, 0x0, 0x0, 0x0 ; Empty
+
+
+GameTick:
 dw 0x0
 
 Logo:
