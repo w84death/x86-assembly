@@ -142,6 +142,9 @@ debug_test:
     add di, 10
   loop .lll
   
+  mov di, 320*106+130
+  mov si, Palm
+  call draw_sprite
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 
@@ -360,17 +363,18 @@ get_bits_from_word:
 ; Set of four colors per palette. 0x00 is transparency; use 0x10 for black.
 
 PaletteSets:
-db 0x18, 0x1a, 0x1d, 0x1f   ; Default
+db 0x13, 0x17, 0x1b, 0x1f   ; Grays
 db 0x00, 0x06, 0x27, 0x43   ; Indie top
 db 0x00, 0x7e, 0x13, 0x15   ; Indie bottom
 db 0x7f, 0x7e, 0x7d, 0x7c   ; Ocean
 db 0x00, 0xb7, 0xbb, 0x8c   ; Wood
 db 0x00, 0x46, 0x5a, 0x5c   ; Terrain 1 - shore
 db 0x47, 0x46, 0x45, 0x54   ; Terrain 2 - in  land
+db 0x00, 0x06, 0x77, 0x2e   ; Palm
 
 ; =========================================== BRUSHES DATA =====================
 ; Set of 8x8 tiles for constructing meta-tiles
-; Data: number of lines, palette id, lines (8 pixels) of palette color id
+; Data: number of lines, palettDefaulte id, lines (8 pixels) of palette color id
 
 IndieTopBrush:
 db 0x7, 0x1
@@ -419,6 +423,25 @@ dw 1010111110101011b
 dw 1010100110101010b
 dw 0101010101010101b
 
+Palm:
+db 0x10, 0x7
+dw 0010100000101010b
+dw 1011111010111110b
+dw 1011101011101011b
+dw 1010111110111011b
+dw 1011111010111110b
+dw 1011101010101110b
+dw 1110111001101110b
+dw 0011000101111011b
+dw 0000000001000000b
+dw 0000000001000000b
+dw 0000000100001000b
+dw 1011000100101100b
+dw 1110110111101110b
+dw 0010110101111011b
+dw 1011101101101100b
+dw 0011101011101100b
+
 
 ; TERRAIN TILES
 
@@ -463,17 +486,7 @@ dw 0001010000010000b
 dw 0000000001000001b
 dw 0001000000000100b
 
-db 0x8, 0x5          ; 0x5 Shore corner filler outside
-dw 0000000000000000b
-dw 0000000000001110b
-dw 0000000011111110b
-dw 0000001111111010b
-dw 0000001111111010b
-dw 0000111111101010b
-dw 0000111010101010b
-dw 0010101010101010b
-
-db 0x8, 0x6          ; 0x6 Ground light
+db 0x8, 0x6          ; 0x5 Ground light
 dw 0110010101011001b
 dw 1001011001010110b
 dw 0101100101101001b
@@ -482,6 +495,16 @@ dw 1001010110100101b
 dw 0110100101010101b
 dw 1001010110100110b
 dw 0110010101011001b
+
+db 0x8, 0x6           ; 0x6 Ground medium
+dw 0110001001001001b
+dw 1001010100100001b
+dw 0100100101000110b
+dw 0101010001101001b
+dw 0101001000010101b
+dw 1001010001100100b
+dw 0101100101010110b
+dw 0101010101010010b
 
 ; META TILES
 ; 2x2; SPRITE ID	- MIRROR- SPAWN SMTH

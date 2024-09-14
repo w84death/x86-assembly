@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>8x8 Sprite Editor with VGA Palette</title>
+<style>
+  body {
+    background-color: #121212;
+    color: #FFFFFF;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .palette, .canvas {
+    display: grid;
+    grid-template-columns: repeat(4, 60px);
+    grid-gap: 5px;
+    margin-bottom: 20px;
+  }
+  .palette div, .canvas div {
+    width: 60px;
+    height: 60px;
+    border: 1px solid #000;
+    position: relative;
+  }
+  .palette div {
+    cursor: pointer;
+  }
+  .selected {
+    border: 3px solid #FF0000;
+  }
+  .canvas {
+    grid-template-columns: repeat(8, 30px);
+    grid-gap: 1px;
+  }
+  .canvas div {
+    cursor: crosshair;
+    width: 30px;
+    height: 30px;
+    box-sizing: border-box;
+    border: none;
+  }
+  .data-preview {
+    white-space: pre;
+    background: #1e1e1e;
+    color: #FFFFFF;
+    padding: 10px;
+  }
+  select {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .color-option {
+    display: flex;
+    align-items: center;
+  }
+  .color-swatch {
+    width: 20px;
+    height: 20px;
+    margin-right: 5px;
+    border: 1px solid #000;
+  }
+</style>
+</head>
+<body>
+
+<h1>8x8 Sprite Editor</h1>
+
+<h2>Palette</h2>
+<div class="palette" id="palette">
+  <!-- Palette colors will be inserted here -->
+</div>
+
+<h2>Canvas</h2>
+<div class="canvas" id="canvas">
+  <!-- Canvas pixels will be inserted here -->
+</div>
+
+<h2>Data Preview</h2>
+<div class="data-preview" id="dataPreview">
+  <!-- Data preview will be shown here -->
+</div>
+
+<script>
+// Parse the VGA palette RGB values provided
+const vgaPaletteRGBText = `0 0 0
+0 0 170
+0 170 0
+0 170 170
+170 0 0
+170 0 170
+170 85 0
+170 170 170
+85 85 85
+85 85 255
+85 255 85
+85 255 255
+255 85 85
+255 85 255
+255 255 85
+255 255 255
+0 0 0
+16 16 16
+32 32 32
+53 53 53
+69 69 69
+85 85 85
+101 101 101
+117 117 117
+138 138 138
+154 154 154
+170 170 170
+186 186 186
+202 202 202
+223 223 223
+239 239 239
+255 255 255
+0 0 255
+65 0 255
+130 0 255
+190 0 255
+255 0 255
+255 0 190
+255 0 130
+255 0 65
+255 0 0
+255 65 0
+255 130 0
+255 190 0
+255 255 0
+190 255 0
+130 255 0
+65 255 0
+0 255 0
+0 255 65
+0 255 130
+0 255 190
+0 255 255
+0 190 255
+0 130 255
+0 65 255
+130 130 255
+158 130 255
+190 130 255
+223 130 255
+255 130 255
+255 130 223
+255 130 190
+255 130 158
+255 130 130
+255 158 130
+255 190 130
+255 223 130
+255 255 130
+223 255 130
+190 255 130
+158 255 130
+130 255 130
+130 255 158
+130 255 190
+130 255 223
+130 255 255
+130 223 255
+130 190 255
+130 158 255
+186 186 255
+202 186 255
+223 186 255
+239 186 255
+255 186 255
+255 186 239
+255 186 223
+255 186 202
+255 186 186
+255 202 186
+255 223 186
+255 239 186
+255 255 186
+239 255 186
+223 255 186
+202 255 186
+186 255 186
+186 255 202
+186 255 223
+186 255 239
+186 255 255
+186 239 255
+186 223 255
+186 202 255
+0 0 113
+28 0 113
+57 0 113
+85 0 113
+113 0 113
+113 0 85
+113 0 57
+113 0 28
+113 0 0
+113 28 0
+113 57 0
+113 85 0
+113 113 0
+85 113 0
+57 113 0
+28 113 0
+0 113 0
+0 113 28
+0 113 57
+0 113 85
+0 113 113
+0 85 113
+0 57 113
+0 28 113
+57 57 113
+69 57 113
+85 57 113
+97 57 113
+113 57 113
+113 57 97
+113 57 85
+113 57 69
+113 57 57
+113 69 57
+113 85 57
+113 97 57
+113 113 57
+97 113 57
+85 113 57
+69 113 57
+57 113 57
+57 113 69
+57 113 85
+57 113 97
+57 113 113
+57 97 113
+57 85 113
+57 69 113
+81 81 113
+89 81 113
+97 81 113
+105 81 113
+113 81 113
+113 81 105
+113 81 97
+113 81 89
+113 81 81
+113 89 81
+113 97 81
+113 105 81
+113 113 81
+105 113 81
+97 113 81
+89 113 81
+81 113 81
+81 113 89
+81 113 97
+81 113 105
+81 113 113
+81 105 113
+81 97 113
+81 89 113
+0 0 65
+16 0 65
+32 0 65
+49 0 65
+65 0 65
+65 0 49
+65 0 32
+65 0 16
+65 0 0
+65 16 0
+65 32 0
+65 49 0
+65 65 0
+49 65 0
+32 65 0
+16 65 0
+0 65 0
+0 65 16
+0 65 32
+0 65 49
+0 65 65
+0 49 65
+0 32 65
+0 16 65
+32 32 65
+40 32 65
+49 32 65
+57 32 65
+65 32 65
+65 32 57
+65 32 49
+65 32 40
+65 32 32
+65 40 32
+65 49 32
+65 57 32
+65 65 32
+57 65 32
+49 65 32
+40 65 32
+32 65 32
+32 65 40
+32 65 49
+32 65 57
+32 65 65
+32 57 65
+32 49 65
+32 40 65
+45 45 65
+49 45 65
+53 45 65
+61 45 65
+65 45 65
+65 45 61
+65 45 53
+65 45 49
+65 45 45
+65 49 45
+65 53 45
+65 61 45
+65 65 45
+61 65 45
+53 65 45
+49 65 45
+45 65 45
+45 65 49
+45 65 53
+45 65 61
+45 65 65
+45 61 65
+45 53 65
+45 49 65
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0`;
+
+// Convert the text into an array of RGB values
+const vgaPaletteRGB = vgaPaletteRGBText.trim().split('\n').map(line => {
+  const [r, g, b] = line.trim().split(' ').map(Number);
+  return { r, g, b };
+});
+
+// Generate hex color codes
+const vgaPalette = vgaPaletteRGB.map(rgb => {
+  const { r, g, b } = rgb;
+  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+});
+
+const paletteDiv = document.getElementById('palette');
+const canvasDiv = document.getElementById('canvas');
+const dataPreviewDiv = document.getElementById('dataPreview');
+
+let primaryColor = 0;   // Index in paletteColors
+let secondaryColor = 1; // Index in paletteColors
+
+// Initialize palette colors (default to first four VGA colors)
+let paletteColors = [0, 1, 2, 3]; // Indices in VGA palette
+
+// Create palette UI
+for (let i = 0; i < 4; i++) {
+  const colorDiv = document.createElement('div');
+  colorDiv.style.backgroundColor = vgaPalette[paletteColors[i]];
+  colorDiv.dataset.paletteIndex = i;
+
+  // Color dropdown
+  const colorSelect = document.createElement('select');
+  colorSelect.addEventListener('change', (e) => {
+    const index = parseInt(e.target.value);
+    paletteColors[i] = index;
+    colorDiv.style.backgroundColor = vgaPalette[index];
+    updateCanvasColors();
+    updateDataPreview();
+  });
+
+  // Populate the dropdown with options
+  for (let j = 0; j < vgaPalette.length; j++) {
+    const option = document.createElement('option');
+    option.value = j;
+    option.textContent = `0x${j.toString(16).padStart(2, '0')}`;
+    option.style.backgroundColor = vgaPalette[j];
+    option.style.color = getContrastYIQ(vgaPalette[j]) ? '#000' : '#FFF';
+    if (j === paletteColors[i]) {
+      option.selected = true;
+    }
+    colorSelect.appendChild(option);
+  }
+
+  colorSelect.style.position = 'absolute';
+  colorSelect.style.bottom = '-30px';
+  colorSelect.style.left = '0';
+  colorSelect.style.width = '100%';
+
+  colorDiv.appendChild(colorSelect);
+
+  colorDiv.addEventListener('mousedown', (e) => {
+    if (e.button === 0) {
+      primaryColor = i;
+      updatePaletteSelection();
+    } else if (e.button === 2) {
+      secondaryColor = i;
+      updatePaletteSelection();
+    }
+  });
+
+  colorDiv.oncontextmenu = () => false; // Disable context menu
+
+  paletteDiv.appendChild(colorDiv);
+}
+
+function updatePaletteSelection() {
+  const paletteDivs = paletteDiv.querySelectorAll('div');
+  paletteDivs.forEach((div, idx) => {
+    div.classList.remove('selected');
+    if (idx === primaryColor) {
+      div.classList.add('selected');
+    }
+  });
+}
+
+function updateCanvasColors() {
+  const pixelDivs = canvasDiv.querySelectorAll('div');
+  pixelDivs.forEach((div, idx) => {
+    const paletteIdx = canvasPixels[idx];
+    div.style.backgroundColor = vgaPalette[paletteColors[paletteIdx]];
+  });
+}
+
+// Create canvas UI
+let canvasPixels = [];
+for (let i = 0; i < 64; i++) {
+  canvasPixels[i] = 0; // Default to palette index 0
+  const pixelDiv = document.createElement('div');
+  pixelDiv.style.backgroundColor = vgaPalette[paletteColors[canvasPixels[i]]];
+  pixelDiv.dataset.pixelIndex = i;
+
+  pixelDiv.addEventListener('mousedown', (e) => {
+    const idx = parseInt(pixelDiv.dataset.pixelIndex);
+    if (e.button === 0) {
+      canvasPixels[idx] = primaryColor;
+    } else if (e.button === 2) {
+      canvasPixels[idx] = secondaryColor;
+    }
+    pixelDiv.style.backgroundColor = vgaPalette[paletteColors[canvasPixels[idx]]];
+    updateDataPreview();
+  });
+
+  pixelDiv.addEventListener('mouseenter', (e) => {
+    if (e.buttons === 1) { // Left button
+      const idx = parseInt(pixelDiv.dataset.pixelIndex);
+      canvasPixels[idx] = primaryColor;
+      pixelDiv.style.backgroundColor = vgaPalette[paletteColors[canvasPixels[idx]]];
+      updateDataPreview();
+    } else if (e.buttons === 2) { // Right button
+      const idx = parseInt(pixelDiv.dataset.pixelIndex);
+      canvasPixels[idx] = secondaryColor;
+      pixelDiv.style.backgroundColor = vgaPalette[paletteColors[canvasPixels[idx]]];
+      updateDataPreview();
+    }
+  });
+
+  pixelDiv.oncontextmenu = () => false; // Disable context menu
+
+  canvasDiv.appendChild(pixelDiv);
+}
+
+// Update data preview
+function updateDataPreview() {
+  // Update palette display
+  let paletteData = 'db ';
+  paletteData += paletteColors.map(c => '0x' + c.toString(16).padStart(2, '0')).join(', ');
+  paletteData += '\n\n';
+
+  // Update pixel data
+  let pixelData = '';
+  for (let y = 0; y < 8; y++) {
+    let rowBits = '';
+    for (let x = 0; x < 8; x++) {
+      const idx = y * 8 + x;
+      const paletteIdx = canvasPixels[idx].toString(2).padStart(2, '0');
+      rowBits += paletteIdx;
+    }
+    pixelData += 'dw ' + rowBits + 'b\n';
+  }
+
+  dataPreviewDiv.textContent = paletteData + pixelData;
+}
+
+// Utility function for contrast
+function getContrastYIQ(hexcolor){
+  hexcolor = hexcolor.replace('#', '');
+  const r = parseInt(hexcolor.substr(0,2),16);
+  const g = parseInt(hexcolor.substr(2,2),16);
+  const b = parseInt(hexcolor.substr(4,2),16);
+  const yiq = ((r*299)+(g*587)+(b*114))/1000;
+  return yiq >= 128;
+}
+
+// Initial selection and data preview
+updatePaletteSelection();
+updateDataPreview();
+
+</script>
+
+</body>
+</html>
