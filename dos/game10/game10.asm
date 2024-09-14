@@ -116,7 +116,6 @@ draw_ship:
   call draw_sprite
 
 draw_player:
-  ;mov cx, 0x0110
   call conv_pos2mem
   sub di, 320*6
   mov si, IndieTopBrush
@@ -124,6 +123,20 @@ draw_player:
   call draw_sprite
   add di, 320*7
   mov si, IndieBottomBrush
+  call draw_sprite
+
+debug_test:
+  xor dx, dx
+  mov di, 320*116+160
+  mov si, TerrainTiles
+  call draw_sprite
+
+  add si, 0x12
+  add di, 10
+  call draw_sprite  
+
+  add si, 0x12
+  add di, 10
   call draw_sprite
 
 ; =========================================== VGA BLIT PROCEDURE ===============
@@ -343,6 +356,8 @@ db 0x00, 0x06, 0x27, 0x43   ; Indie top
 db 0x00, 0x7e, 0x13, 0x15   ; Indie bottom
 db 0x7f, 0x7e, 0x7d, 0x7c   ; Ocean
 db 0x00, 0xb7, 0xbb, 0x8c   ; Wood
+db 0x00, 0x46, 0x5a, 0x5c   ; Terrain 1 - shore
+db 0x47, 0x46, 0x45, 0x54   ; Terrain 2 - in  land
 
 ; =========================================== BRUSHES DATA =====================
 ; Set of 8x8 tiles for constructing meta-tiles
@@ -399,7 +414,36 @@ dw 0101010101010101b
 ; TERRAIN TILES
 
 TerrainTiles:
-db 0x8, 0x1
+db 0x8, 0x05          ; Shore left bank
+dw 0010111101010101b
+dw 0010111111010101b
+dw 0010101111010101b
+dw 0000101111010101b
+dw 0000101111010101b
+dw 0010101111010101b
+dw 0010111101010101b
+dw 0010111111010101b
+
+db 0x8, 0x05          ; Shore top bank
+dw 0000000000000000b
+dw 1010100000101010b
+dw 1111101010101111b
+dw 1111111111111111b
+dw 0111111111111101b
+dw 0101010101010101b
+dw 0101010101010101b
+dw 0101010101010101b
+
+db 0x8, 0x5          ; Shore corner outside
+dw 0000101010101010b
+dw 0010101111111110b
+dw 1010111111111111b
+dw 1011111111111111b
+dw 1011111101010111b
+dw 1011110101010101b
+dw 1011110101010101b
+dw 1011110101010101b
+dw 1010111101010101b
 
 ; META TILES
 ; 2x2; SPRITE ID	- MIRROR- SPAWN SMTH
