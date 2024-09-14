@@ -127,17 +127,15 @@ draw_player:
 
 debug_test:
   xor dx, dx
-  mov di, 320*116+160
+  mov di, 320*116+120
   mov si, TerrainTiles
-  call draw_sprite
-
-  add si, 0x12
-  add di, 10
-  call draw_sprite  
-
-  add si, 0x12
-  add di, 10
-  call draw_sprite
+  mov cx, 6
+  .lll:
+    call draw_sprite
+    add si, 0x12
+    add di, 10
+  loop .lll
+  
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 
@@ -414,7 +412,7 @@ dw 0101010101010101b
 ; TERRAIN TILES
 
 TerrainTiles:
-db 0x8, 0x05          ; Shore left bank
+db 0x8, 0x05          ; 0x1 Shore left bank
 dw 0010111101010101b
 dw 0010111111010101b
 dw 0010101111010101b
@@ -424,7 +422,7 @@ dw 0010101111010101b
 dw 0010111101010101b
 dw 0010111111010101b
 
-db 0x8, 0x05          ; Shore top bank
+db 0x8, 0x05          ; 0x2 Shore top bank
 dw 0000000000000000b
 dw 1010100000101010b
 dw 1111101010101111b
@@ -434,7 +432,7 @@ dw 0101010101010101b
 dw 0101010101010101b
 dw 0101010101010101b
 
-db 0x8, 0x5          ; Shore corner outside
+db 0x8, 0x5          ; 0x3 Shore corner outside
 dw 0000101010101010b
 dw 0010101111111110b
 dw 1010111111111111b
@@ -443,14 +441,50 @@ dw 1011111101010111b
 dw 1011110101010101b
 dw 1011110101010101b
 dw 1011110101010101b
-dw 1010111101010101b
+
+db 0x8, 0x6          ; 0x4 Shore corner filler inside
+dw 1010111101010000b
+dw 1011110000000000b
+dw 1111000000010100b
+dw 1100010100000001b
+dw 0000000000000000b
+dw 0001010000010000b
+dw 0000000001000001b
+dw 0001000000000100b
+
+db 0x8, 0x5          ; 0x5 Shore corner filler outside
+dw 0000000000000000b
+dw 0000000000001110b
+dw 0000000011111110b
+dw 0000001111111010b
+dw 0000001111111010b
+dw 0000111111101010b
+dw 0000111010101010b
+dw 0010101010101010b
+
+db 0x8, 0x6          ; 0x6 Ground light
+dw 0110010101011001b
+dw 1001011001010110b
+dw 0101100101101001b
+dw 0101010101010110b
+dw 1001010110100101b
+dw 0110100101010101b
+dw 1001010110100110b
+dw 0110010101011001b
 
 ; META TILES
 ; 2x2; SPRITE ID	- MIRROR- SPAWN SMTH
 
 MetaTiles:
-dw 0x0, 0x0, 0x0, 0x0 ; Empty
+db 0x0, 0x0, 0x0, 0x0 ; Empty
+db 00110000b,00100000b, 00010000b, 01100000b ; Corner big
 
+
+LevelData:
+db 00000000b  ; metatile 0 - empty
+db 00010000b  ; metatile 1
+db 00010100b  ; metatile 1 mirrored X
+db 00011100b ; metatile 1 mirrored X and Y
 
 GameTick:
 dw 0x0

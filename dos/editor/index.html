@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Level Editor</title>
+    <style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 0;
+        text-align: center;
+    }
+
+    h1, h2 {
+        color: #2c3e50;
+    }
+
+    #container {
+        width: 100%; /* Removed max-width to allow full-width usage */
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Updated CSS for #top-section */
+    #top-section {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: flex-start;
+        margin-bottom: 20px;
+        background-color: #e3e2e2;
+        padding-bottom: 20px;
+    }
+
+    /* Containers for individual sections */
+    #tileset-container,
+    #metatile-editor-container,
+    #metatile-list-container {
+        margin: 0 20px;
+        text-align: center;
+    }
+
+    /* Adjust headings */
+    #tileset-container h2,
+    #metatile-editor-container h2,
+    #metatile-list-container h2 {
+        margin-bottom: 10px;
+    }
+
+    /* Style for tileset to create a 4x4 grid */
+    #tileset {
+        display: grid;
+        grid-template-columns: repeat(4, 32px);
+        grid-template-rows: repeat(4, 32px);
+        grid-gap: 4px;
+        justify-content: center;
+    }
+
+    /* Style for meta-tile list to create a 4x4 grid */
+    #metatile-list {
+        display: grid;
+        grid-template-columns: repeat(4, 64px);
+        grid-template-rows: repeat(4, 64px);
+        grid-gap: 10px;
+        justify-content: center;
+    }
+
+    /* Adjust the metatile styles */
+    .metatile {
+        width: 64px;
+        height: 64px;
+        margin: 0;
+        position: relative;
+        border: 1px solid #bdc3c7;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+
+    /* Adjust tile styles */
+    .tile {
+        width: 32px;
+        height: 32px;
+        margin: 0;
+        position: relative;
+        border: 1px solid #bdc3c7;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+
+    .tile img,
+    .metatile img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    /* Adjust metatile editor styles */
+    #metatile-editor {
+        margin-bottom: 20px;
+    }
+
+    #metatile-editor-container .mirror-buttons {
+        margin-top: 10px;
+    }
+
+    #metatile-editor-container #save-metatile {
+        margin-top: 10px;
+        padding: 8px 12px;
+        background-color: #2ecc71;
+        border: none;
+        color: white;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    #metatile-editor-container #save-metatile:hover {
+        background-color: #27ae60;
+    }
+
+    /* Adjust mirror buttons */
+    .mirror-buttons button {
+        margin: 5px;
+        padding: 6px 10px;
+        background-color: #3498db;
+        border: none;
+        color: white;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+
+    .mirror-buttons button:hover {
+        background-color: #2980b9;
+    }
+
+    /* Meta-tile grid styles */
+    #metatile-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 32px);
+        grid-template-rows: repeat(2, 32px);
+        gap: 0;
+        margin: 0 auto;
+        width: 64px;
+    }
+
+    #metatile-grid .tile-slot {
+        width: 32px;
+        height: 32px;
+        position: relative;
+        border: 1px dashed #7f8c8d;
+        background-color: #bdc3c7;
+        border-radius: 4px;
+    }
+
+    #metatile-grid .tile-slot img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    /* Level editor styles */
+    .level-cell {
+        width: 64px;
+        height: 64px;
+        margin: 0;
+        cursor: pointer;
+        background-color: #003971;
+        position: relative;
+    }
+
+    #level-grid {
+        display: grid;
+        grid-template-columns: repeat(16, 64px);
+        grid-gap: 0;
+        justify-content: center;
+    }
+
+    .tile img,
+    .metatile img,
+    #metatile-grid .tile-slot img,
+    .level-cell img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        /* Add the image-rendering property */
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: -o-crisp-edges;
+        image-rendering: -webkit-optimize-contrast;
+        -ms-interpolation-mode: nearest-neighbor;
+    }
+
+    /* Level editor mirror buttons */
+    #level-editor .mirror-buttons {
+        margin-top: 10px;
+    }
+
+    #data-preview {
+        white-space: pre;
+        background-color: #ecf0f1;
+        padding: 20px;
+        border: 1px solid #bdc3c7;
+        display: inline-block;
+        text-align: left;
+        border-radius: 4px;
+    }
+
+    .mirror-icon {
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        background-color: rgba(255, 255, 255, 0.8);
+        padding: 2px;
+        font-size: 10px;
+        border-radius: 2px;
+    }
+
+    /* Selected elements */
+    #tileset .selected,
+    #metatile-grid .selected,
+    #metatile-list .selected {
+        outline: 2px solid #e74c3c;
+    }
+
+    #save-load-section {
+        margin: 0 0 20px 0;
+        text-align: center;
+    }
+
+    #save-load-section button {
+        padding: 5px 10px;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        margin-right: 10px;
+    }
+
+    #save-load-section button:hover {
+        background-color: #2980b9;
+    }
+    </style>
+    
+</head>
+<body>
+    <div id="container">
+        <h1>Level Editor</h1>
+
+        <div id="save-load-section">
+            <button id="load-data-button">Load Level</button>
+            <button id="save-data">Save Level</button>
+            <input type="file" id="load-data" style="display: none;">            
+        </div>
+
+        <!-- Top Section with Tileset, Meta-Tile Editor, and Meta-Tile List -->
+        <div id="top-section">
+            <!-- Tileset Container -->
+            <div id="tileset-container">
+                <h2>Tileset</h2>
+                <div id="tileset"></div>
+            </div>
+
+            <!-- Meta-Tile Editor Container -->
+            <div id="metatile-editor-container">
+                <h2>Meta-Tile Creation</h2>
+                <div id="metatile-editor">
+                    <div id="metatile-grid">
+                        <div class="tile-slot" data-index="0"></div>
+                        <div class="tile-slot" data-index="1"></div>
+                        <div class="tile-slot" data-index="2"></div>
+                        <div class="tile-slot" data-index="3"></div>
+                    </div>
+                    <div class="mirror-buttons">
+                        <button id="mirror-tile-x">Mirror Tile X</button>
+                        <button id="mirror-tile-y">Mirror Tile Y</button>
+                    </div>
+                    <button id="save-metatile">Save Meta-Tile</button>
+                </div>
+            </div>
+
+            <!-- Meta-Tile List Container -->
+            <div id="metatile-list-container">
+                <h2>Meta-Tile List</h2>
+                <div id="metatile-list"></div>
+            </div>
+        </div>
+
+        <!-- Level Design Mode -->
+        <h2>Level Design Mode</h2>
+        <div id="level-editor">
+            <div class="mirror-buttons">
+                <button id="mirror-metatile-x">Mirror Meta-Tile X</button>
+                <button id="mirror-metatile-y">Mirror Meta-Tile Y</button>
+            </div>
+            <div id="level-grid"></div>
+        </div>
+
+        <!-- Data Preview -->
+        <h2>Data Preview</h2>
+        <div id="data-preview"></div>
+    </div>
+
+<script>
+// Initialize tileset with images
+const tilesetDiv = document.getElementById('tileset');
+const tileset = [];
+for (let i = 0; i < 16; i++) {
+    const tile = {
+        id: i,
+        imageSrc: `${i}.gif`,
+    };
+    tileset.push(tile);
+
+    const tileDiv = document.createElement('div');
+    tileDiv.className = 'tile';
+    tileDiv.dataset.id = i;
+
+    const img = document.createElement('img');
+    img.src = tile.imageSrc;
+    img.alt = `Tile ${i}`;
+    img.width = 32;
+    img.height = 32;
+
+    tileDiv.appendChild(img);
+    tilesetDiv.appendChild(tileDiv);
+
+    tileDiv.addEventListener('click', () => {
+        document.querySelectorAll('#tileset .selected').forEach(el => el.classList.remove('selected'));
+        tileDiv.classList.add('selected');
+        selectedTile = tile;
+    });
+}
+
+
+// Meta-tile editor
+let selectedTile = null;
+let selectedTileSlot = null;
+const metatileGrid = document.getElementById('metatile-grid');
+const tileSlots = metatileGrid.querySelectorAll('.tile-slot');
+const mirrorTileXBtn = document.getElementById('mirror-tile-x');
+const mirrorTileYBtn = document.getElementById('mirror-tile-y');
+const saveMetatileBtn = document.getElementById('save-metatile');
+const metatileList = document.getElementById('metatile-list');
+
+
+// Meta-tile list and initialization
+const metatiles = [];
+for (let i = 0; i < 16; i++) {
+    const metatileDiv = document.createElement('div');
+    metatileDiv.className = 'metatile';
+    metatileDiv.dataset.id = i;
+    metatileDiv.style.position = 'relative';
+    metatileDiv.style.backgroundColor = '#eee'; // Light grey to represent empty
+    metatileList.appendChild(metatileDiv);
+
+    if (i === 0) {
+        // Fill meta-tile ID 0 with tiles 0, 0, 0, 0
+        metaTileData = {
+            tiles: [0, 0, 0, 0],
+            mirrors: [0, 0, 0, 0],
+        };
+
+        // Render the meta-tile visually
+        metaTileData.tiles.forEach((tileId, idx) => {
+            const img = document.createElement('img');
+            img.src = tileset[tileId].imageSrc;
+            img.alt = `Tile ${tileId}`;
+            img.style.width = '32px';
+            img.style.height = '32px';
+            img.style.position = 'absolute';
+            img.style.left = idx % 2 === 0 ? '0' : '32px';
+            img.style.top = idx < 2 ? '0' : '32px';
+            img.style.transform = 'scaleX(1) scaleY(1)';
+
+            metatileDiv.appendChild(img);
+        });
+    } else {
+        // Initialize other meta-tiles as empty
+        metaTileData = {
+            tiles: [null, null, null, null],
+            mirrors: [0, 0, 0, 0],
+        };
+
+        // Optionally, style empty meta-tiles differently
+        metatileDiv.style.backgroundColor = '#eee'; // Light grey to represent empty
+    }
+
+    metatiles.push(metaTileData);
+
+    metatileDiv.addEventListener('click', () => {
+        document.querySelectorAll('#metatile-list .selected').forEach(el => el.classList.remove('selected'));
+        metatileDiv.classList.add('selected');
+        selectedMetatile = i;
+
+        // Load the selected meta-tile into the editor
+        loadMetaTileIntoEditor(metatiles[selectedMetatile]);
+    });
+}
+
+
+tileSlots.forEach(slot => {
+    slot.addEventListener('click', () => {
+        if (selectedTile) {
+            slot.innerHTML = '';
+            const img = document.createElement('img');
+            img.src = selectedTile.imageSrc;
+            img.alt = `Tile ${selectedTile.id}`;
+            img.width = 32;
+            img.height = 32;
+            img.style.transform = 'scaleX(1) scaleY(1)';
+            slot.appendChild(img);
+            slot.dataset.tileId = selectedTile.id;
+            slot.dataset.mirrorX = '0';
+            slot.dataset.mirrorY = '0';
+            currentMetatile.tiles[slot.dataset.index] = selectedTile.id;
+            currentMetatile.mirrors[slot.dataset.index] = 0;
+            selectTileSlot(slot);
+        }
+    });
+});
+
+
+function selectTileSlot(slot) {
+    tileSlots.forEach(s => s.classList.remove('selected'));
+    slot.classList.add('selected');
+    selectedTileSlot = slot;
+}
+mirrorTileXBtn.addEventListener('click', () => {
+    if (selectedTileSlot && selectedTileSlot.firstChild) {
+        let mirrorX = selectedTileSlot.dataset.mirrorX === '1' ? '0' : '1';
+        selectedTileSlot.dataset.mirrorX = mirrorX;
+        selectedTileSlot.firstChild.style.transform = `scaleX(${mirrorX === '1' ? -1 : 1}) scaleY(${selectedTileSlot.dataset.mirrorY === '1' ? -1 : 1})`;
+        updateMirrorIcon(selectedTileSlot);
+        updateCurrentMetatile();
+    }
+});
+
+mirrorTileYBtn.addEventListener('click', () => {
+    if (selectedTileSlot && selectedTileSlot.firstChild) {
+        let mirrorY = selectedTileSlot.dataset.mirrorY === '1' ? '0' : '1';
+        selectedTileSlot.dataset.mirrorY = mirrorY;
+        selectedTileSlot.firstChild.style.transform = `scaleX(${selectedTileSlot.dataset.mirrorX === '1' ? -1 : 1}) scaleY(${mirrorY === '1' ? -1 : 1})`;
+        updateMirrorIcon(selectedTileSlot);
+        updateCurrentMetatile();
+    }
+});
+
+
+function updateMirrorIcon(slot) {
+    let mirrorX = slot.dataset.mirrorX === '1';
+    let mirrorY = slot.dataset.mirrorY === '1';
+    let iconText = '';
+    if (mirrorX) iconText += 'X';
+    if (mirrorY) iconText += 'Y';
+
+    let icon = slot.querySelector('.mirror-icon');
+    if (!icon) {
+        icon = document.createElement('div');
+        icon.className = 'mirror-icon';
+        slot.appendChild(icon);
+    }
+    icon.textContent = iconText;
+}
+
+function drawMetaTileInCell(cell) {
+    cell.innerHTML = '';
+    const metatileId = parseInt(cell.dataset.metatileId);
+    const mirrorX = cell.dataset.mirrorX === '1';
+    const mirrorY = cell.dataset.mirrorY === '1';
+    const metatileData = metatiles[metatileId];
+    const tiles = metatileData.tiles;
+    const tileMirrors = metatileData.mirrors;
+
+    // Build an array of tile indices, adjusted for mirroring
+    let tileIndices = [0, 1, 2, 3];
+
+    // If mirrorX is true, swap left and right indices
+    if (mirrorX) {
+        [tileIndices[0], tileIndices[1]] = [tileIndices[1], tileIndices[0]];
+        [tileIndices[2], tileIndices[3]] = [tileIndices[3], tileIndices[2]];
+    }
+
+    // If mirrorY is true, swap top and bottom indices
+    if (mirrorY) {
+        [tileIndices[0], tileIndices[2]] = [tileIndices[2], tileIndices[0]];
+        [tileIndices[1], tileIndices[3]] = [tileIndices[3], tileIndices[1]];
+    }
+
+    // For each tile, create the image
+    tileIndices.forEach((idx, pos) => {
+        const tileId = tiles[idx];
+        if (tileId !== null) {
+            const img = document.createElement('img');
+            img.src = tileset[tileId].imageSrc;
+            img.alt = `Tile ${tileId}`;
+            img.style.width = '32px';
+            img.style.height = '32px';
+            img.style.position = 'absolute';
+            img.dataset.idx = pos; // Use the position after mirroring
+            img.style.left = pos % 2 === 0 ? '0' : '32px';
+            img.style.top = pos < 2 ? '0' : '32px';
+
+            // Calculate the tile's own mirroring
+            let tileMirrorX = (tileMirrors[idx] & 0b0100) ? -1 : 1;
+            let tileMirrorY = (tileMirrors[idx] & 0b1000) ? -1 : 1;
+
+            // Apply the cell's mirroring
+            tileMirrorX *= mirrorX ? -1 : 1;
+            tileMirrorY *= mirrorY ? -1 : 1;
+
+            img.style.transform = `scaleX(${tileMirrorX}) scaleY(${tileMirrorY})`;
+
+            cell.appendChild(img);
+        }
+    });
+}
+
+
+function updateCurrentMetatile() {
+    let index = selectedTileSlot.dataset.index;
+    let tileId = parseInt(selectedTileSlot.dataset.tileId);
+    let mirrorX = selectedTileSlot.dataset.mirrorX === '1' ? 1 : 0;
+    let mirrorY = selectedTileSlot.dataset.mirrorY === '1' ? 1 : 0;
+    currentMetatile.tiles[index] = tileId;
+    currentMetatile.mirrors[index] = (mirrorY << 3) | (mirrorX << 2);
+}
+saveMetatileBtn.addEventListener('click', () => {
+    if (currentMetatile.tiles.includes(null)) {
+        alert('Please fill all tile slots before saving the meta-tile.');
+        return;
+    }
+
+    if (selectedMetatile === null) {
+        alert('Please select a meta-tile from the list to overwrite.');
+        return;
+    }
+
+    // Overwrite the selected meta-tile
+    metatiles[selectedMetatile] = JSON.parse(JSON.stringify(currentMetatile));
+
+    // Update the display of the meta-tile in the list
+    // Update the display of the meta-tile in the list
+    const metatileDiv = metatileList.children[selectedMetatile];
+    metatileDiv.innerHTML = ''; // Clear existing content
+
+    currentMetatile.tiles.forEach((tileId, idx) => {
+        const img = document.createElement('img');
+        img.src = tileset[tileId].imageSrc;
+        img.alt = `Tile ${tileId}`;
+        img.style.width = '32px';
+        img.style.height = '32px';
+        img.style.position = 'absolute';
+        img.style.left = idx % 2 === 0 ? '0' : '32px';
+        img.style.top = idx < 2 ? '0' : '32px';
+
+        let mirrorX = (currentMetatile.mirrors[idx] & 0b0100) ? -1 : 1;
+        let mirrorY = (currentMetatile.mirrors[idx] & 0b1000) ? -1 : 1;
+        img.style.transform = `scaleX(${mirrorX}) scaleY(${mirrorY})`;
+
+        metatileDiv.appendChild(img);
+    });
+
+
+    // Deselect the meta-tile after saving
+    document.querySelectorAll('#metatile-list .selected').forEach(el => el.classList.remove('selected'));
+    selectedMetatile = null;
+
+    // Reset current metatile
+    currentMetatile = {
+        tiles: [null, null, null, null],
+        mirrors: [0, 0, 0, 0],
+    };
+    tileSlots.forEach(slot => {
+        slot.innerHTML = '';
+        slot.dataset.tileId = null;
+        slot.dataset.mirrorX = '0';
+        slot.dataset.mirrorY = '0';
+    });
+
+    updateDataPreview();
+});
+
+function loadMetaTileIntoEditor(metaTile) {
+    metaTile.tiles.forEach((tileId, idx) => {
+        const slot = tileSlots[idx];
+        slot.innerHTML = '';
+        if (tileId !== null) {
+            const img = document.createElement('img');
+            img.src = tileset[tileId].imageSrc;
+            img.alt = `Tile ${tileId}`;
+            img.width = 32;
+            img.height = 32;
+            slot.appendChild(img);
+            slot.dataset.tileId = tileId;
+            let mirrorX = (metaTile.mirrors[idx] & 0b0100) ? '1' : '0';
+            let mirrorY = (metaTile.mirrors[idx] & 0b1000) ? '1' : '0';
+            slot.dataset.mirrorX = mirrorX;
+            slot.dataset.mirrorY = mirrorY;
+            img.style.transform = `scaleX(${mirrorX === '1' ? -1 : 1}) scaleY(${mirrorY === '1' ? -1 : 1})`;
+            updateMirrorIcon(slot);
+        } else {
+            slot.dataset.tileId = null;
+            slot.dataset.mirrorX = '0';
+            slot.dataset.mirrorY = '0';
+            updateMirrorIcon(slot);
+        }
+    });
+    currentMetatile = JSON.parse(JSON.stringify(metaTile));
+    // Deselect any selected tile slots
+    tileSlots.forEach(s => s.classList.remove('selected'));
+    selectedTileSlot = null;
+}
+
+
+
+// Level Editor
+const levelGrid = document.getElementById('level-grid');
+const levelData = [];
+for (let i = 0; i < 16 * 12; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'level-cell';
+    cell.dataset.index = i;
+    levelGrid.appendChild(cell);
+
+    cell.addEventListener('click', () => {
+        if (selectedMetatile !== null) {
+            cell.dataset.metatileId = selectedMetatile;
+            cell.dataset.mirrorX = '0';
+            cell.dataset.mirrorY = '0';
+
+            // Draw the meta-tile in the cell
+            drawMetaTileInCell(cell);
+
+            selectLevelCell(cell);
+            updateLevelData(cell);
+        }
+    });
+
+}
+
+let selectedMetatile = null;
+let selectedLevelCell = null;
+const mirrorMetatileXBtn = document.getElementById('mirror-metatile-x');
+const mirrorMetatileYBtn = document.getElementById('mirror-metatile-y');
+
+function selectLevelCell(cell) {
+    levelGrid.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+    cell.classList.add('selected');
+    selectedLevelCell = cell;
+}
+
+    // Mirror Meta-Tile X in Level Grid
+mirrorMetatileXBtn.addEventListener('click', () => {
+    if (selectedLevelCell && selectedLevelCell.dataset.metatileId !== undefined) {
+        let mirrorX = selectedLevelCell.dataset.mirrorX === '1' ? '0' : '1';
+        selectedLevelCell.dataset.mirrorX = mirrorX;
+
+        // Redraw the cell with updated mirroring
+        drawMetaTileInCell(selectedLevelCell);
+
+        // Update level data
+        updateLevelData(selectedLevelCell);
+    }
+});
+
+// Mirror Meta-Tile Y in Level Grid
+mirrorMetatileYBtn.addEventListener('click', () => {
+    if (selectedLevelCell && selectedLevelCell.dataset.metatileId !== undefined) {
+        let mirrorY = selectedLevelCell.dataset.mirrorY === '1' ? '0' : '1';
+        selectedLevelCell.dataset.mirrorY = mirrorY;
+
+        // Redraw the cell with updated mirroring
+        drawMetaTileInCell(selectedLevelCell);
+
+        // Update level data
+        updateLevelData(selectedLevelCell);
+    }
+});
+
+
+function updateLevelData(cell) {
+    let index = cell.dataset.index;
+    let metatileId = parseInt(cell.dataset.metatileId);
+    let mirrorX = cell.dataset.mirrorX === '1' ? 1 : 0;
+    let mirrorY = cell.dataset.mirrorY === '1' ? 1 : 0;
+    levelData[index] = {
+        metatileId,
+        mirror: (mirrorY << 5) | (mirrorX << 4),
+    };
+    updateDataPreview();
+}
+
+
+function updateDataPreview() {
+    let metaTilesPreview = 'MetaTiles:\n';
+    metatiles.forEach((mt) => {
+        let line = `db `;
+        mt.tiles.forEach((tileId, i) => {
+            let mirrorBits = mt.mirrors[i];
+            let tileIdValue = tileId !== null ? tileId & 0x0F : 0;
+            let byteValue = tileIdValue | mirrorBits;
+            line += `0b${byteValue.toString(2).padStart(8, '0')}`;
+            if (i < 3) line += ', ';
+        });
+        metaTilesPreview += line + '\n';
+    });
+
+    let levelDataPreview = 'LevelData:\n';
+    let lineBuffer = [];
+    for (let idx = 0; idx < levelData.length; idx++) {
+        let cell = levelData[idx];
+        let byteValue;
+        if (cell) {
+            byteValue = (cell.metatileId & 0x0F) | cell.mirror;
+        } else {
+            byteValue = 0;
+        }
+        lineBuffer.push(`0b${byteValue.toString(2).padStart(8, '0')}`);
+
+        // Group by 4 bytes per line
+        if (lineBuffer.length === 4) {
+            levelDataPreview += `db ${lineBuffer.join(', ')}\n`;
+            lineBuffer = []; // Reset the buffer
+        }
+    }
+
+    // If any remaining bytes after grouping by 4
+    if (lineBuffer.length > 0) {
+        levelDataPreview += `db ${lineBuffer.join(', ')}\n`;
+    }
+
+    document.getElementById('data-preview').textContent = metaTilesPreview + '\n' + levelDataPreview;
+}
+
+
+
+// Save and Load Buttons
+const saveDataButton = document.getElementById('save-data');
+const loadDataButton = document.getElementById('load-data');
+const loadDataTriggerButton = document.getElementById('load-data-button');
+
+// Function to save meta-tiles and level data to a JSON file
+saveDataButton.addEventListener('click', () => {
+    const data = {
+        metatiles,
+        levelData,
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'level-data.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+});
+
+// Function to load meta-tiles and level data from a JSON file
+loadDataTriggerButton.addEventListener('click', () => {
+    loadDataButton.click();
+});
+
+loadDataButton.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const data = JSON.parse(e.target.result);
+        if (data.metatiles && data.levelData) {
+            // Load Meta-Tiles
+            metatiles.length = 0;
+            data.metatiles.forEach((mt, idx) => {
+                metatiles.push(mt);
+                
+                const metatileDiv = metatileList.children[idx];
+                metatileDiv.innerHTML = ''; // Clear existing content
+                
+                mt.tiles.forEach((tileId, i) => {
+                    if (tileId !== null) {
+                        const img = document.createElement('img');
+                        img.src = tileset[tileId].imageSrc;
+                        img.alt = `Tile ${tileId}`;
+                        img.style.width = '32px';
+                        img.style.height = '32px';
+                        img.style.position = 'absolute';
+                        img.style.left = i % 2 === 0 ? '0' : '32px';
+                        img.style.top = i < 2 ? '0' : '32px';
+
+                        let mirrorX = (mt.mirrors[i] & 0b0100) ? -1 : 1;
+                        let mirrorY = (mt.mirrors[i] & 0b1000) ? -1 : 1;
+                        img.style.transform = `scaleX(${mirrorX}) scaleY(${mirrorY})`;
+
+                        metatileDiv.appendChild(img);
+                    }
+                });
+            });
+
+            // Load Level Data
+            levelData.length = 0;
+            levelData.push(...data.levelData);
+            levelGrid.querySelectorAll('.level-cell').forEach((cell, idx) => {
+                const cellData = levelData[idx];
+                if (cellData) {
+                    cell.dataset.metatileId = cellData.metatileId;
+                    cell.dataset.mirrorX = (cellData.mirror >> 4) & 1 ? '1' : '0';
+                    cell.dataset.mirrorY = (cellData.mirror >> 5) & 1 ? '1' : '0';
+                    drawMetaTileInCell(cell);
+                }
+            });
+            updateDataPreview();
+        }
+    };
+
+    reader.readAsText(file);
+});
+
+</script>
+
+</body>
+</html>
