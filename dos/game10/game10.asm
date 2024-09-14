@@ -1,10 +1,16 @@
-; GAME10 - The X Project
+; GAME10 - The X Project - Mysteries of the Forgotten Isles"
 ; DOS VERSION
 ;
 ; Description:
-;   New sprites, new   terrain rendering 32x24 with meta-tiles
+;   You are an intrepid explorer stranded on the Forgotten Isles, a chain of 
+;   islands shrouded in myth. These islands were once home to an advanced 
+;   civilization known for their ingenious engineering and mystical practices. 
+;   Scattered across the islands are pressure plates that, when activated, 
+;   reveal clues and alter the landscape by raising bridges or opening gates. 
+;   However, these plates require a sustained weight to remain activated, 
+;   necessitating the use of rocks to keep them pressed while you progress.
 ;
-; Size category: 2KB
+; Size category: <2KB
 ;
 ; Author: Krzysztof Krystian Jankowski
 ; Web: smol.p1x.in/assembly/#dinopix
@@ -13,14 +19,14 @@
 org 0x100
 use16
 
-; =========================================== MEMORY ADDRESSES ===============
+; =========================================== MEMORY ADDRESSES =================
 _VGA_MEMORY_ equ 0xA000
 _DBUFFER_MEMORY_ equ 0x8000
 _PLAYER_ENTITY_ID_ equ 0x7000
 _REQUEST_POSITION_ equ 0x7002
 _ENTITIES_ equ 0x7010
 
-; =========================================== CONSTANTS =======================
+; =========================================== CONSTANTS ========================
 BEEPER_ENABLED equ 0x01
 BEEPER_FREQ equ 4800
 LEVEL_START_POSITION equ 320*60
@@ -28,7 +34,7 @@ SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3636
 
-; =========================================== INITIALIZATION ==================
+; =========================================== INITIALIZATION ===================
 start:
     mov ax,0x13                             ; Init VGA 320x200x256
     int 0x10                                ; Video BIOS interrupt
@@ -168,9 +174,14 @@ wait_for_vsync:
         and al, 08h
         jz .wait2
 
+
+
+; =========================================== GAME TICK=== =====================
+
+
 inc word [GameTick]
 
-; =========================================== ESC OR LOOP =====================
+; =========================================== ESC OR LOOP ======================
 
     in al,0x60                  ; Read keyboard
     dec al                      ; Decrement AL (esc is 1, after decrement is 0)
@@ -182,7 +193,7 @@ inc word [GameTick]
     int 0x10                   ; Video BIOS interrupt
     ret                       ; Return to DOS
 
-; =========================================== CNVERT XY TO MEM =====================
+; =========================================== CNVERT XY TO MEM =================
 ; Expects: CX - position YY/XX
 ; Return: DI memory position
 conv_pos2mem:
@@ -485,6 +496,8 @@ db 00000000b  ; metatile 0 - empty
 db 00010000b  ; metatile 1
 db 00010100b  ; metatile 1 mirrored X
 db 00011100b ; metatile 1 mirrored X and Y
+
+
 
 GameTick:
 dw 0x0

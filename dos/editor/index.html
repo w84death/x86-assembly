@@ -204,7 +204,7 @@
         border: 1px solid #bdc3c7;
         display: inline-block;
         text-align: left;
-        border-radius: 4px;
+        font-size:10px;
     }
 
     .mirror-icon {
@@ -737,6 +737,34 @@ function updateDataPreview() {
 }
 
 
+// Add keyboard shortcuts for mirror X and Y
+document.addEventListener('keydown', (event) => {
+    const key = event.key.toLowerCase();
+
+    // Mirror meta-tile on X axis with 'x'
+    if (key === 'x') {
+        mirrorMetatileXBtn.click();
+    }
+
+    // Mirror meta-tile on Y axis with 'y'
+    if (key === 'y') {
+        mirrorMetatileYBtn.click();
+    }
+
+    // Number keys to select meta-tiles 0-9
+    if (key >= '0' && key <= '9') {
+        const metaIndex = parseInt(key);
+        if (metaIndex < metatileList.children.length) {
+            const metatileDiv = metatileList.children[metaIndex];
+            document.querySelectorAll('#metatile-list .selected').forEach(el => el.classList.remove('selected'));
+            metatileDiv.classList.add('selected');
+            selectedMetatile = metaIndex;
+            loadMetaTileIntoEditor(metatiles[selectedMetatile]);
+        }
+    }
+});
+
+
 
 // Save and Load Buttons
 const saveDataButton = document.getElementById('save-data');
@@ -821,6 +849,7 @@ loadDataButton.addEventListener('change', (event) => {
 
     reader.readAsText(file);
 });
+
 
 </script>
 
