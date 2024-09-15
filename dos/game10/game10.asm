@@ -270,10 +270,7 @@ wait_for_vsync:
         and al, 08h
         jz .wait2
 
-
-
-; =========================================== GAME TICK=== =====================
-
+; =========================================== GAME TICK ========================
 
 inc word [GameTick]
 
@@ -284,6 +281,7 @@ inc word [GameTick]
     jnz game_loop               ; If not zero, loop again
 
 ; =========================================== TERMINATE PROGRAM ================
+  
   exit:
     mov ax, 0x0003             ; Return to text mode
     int 0x10                   ; Video BIOS interrupt
@@ -304,7 +302,6 @@ conv_pos2mem:
   add ax, dx               ; AX = Y * 2560 + X * 8
   add di, ax               ; Move result to DI
 ret
-
 
 ; =========================================== RANDOM MOVE  =====================
 ; Expects: CX - position YY/XX
@@ -451,6 +448,28 @@ get_bits_from_word:
     shr bx, 1           ; Adjust final result (undo last shift)
     ret
 
+
+; =========================================== BEEP PC SPEAKER ==================
+; Set the speaker frequency
+; Expects: BX - frequency value
+; Return: -
+beep:
+  mov al, 0x0B6  ; Command to set the speaker frequency
+  out 0x43, al   ; Write the command to the PIT chip
+  mov ax, bx  ; Frequency value for 440 Hz
+  out 0x42, al   ; Write the low byte of the frequency value
+  mov al, ah
+  out 0x42, al   ; Write the high byte of the frequency value
+  in al, 0x61    ; Read the PIC chip
+  or al, 0x03    ; Set bit 0 to enable the speaker
+  out 0x61, al   ; Write the updated value back to the PIC chip
+ret
+
+no_beep:
+  in al, 0x61    ; Read the PIC chip
+  and al, 0x0FC  ; Clear bit 0 to disable the speaker
+  out 0x61, al   ; Write the updated value back to the PIC chip
+ret
 
 ; =========================================== COLOR PALETTES ===================
 ; Set of four colors per palette. 0x00 is transparency; use 0x10 for black.
