@@ -29,7 +29,7 @@ _ENTITIES_ equ 0x7010
 ; =========================================== CONSTANTS ========================
 BEEPER_ENABLED equ 0x01
 BEEPER_FREQ equ 4800
-LEVEL_START_POSITION equ 320*60
+LEVEL_START_POSITION equ 320*68+32
 SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3636
@@ -99,6 +99,8 @@ draw_ocean:
 
   loop .ll
 
+; =========================================== SKETCHPAD ========================
+
 ; anim_ocean:
 ;   add si, 2
 ;   mov cl, 8
@@ -108,55 +110,95 @@ draw_ocean:
 ;   loop .anim
 
 
-draw_ship:
-  mov cx, 0x040f
-  call conv_pos2mem
-  sub di, 8
-  mov si, ShipEndBrush
-  call draw_sprite
-  add di, 16
-  mov dx, 0x01
-  call draw_sprite
-  mov si, ShipMiddleBrush
-  sub di, 8
-  call draw_sprite
+; draw_ship:
+;   mov cx, 0x040f
+;   call conv_pos2mem
+;   sub di, 8
+;   mov si, ShipEndBrush
+;   call draw_sprite
+;   add di, 16
+;   mov dx, 0x01
+;   call draw_sprite
+;   mov si, ShipMiddleBrush
+;   sub di, 8
+;   call draw_sprite
 
-draw_player:
-  call conv_pos2mem
-  sub di, 320*6
-  mov si, IndieTopBrush
-  mov dl, 0x1
-  call draw_sprite
-  add di, 320*7
-  mov si, IndieBottomBrush
-  call draw_sprite
+; draw_player:
+;   call conv_pos2mem
+;   sub di, 320*6
+;   mov si, IndieTopBrush
+;   mov dl, 0x1
+;   call draw_sprite
+;   add di, 320*7
+;   mov si, IndieBottomBrush
+;   call draw_sprite
 
 
-  mov cx, 0x0410
-  call conv_pos2mem
-  sub di, 320*4
-  mov si, ArtifactBrush
-  call draw_sprite
+; =========================================== DRAWING LEVEL ====================
+draw_level:
+  ; xor ax, ax
+  mov si, LevelData
+  mov di, LEVEL_START_POSITION
+  xor cx, cx
+  .next_meta_tile:
+    push cx
+    push si
 
-debug_test:
-  xor dx, dx
-  mov di, 320*116+120
-  mov si, TerrainTiles
-  mov cx, 8
-  .lll:
-    call draw_sprite
-    add si, 0x12
-    add di, 10
-  loop .lll
-  
-  mov di, 320*106+130
-  mov si, PalmBrush
-  call draw_sprite
+    mov byte al, [si]     ; Read level cell
+    ; mov dx, ax            ; Make a copy
+    ; and ax, 0xf           ; Read first nibble - AX
+    ; shr dx, 0x4           ; Remove first nible
+    ; and dx, 0x3           ; Read XY mirroring - DX
+    
+    and ax, 0xf         ; First nibble
+    jnz .not_empty 
+      add di, 16
+      jmp .skip_meta_tile
+    .not_empty:
+    
+    mov si, MetaTiles
+    shl ax, 0x2           ; ID*4 Move to position; 4 bytes per tile
+    add si, ax            ; Meta-tile address
+    
+    mov cx, 0x4           ; 2x2 tiles
+    .next_tile:
+      
+      mov byte al, [si]   ; Read meta-tile
+      ; mov dx, ax
+      ; shr dx, 0x4
+      ; and dx, 0x3
+      and ax, 0xf         ; First nibble
+      dec ax              ; We do not have tile 0, shifting values
+     imul ax, 18          ; Move to position
+      
+      push si
+      mov si, TerrainTiles
+      add si, ax
+      call draw_sprite
+      pop si
+    
+      add di, 8
 
-  mov di, 320*114+170
-  mov si, SnakeBrush
-  call draw_sprite
+      cmp cx, 0x3
+      jnz .skip_set_new_line
+        add di, 320*8-16  ; Word wrap
+      .skip_set_new_line:
+      inc si
+    loop .next_tile
+    sub di, 320*8
+    .skip_meta_tile:
+      
+    pop si
+    inc si
+    pop cx
+    inc cx
+    test cx, 0xf
+    jnz .no_new_line 
+      add di, 320*16-(16*16)  ; Move to the next display line 
+    .no_new_line:
 
+    cmp cx, 16*8            ; 144 = 18*8
+  jl .next_meta_tile
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 
@@ -574,72 +616,67 @@ dw 0110111111111010b
 dw 0001101010101010b
 
 ; META TILES
+; nibble - tile id
+; 1 bit - X mirror
+; 1 bit - Y mirror
+; 2 bit - unused
+
 MetaTiles:
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000010b, 00000010b, 00000101b, 00000101b
 db 00000001b, 00000101b, 00000001b, 00000101b
 db 00000011b, 00000010b, 00000001b, 00000101b
 db 00000101b, 00000101b, 00000101b, 00000101b
-db 00001110b, 00000110b, 00000110b, 00000110b
+db 00000110b, 00000110b, 00000110b, 00000110b
 db 00000110b, 00000110b, 00000111b, 00000110b
-db 00000111b, 00000111b, 00001111b, 00000111b
+db 00000111b, 00000111b, 00000111b, 00000111b
 db 00000100b, 00000101b, 00000101b, 00000101b
-db 00000100b, 00000101b, 00000101b, 00001100b
+db 00000100b, 00000101b, 00000101b, 00000100b
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
-db 00001000b, 00001100b, 00001000b, 00001100b
+db 00001000b, 00001000b, 00001000b, 00001000b
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
 
+; LEVEL DATA
+; nibble - meta-tile id
+; 1 bit - X mirror
+; 1 bit - Y mirror
+; 2 bits - unused 
 LevelData:
+db 00000000b, 00000011b, 00000001b, 00000001b
+db 00000001b, 00000001b, 00000001b, 00010011b
+db 00000000b, 00000011b, 00000001b, 00010011b
 db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000010b, 00000101b, 00000101b
+db 00000110b, 00000110b, 00000110b, 00010010b
+db 00000000b, 00000010b, 00010110b, 00010010b
 db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000011b, 00010011b
+db 00000000b, 00000010b, 00000101b, 00000110b
+db 00000111b, 00010111b, 00000110b, 00010010b
+db 00001100b, 00000010b, 00000110b, 00010010b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00100011b, 00101000b, 00000101b
+db 00000111b, 00000110b, 00111000b, 00110011b
+db 00000000b, 00000010b, 00000101b, 00010010b
+db 00001100b, 00000011b, 00000001b, 00010011b
+db 00000000b, 00000000b, 00100011b, 00100001b
+db 00100001b, 00100001b, 00110011b, 00000000b
+db 00000000b, 00100011b, 00100001b, 00110011b
+db 00000000b, 00100011b, 00100001b, 00110011b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00001100b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00001100b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000011b
 db 00000001b, 00000001b, 00000001b, 00000001b
-db 00010011b, 00001100b, 00100011b, 00110011b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000011b, 00001000b
-db 00010110b, 00000101b, 00000101b, 00000110b
-db 00010010b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000011b, 00001000b, 00000110b
-db 00000101b, 00000111b, 00000110b, 00000101b
-db 00010010b, 00000000b, 00000000b, 00000011b
-db 00000001b, 00000001b, 00010011b, 00000000b
-db 00000011b, 00001000b, 00000111b, 00000101b
-db 00000110b, 00000111b, 00000101b, 00110110b
-db 00010010b, 00001100b, 00000011b, 00001000b
-db 00000101b, 00111000b, 00110011b, 00000000b
-db 00000010b, 00010110b, 00111000b, 00100001b
-db 00100001b, 00100001b, 00100001b, 00100001b
-db 00110011b, 00000000b, 00100011b, 00100001b
-db 00100001b, 00110011b, 00000000b, 00000000b
-db 00000010b, 00111000b, 00110011b, 00000000b
-db 00000000b, 00001100b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00001100b, 00000000b, 00000000b, 00000000b
-db 00100011b, 00110011b, 00000000b, 00000000b
-db 00000011b, 00000001b, 00010011b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00001100b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000011b
-db 00001000b, 00000111b, 00011000b, 00010011b
-db 00000000b, 00000000b, 00000011b, 00000001b
-db 00000001b, 00010011b, 00000000b, 00000000b
+db 00000001b, 00000001b, 00000001b, 00000001b
+db 00010011b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00100011b
-db 00101000b, 00100110b, 00111000b, 00110011b
-db 00001100b, 00000011b, 00001000b, 00000110b
-db 00111000b, 00110011b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00100011b, 00100001b, 00110011b, 00000000b
-db 00000000b, 00000010b, 00000101b, 00111000b
+db 00100001b, 00100001b, 00100001b, 00100001b
+db 00100001b, 00100001b, 00100001b, 00100001b
 db 00110011b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00100011b, 00100001b, 00110011b
 
 GameTick:
 dw 0x0
