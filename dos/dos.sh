@@ -10,7 +10,7 @@ fi
 filename=$1
 
 # Assemble the .asm file to .com using FASM
-fasm "${filename}/${filename}.asm" "${filename}/${filename}.com"
+fasm "${filename}/${filename}.asm" "game.com"
 # Check if FASM succeeded
 if [ $? -ne 0 ]; then
     echo "> Assembly failed."
@@ -24,6 +24,6 @@ qemu-system-i386 \
 -k en-us \
 -rtc base=localtime \
 -device cirrus-vga \
--hda ~/OS/freedos.img \
--drive file=fat:rw:~/Code/ \
--boot order=c
+-fda freedos.img \
+-drive file=fat:rw:. \
+-boot order=a
