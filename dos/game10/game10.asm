@@ -136,7 +136,6 @@ draw_ocean:
 
 ; =========================================== DRAWING LEVEL ====================
 draw_level:
-  ; xor ax, ax
   mov si, LevelData
   mov di, LEVEL_START_POSITION
   xor cx, cx
@@ -145,12 +144,11 @@ draw_level:
     push si
 
     mov byte al, [si]     ; Read level cell
-    ; mov dx, ax            ; Make a copy
-    ; and ax, 0xf           ; Read first nibble - AX
-    ; shr dx, 0x4           ; Remove first nible
-    ; and dx, 0x3           ; Read XY mirroring - DX
-    
-    and ax, 0xf         ; First nibble
+    mov bl, al            ; Make a copy
+    shr bl, 0x4           ; Remove first nible
+    and bl, 0x3           ; Read XY mirroring - BL
+
+    and ax, 0xf           ; Read first nibble - AX
     jnz .not_empty 
       add di, 16
       jmp .skip_meta_tile
@@ -159,14 +157,53 @@ draw_level:
     mov si, MetaTiles
     shl ax, 0x2           ; ID*4 Move to position; 4 bytes per tile
     add si, ax            ; Meta-tile address
-    
+
+    test bl, 1            ; Mirror X?
+    jnz .no_mirror_x
+      jmp .mirror_x
+    .no_mirror_x:
+    test bl, 2            ; Mirror Y?
+    jnz .no_mirror_xy
+      push 2              ; Mirror just Y
+      push 3
+      push 0
+      push 1
+      jmp .done_mirroring
+    .no_mirror_xy:
+      push 0              ; No mirroring
+      push 1
+      push 2
+      push 3
+      jmp .done_mirroring
+    .mirror_x:
+    test bl, 2
+    jz .mirror_xy
+      push 1            ; Mirror just X
+      push 0
+      push 3
+      push 2
+      jmp .done_mirroring
+    .mirror_xy:
+      push 3            ; Mirror both X and Y
+      push 2
+      push 1
+      push 0
+    .done_mirroring:
+
     mov cx, 0x4           ; 2x2 tiles
     .next_tile:
-      
-      mov byte al, [si]   ; Read meta-tile
-      ; mov dx, ax
-      ; shr dx, 0x4
-      ; and dx, 0x3
+      pop dx              ; Get tile order
+      push si
+      add si, dx
+      mov byte al, [si]   ; Read meta-tile with order
+      pop si
+      mov bh, al
+      shr bh, 0x4
+      and bh, 0x3         ; Tile mirror - BH
+
+      xor bh, bl          ; invert original tile mirror by meta-tile mirror
+      mov dx, bx          ; set final mirror for tile
+
       and ax, 0xf         ; First nibble
       dec ax              ; We do not have tile 0, shifting values
      imul ax, 18          ; Move to position
@@ -174,6 +211,7 @@ draw_level:
       push si
       mov si, TerrainTiles
       add si, ax
+      ; expects dx have mirror Y, X
       call draw_sprite
       pop si
     
@@ -183,7 +221,8 @@ draw_level:
       jnz .skip_set_new_line
         add di, 320*8-16  ; Word wrap
       .skip_set_new_line:
-      inc si
+      
+      ;inc si
     loop .next_tile
     sub di, 320*8
     .skip_meta_tile:
@@ -197,7 +236,7 @@ draw_level:
       add di, 320*16-(16*16)  ; Move to the next display line 
     .no_new_line:
 
-    cmp cx, 16*8            ; 144 = 18*8
+    cmp cx, 0x80           ; 128 = 16*8
   jl .next_meta_tile
 
 ; =========================================== VGA BLIT PROCEDURE ===============
