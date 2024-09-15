@@ -202,7 +202,7 @@ draw_level:
       and bh, 0x3         ; Tile mirror - BH
 
       xor bh, bl          ; invert original tile mirror by meta-tile mirror
-      mov dx, bx          ; set final mirror for tile
+      mov dl, bh          ; set final mirror for tile
 
       and ax, 0xf         ; First nibble
       dec ax              ; We do not have tile 0, shifting values
@@ -211,7 +211,6 @@ draw_level:
       push si
       mov si, TerrainTiles
       add si, ax
-      ; expects dx have mirror Y, X
       call draw_sprite
       pop si
     
@@ -689,10 +688,10 @@ db 00000110b, 00000110b, 00000110b, 00000110b
 db 00000110b, 00000110b, 00000111b, 00000110b
 db 00000111b, 00000111b, 00000111b, 00000111b
 db 00000100b, 00000101b, 00000101b, 00000101b
-db 00000100b, 00000101b, 00000101b, 00000100b
+db 00000100b, 00000101b, 00000101b, 00110100b
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
-db 00001000b, 00001000b, 00001000b, 00001000b
+db 00001000b, 00011000b, 00001000b, 00011000b
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
