@@ -131,6 +131,13 @@ draw_player:
   mov si, IndieBottomBrush
   call draw_sprite
 
+
+  mov cx, 0x0410
+  call conv_pos2mem
+  sub di, 320*4
+  mov si, ArtifactBrush
+  call draw_sprite
+
 debug_test:
   xor dx, dx
   mov di, 320*116+120
@@ -145,6 +152,11 @@ debug_test:
   mov di, 320*106+130
   mov si, PalmBrush
   call draw_sprite
+
+  mov di, 320*114+170
+  mov si, SnakeBrush
+  call draw_sprite
+
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 
@@ -363,14 +375,16 @@ get_bits_from_word:
 ; Set of four colors per palette. 0x00 is transparency; use 0x10 for black.
 
 PaletteSets:
-db 0x00, 0x13, 0x17, 0x1b   ; Grays
-db 0x00, 0x06, 0x27, 0x43   ; Indie top
-db 0x00, 0x7e, 0x13, 0x15   ; Indie bottom
-db 0x7f, 0x7e, 0x7d, 0x7b   ; Ocean
-db 0x00, 0xb7, 0xbb, 0x8c   ; Wood
-db 0x00, 0x46, 0x5a, 0x5c   ; Terrain 1 - shore
-db 0x47, 0x46, 0x45, 0x54   ; Terrain 2 - in  land
-db 0x00, 0x06, 0x77, 0x2e   ; Palm
+db 0x00, 0x13, 0x17, 0x1b   ; 0x0 Grays
+db 0x00, 0x06, 0x27, 0x43   ; 0x1 Indie top
+db 0x00, 0x7e, 0x13, 0x15   ; 0x2 Indie bottom
+db 0x7f, 0x7e, 0x7d, 0x7b   ; 0x3 Ocean
+db 0x00, 0xb7, 0xbb, 0x8c   ; 0x4 Wood
+db 0x00, 0x46, 0x5a, 0x5c   ; 0x5 Terrain 1 - shore
+db 0x47, 0x46, 0x45, 0x54   ; 0x6 Terrain 2 - in  land
+db 0x00, 0x06, 0x77, 0x2e   ; 0x7 Palm
+db 0x00, 0x27, 0x2a, 0x2b   ; 0x8 Snake
+db 0x00, 0x26, 0x43, 0x44   ; 0x9 Artifact
 
 ; =========================================== BRUSHES DATA =====================
 ; Set of 8x8 tiles for constructing meta-tiles
@@ -391,6 +405,28 @@ db 0x3, 0x2
 dw 0000000101010000b
 dw 0000000100010000b
 dw 0000001000100000b
+
+SnakeBrush:
+db 0x8, 0x8
+dw 0000000011011101b
+dw 0000001111111111b
+dw 0000001110001011b
+dw 0000001010110001b
+dw 0011000010101100b
+dw 0000100001101000b
+dw 0000010001010100b
+dw 0000110101010000b
+
+ArtifactBrush:
+db 0x8, 0x9
+dw 0011001110001100b
+dw 0000011111010000b
+dw 0011110101111000b
+dw 0000011111010000b
+dw 0011001110001100b
+dw 0000001110000000b
+dw 0000111110100000b
+dw 0011111010101000b
 
 OceanBrush:
 db 0x8, 0x3
