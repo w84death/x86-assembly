@@ -487,7 +487,7 @@ dw 1011110101010101b
 dw 1011110101010101b
 dw 1011110101010101b
 
-db 0x8, 0x6          ; 0x4 Shore corner filler inside
+db 0x8, 0x5          ; 0x4 Shore corner filler inside
 dw 1010111101010000b
 dw 1011110000000000b
 dw 1111000000010100b
