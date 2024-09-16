@@ -33,6 +33,11 @@ LEVEL_START_POSITION equ 320*68+32
 SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3636
+ID_PLAYER equ 0
+ID_PALM equ 1
+ID_SNAKE equ 2
+ID_ARTIFACT equ 3
+ID_BRIDGE equ 4
 
 ; =========================================== INITIALIZATION ===================
 start:
@@ -50,6 +55,41 @@ set_keyboard_rate:
     int 16h
 
 restart_game:
+
+; =========================================== SPAWN ENTITIES ==================
+; Expects: entities array from level data
+; Returns: entities in memory array
+spawn_entities:
+  mov si, EntityData
+  mov di, _ENTITIES_
+
+  mov cx, [EntityCount]
+  .next_entitie:
+    mov ax, [si+1]         ; Get position
+    mov [di+1], ax         ; Save position
+
+    mov ah, 0x0                ; No mirroring
+    cmp al, 0x20               ; Check side of the screen (16 points as middle)
+    jl .skip_mirror_x          ; mirror if on the left side
+      inc ah                   ; 1 for X mirroring
+    .skip_mirror_x:
+    mov byte [di+4], ah        ;  Save mirror (0 or 1)
+
+    mov byte al, [si]           ; Get sprite id
+    mov byte [di], al             ; Save sprite id
+    mov bx, BrushRefs        ; Get sprite data offset table
+    shl al, 2               ; Shift to ref (id*2 bytes)
+    add bl, al                  ; Add sprite id to the offset index
+    mov ax, [bx]              ; Get sprite data offset
+    mov [di+3], ax       ; Save sprite data offset
+
+    mov byte [di+5], 0x01   ; Save basic state
+
+add si, 0x03            ; Move to the next entity in code
+add di, 0x06            ; Move to the next entity in memory
+loop .next_entitie
+
+mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
 
 ; =========================================== GAME LOGIC =======================
 game_loop:
@@ -241,17 +281,121 @@ draw_level:
 
 ; =========================================== DRAW ENTITIES ===================
 
-draw_player:
-  mov cx, 0x040a
-  call conv_pos2mem
-  sub di, 320*6
-  mov si, IndieTopBrush
-  mov dl, 0x1
-  call draw_sprite
-  add di, 320*7
-  mov si, IndieBottomBrush
-  call draw_sprite
+; draw_player:
+;   mov cx, 0x040a
+;   call conv_pos2mem
+;   sub di, 320*6
+;   mov si, IndieTopBrush
+;   mov dl, 0x1
+;   call draw_sprite
+;   add di, 320*7
+;   mov si, IndieBottomBrush
+;   call draw_sprite
 
+
+; =========================================== SORT ENITIES ===============
+; Sort entities by Y position
+; Expects: entities array
+; Returns: sorted entities array
+sort_entities:
+  xor ax, ax
+
+  mov cx, [EntityCount]
+  dec cx  ; We'll do n-1 passes
+
+  .outer_loop:
+    push cx
+    mov si, _ENTITIES_
+
+    .inner_loop:
+      push cx
+      mov bx, [si+1]  ; Get Y of current entity
+      mov dx, [si+7]  ; Get Y of next entity
+
+      cmp bh, dh      ; Compare Y values
+      jle .no_swap
+
+
+        mov di, si
+        add di, 6
+
+        mov ax, [_PLAYER_ENTITY_ID_]
+        cmp ax, si
+        jne .check_next_entity
+          mov [_PLAYER_ENTITY_ID_], di
+          jmp .swap_entities
+        .check_next_entity:
+        cmp ax, di
+        jne .swap_entities
+          mov [_PLAYER_ENTITY_ID_], si
+        .swap_entities:
+
+        mov cx, 6       ; 6 bytes per entity, so we move 3 words
+        .swap_loop:
+          mov al, [si]
+          xchg al, [di]
+          mov [si], al
+          inc si
+          inc di
+          loop .swap_loop
+        sub si, 6       ; Reset SI to start of current entity
+
+      .no_swap:
+      add si, 6       ; Move to next entity
+      pop cx
+      loop .inner_loop
+
+    pop cx
+    loop .outer_loop
+
+; =========================================== DRAW ENITIES ===============
+
+draw_entities:
+  mov si, _ENTITIES_
+  mov cx, [EntityCount]
+  .next:
+    push cx
+    push si
+
+    cmp byte [si+5], 0x0
+    jz .skip_entity
+
+    mov cx, [si+1]
+    call conv_pos2mem       ; Convert position to memory
+
+    mov byte al, [si]       ; Get brush id in AL
+    mov ah, al              ; Save a copy in AH
+    mov bx, BrushRefs       ; Get brush data offset table
+    shl al, 2               ; Shift to ref (id*2 bytes)
+    add al, 2               ; offest is at next byte (+2)
+    movzx bx, al            ; Get address to BX
+    add di, [BrushRefs + bx]  ; Get shift and apply to destination position
+
+    mov dl, [si+4] ; Get sprite mirror flag
+    mov bx, [si+3] ; Get sprite data offset
+    mov si, bx
+    call draw_sprite
+
+    cmp ah, ID_PLAYER       ; Test (copy) id for player
+    jnz .skip_player_draw
+      mov si, IndieBottomBrush
+      add di, 320*7
+      call draw_sprite
+    .skip_player_draw:
+
+
+    cmp ah, ID_BRIDGE
+    jnz .skip_bridge_draw
+      add di, 8
+      mov dl, 0x01
+      call draw_sprite
+    .skip_bridge_draw:
+
+    .skip_entity:
+    pop si
+    add si, 0x6
+    pop cx
+  loop .next
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 
@@ -306,7 +450,6 @@ inc word [GameTick]
 ; Return: DI memory position
 conv_pos2mem:
   mov di, LEVEL_START_POSITION
-  add di, 320*8+32
   xor ax, ax               ; Clear AX
   mov al, ch               ; Move Y coordinate to AL
  imul ax, 320*8
@@ -503,6 +646,13 @@ db 0x00, 0x26, 0x43, 0x44   ; 0x9 Artifact
 ; =========================================== BRUSHES DATA =====================
 ; Set of 8x8 tiles for constructing meta-tiles
 ; Data: number of lines, palettDefaulte id, lines (8 pixels) of palette color id
+
+BrushRefs:
+dw IndieTopBrush, -320*6
+dw PalmBrush, -320*10
+dw SnakeBrush, -320*2
+dw ArtifactBrush, -320*2
+dw BridgeBrush, 0
 
 IndieTopBrush:
 db 0x7, 0x1
@@ -750,6 +900,22 @@ db 00000000b, 00000000b, 00000000b, 00100011b
 db 00100001b, 00110001b, 00110011b, 00000000b
 db 00100011b, 00100001b, 00100001b, 00110001b
 db 00110011b, 00000000b, 00000000b, 00000000b
+
+EntityCount:
+dw 4
+
+EntityData:
+db 0
+dw 0x0608
+
+db 1
+dw 0x0605
+
+db 2
+dw 0x0606
+
+db 4
+dw 0x0a08
 
 GameTick:
 dw 0x0
