@@ -902,20 +902,58 @@ db 00100011b, 00100001b, 00100001b, 00110001b
 db 00110011b, 00000000b, 00000000b, 00000000b
 
 EntityCount:
-dw 4
+dw 0x19
 
 EntityData:
 db 0
-dw 0x0608
-
+dw 0x0c0a
 db 1
-dw 0x0605
+dw 0x010d
+db 1
+dw 0x0115
+db 1
+dw 0x011c
+db 1
+dw 0x011d
+db 1
+dw 0x0209
+db 1
+dw 0x020b
+db 1
+dw 0x021c
+db 1
+dw 0x021d
+db 1
+dw 0x021e
+db 1
+dw 0x0305
+db 1
+dw 0x0306
+db 1
+dw 0x030c
+db 1
+dw 0x0314
+db 1
+dw 0x031d
+db 1
+dw 0x0406
+db 1
+dw 0x0407
+db 1
+dw 0x040b
+db 1
+dw 0x040c
+db 1
+dw 0x040d
+db 1
+dw 0x0416
+db 1
+dw 0x050c
+db 1
+dw 0x0515
+db 1
+dw 0x060a
 
-db 2
-dw 0x0606
-
-db 4
-dw 0x0a08
 
 GameTick:
 dw 0x0
