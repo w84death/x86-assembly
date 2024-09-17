@@ -36,8 +36,11 @@ COLOR_WATER equ 0x3636
 ID_PLAYER equ 0
 ID_PALM equ 1
 ID_SNAKE equ 2
-ID_ARTIFACT equ 3
-ID_BRIDGE equ 4
+ID_ROCK equ 3
+ID_TRIGGER equ 4
+ID_BRIDGE equ 5
+ID_SHIP equ 6
+ID_ARTIFACT equ 7
 
 ; =========================================== INITIALIZATION ===================
 start:
@@ -76,6 +79,7 @@ spawn_entities:
     mov byte [di+4], ah        ;  Save mirror (0 or 1)
 
     mov byte al, [si]           ; Get sprite id
+    dec al                    ; Convert to engine numbering from level editor
     mov byte [di], al             ; Save sprite id
     mov bx, BrushRefs        ; Get sprite data offset table
     shl al, 2               ; Shift to ref (id*2 bytes)
@@ -651,8 +655,11 @@ BrushRefs:
 dw IndieTopBrush, -320*6
 dw PalmBrush, -320*10
 dw SnakeBrush, -320*2
-dw ArtifactBrush, -320*2
+dw RockBrush, 0
+dw TriggerBrush, 0
 dw BridgeBrush, 0
+dw ShipMiddleBrush, 0
+dw ArtifactBrush, -320*2
 
 IndieTopBrush:
 db 0x7, 0x1
@@ -752,6 +759,18 @@ dw 1111101011111111b
 dw 1011111010101111b
 dw 0110111111111010b
 dw 0101101010101010b
+dw 0001010101010101b
+
+TriggerBrush:
+RockBrush:
+db 0x8, 0x9
+dw 0001010101010101b
+dw 0001010101010101b
+dw 0001010101010101b
+dw 0001010101010101b
+dw 0001010101010101b
+dw 0001010101010101b
+dw 0001010101010101b
 dw 0001010101010101b
 
 
@@ -902,57 +921,112 @@ db 00100011b, 00100001b, 00100001b, 00110001b
 db 00110011b, 00000000b, 00000000b, 00000000b
 
 EntityCount:
-dw 0x19
+dw 0x33
 
 EntityData:
-db 0
-dw 0x0c0a
-db 1
-dw 0x010d
-db 1
-dw 0x0115
-db 1
-dw 0x011c
-db 1
-dw 0x011d
-db 1
+db 2
+dw 0x0008
+db 2
+dw 0x000a
+db 4
+dw 0x001e
+db 2
+dw 0x0105
+db 4
+dw 0x0107
+db 3
+dw 0x010c
+db 3
+dw 0x0117
+db 2
+dw 0x0204
+db 2
+dw 0x0206
+db 2
 dw 0x0209
-db 1
-dw 0x020b
-db 1
-dw 0x021c
-db 1
-dw 0x021d
-db 1
-dw 0x021e
-db 1
-dw 0x0305
-db 1
-dw 0x0306
-db 1
+db 5
+dw 0x020a
+db 2
+dw 0x020c
+db 2
+dw 0x0213
+db 2
+dw 0x0215
+db 2
+dw 0x0308
+db 2
+dw 0x0309
+db 2
+dw 0x030a
+db 2
+dw 0x030b
+db 2
 dw 0x030c
+db 2
+dw 0x0312
+db 2
+dw 0x0313
+db 2
+dw 0x0316
+db 2
+dw 0x031e
 db 1
-dw 0x0314
-db 1
-dw 0x031d
-db 1
-dw 0x0406
-db 1
-dw 0x0407
-db 1
-dw 0x040b
-db 1
-dw 0x040c
-db 1
-dw 0x040d
-db 1
-dw 0x0416
-db 1
-dw 0x050c
-db 1
-dw 0x0515
-db 1
-dw 0x060a
+dw 0x0404
+db 2
+dw 0x0409
+db 6
+dw 0x0410
+db 5
+dw 0x041e
+db 7
+dw 0x0502
+db 6
+dw 0x0510
+db 2
+dw 0x0606
+db 4
+dw 0x060d
+db 2
+dw 0x0706
+db 2
+dw 0x070b
+db 2
+dw 0x0713
+db 3
+dw 0x071b
+db 2
+dw 0x0807
+db 2
+dw 0x080a
+db 2
+dw 0x080b
+db 2
+dw 0x0813
+db 2
+dw 0x0906
+db 2
+dw 0x0907
+db 2
+dw 0x090a
+db 2
+dw 0x0917
+db 2
+dw 0x0d07
+db 4
+dw 0x0d0a
+db 4
+dw 0x0d13
+db 5
+dw 0x0e07
+db 2
+dw 0x0e08
+db 2
+dw 0x0e16
+db 5
+dw 0x0e17
+db 2
+dw 0x0f17
+
 
 
 GameTick:
