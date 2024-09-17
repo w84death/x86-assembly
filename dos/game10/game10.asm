@@ -646,6 +646,7 @@ db 0x47, 0x46, 0x45, 0x54   ; 0x6 Terrain 2 - in  land
 db 0x00, 0x06, 0x77, 0x2e   ; 0x7 Palm
 db 0x00, 0x27, 0x2a, 0x2b   ; 0x8 Snake
 db 0x00, 0x26, 0x43, 0x44   ; 0x9 Artifact
+db 0x00, 0x15, 0x19, 0x1a   ; 0xa Rock
 
 ; =========================================== BRUSHES DATA =====================
 ; Set of 8x8 tiles for constructing meta-tiles
@@ -656,10 +657,11 @@ dw IndieTopBrush, -320*6
 dw PalmBrush, -320*10
 dw SnakeBrush, -320*2
 dw RockBrush, 0
-dw TriggerBrush, 0
+dw TriggerBrush, 320*2
 dw BridgeBrush, 0
 dw ShipMiddleBrush, 0
 dw ArtifactBrush, -320*2
+dw TriggerActBrush, 320*4
 
 IndieTopBrush:
 db 0x7, 0x1
@@ -762,16 +764,31 @@ dw 0101101010101010b
 dw 0001010101010101b
 
 TriggerBrush:
+db 0x6, 0x0
+dw 0011111111111100b
+dw 1111111111111111b
+dw 1111111111111111b
+dw 1010111111111010b
+dw 0110101010101001b
+dw 0001010101010100b
+
+TriggerActBrush:
+db 0x4, 0x0
+dw 0011111111111100b
+dw 1111111111111111b
+dw 1111111111111111b
+dw 1010111111111010b
+
 RockBrush:
-db 0x8, 0x9
-dw 0001010101010101b
-dw 0001010101010101b
-dw 0001010101010101b
-dw 0001010101010101b
-dw 0001010101010101b
-dw 0001010101010101b
-dw 0001010101010101b
-dw 0001010101010101b
+db 0x8, 0xa
+dw 0000111111110000b
+dw 0011111110101100b
+dw 1111101111111111b
+dw 1110111110101111b
+dw 1011111010111001b
+dw 0111111011111101b
+dw 0101111110110101b
+dw 0001010101010100b
 
 
 ; TERRAIN TILES
