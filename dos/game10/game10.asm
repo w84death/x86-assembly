@@ -1,4 +1,4 @@
-; GAME10 - The X Project - Mysteries of the Forgotten Isles"
+; GAME10 - The X Project - Mysteries of the Forgotten Isles
 ; DOS VERSION
 ;
 ; Description:
@@ -129,25 +129,36 @@ draw_ocean:
   mov cx, 18
   .ll:
     push cx
-
-    xor dx, dx
-    mov ax, cx
-    shr ax, 1
-    adc dx, 0
-    shl dx, 1
+    xor dh, 0xa
 
     mov cx, 40
     .l:
+      or dl, 0xa
+      add dl, dh
       call draw_sprite
       add di, 8
-
     loop .l
+       
     add di, 320*7
-
-
     pop cx
 
   loop .ll
+
+  mov ax, [GameTick]
+  and ax, 0x3
+  cmp ax, 0x3
+  jnz skip_anim
+    mov si, PaletteSets
+    add si, 3*4
+    mov al, [si]
+    mov ah, [si+1]
+    mov [si], ah
+    mov ah, [si+2]
+    mov [si+1], ah
+    mov ah, [si+3]
+    mov [si+2], ah
+    mov [si+3], al
+  skip_anim:
 
 ; =========================================== DRAWING LEVEL ====================
 
@@ -636,8 +647,8 @@ dw 0x0
 PaletteSets:
 db 0x00, 0x13, 0x17, 0x1b   ; 0x0 Grays
 db 0x00, 0x06, 0x27, 0x43   ; 0x1 Indie top
-db 0x00, 0x7e, 0x13, 0x15   ; 0x2 Indie bottom
-db 0x7f, 0x7e, 0x7d, 0x7b   ; 0x3 Ocean
+db 0x00, 0x7f, 0x13, 0x15   ; 0x2 Indie bottom
+db 0x95, 0x94, 0x7c, 0x7d   ; 0x3 Ocean
 db 0x00, 0xb7, 0xbb, 0x8c   ; 0x4 Wood
 db 0x00, 0x46, 0x5a, 0x5c   ; 0x5 Terrain 1 - shore
 db 0x47, 0x46, 0x45, 0x54   ; 0x6 Terrain 2 - in  land
@@ -695,14 +706,14 @@ dw 0000110101010000b
 
 OceanBrush:
 db 0x8, 0x3
-dw 1111111111111111b
-dw 1011111111111011b
-dw 1110101110111110b
-dw 0110111011100110b
-dw 1001011001101001b
-dw 0001100110010001b
-dw 0100000100010100b
-dw 0000010001000000b
+dw 1100000000000011b
+dw 0001010101010100b
+dw 0110101010101001b
+dw 1011111111111110b
+dw 1100000000000011b
+dw 0001010101010100b
+dw 0110101010101001b
+dw 1011111111111110b
 
 ShipEndBrush:
 db 0x7, 0x4
