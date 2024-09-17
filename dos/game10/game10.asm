@@ -20,20 +20,23 @@ org 0x100
 use16
 
 ; =========================================== MEMORY ADDRESSES =================
+
 _VGA_MEMORY_ equ 0xA000
 _DBUFFER_MEMORY_ equ 0x8000
 _PLAYER_ENTITY_ID_ equ 0x7000
 _REQUEST_POSITION_ equ 0x7002
 _ENTITIES_ equ 0x7010
 
-; =========================================== CONSTANTS ========================
+; =========================================== MAGIC NUMBERS ====================
+
 BEEPER_ENABLED equ 0x01
 BEEPER_FREQ equ 4800
 LEVEL_START_POSITION equ 320*68+32
 SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3636
-ID_PLAYER equ 0
+
+ID_PLAYER equ 0 
 ID_PALM equ 1
 ID_SNAKE equ 2
 ID_ROCK equ 3
@@ -71,12 +74,7 @@ spawn_entities:
     mov ax, [si+1]         ; Get position
     mov [di+1], ax         ; Save position
 
-    mov ah, 0x0                ; No mirroring
-    ;cmp al, 0x10               ; Check side of the screen (16 points as middle)
-    ;jl .skip_mirror_x          ; mirror if on the left side
-    ;  inc ah                   ; 1 for X mirroring
-    ;.skip_mirror_x:
-    mov byte [di+4], ah        ;  Save mirror (0 or 1)
+    mov byte [di+4], 0x0        ;  Save mirror (none)
 
     mov byte al, [si]           ; Get sprite id
     dec al                    ; Convert to engine numbering from level editor
@@ -342,13 +340,33 @@ draw_entities:
       call draw_sprite
     .skip_player_draw:
 
-
     cmp ah, ID_BRIDGE
     jnz .skip_bridge_draw
       add di, 8
       mov dl, 0x01
       call draw_sprite
     .skip_bridge_draw:
+
+    cmp ah, ID_SHIP
+    jnz .skip_ship_draw
+      sub di, 8
+      mov si, ShipEndBrush
+      call draw_sprite
+      add di, 16
+      mov dl, 0x01
+      mov si, ShipEndBrush
+      call draw_sprite
+    .skip_ship_draw:
+
+    cmp ah, ID_GOLD
+    jnz .skip_gold_draw
+      mov ax, [GameTick]
+      and ax, 0x8
+      cmp ax, 0x4
+      jl .skip_gold_draw
+      mov si, GoldBrush
+      call draw_sprite
+    .skip_gold_draw:
 
     .skip_entity:
     pop si
@@ -593,6 +611,11 @@ no_beep:
   out 0x61, al   ; Write the updated value back to the PIC chip
 ret
 
+; =========================================== GAME LIVE VARIABLES ==============
+
+GameTick:
+dw 0x0
+
 ; =========================================== COLOR PALETTES ===================
 ; Set of four colors per palette. 0x00 is transparency; use 0x10 for black.
 
@@ -613,19 +636,20 @@ db 0x00, 0x76, 0x18, 0x5c   ; 0xc Trigger Act
 db 0x00, 0x2b, 0x2c, 0x5b   ; 0xd Gold
 
 ; =========================================== BRUSHES DATA =====================
-; Set of 8x8 tiles for constructing meta-tiles
+; Set of 8xY brushes for entities
 ; Data: number of lines, palettDefaulte id, lines (8 pixels) of palette color id
 
 BrushRefs:
-dw IndieTopBrush, -320*6
-dw PalmBrush, -320*10
-dw SnakeBrush, -320*2
-dw RockBrush, 0
-dw TriggerBrush, 320*3
-dw BridgeBrush, 0
-dw ShipMiddleBrush, 0
-dw GoldBrush, 320
-dw TriggerActBrush, 320*3
+dw IndieTopBrush, -320*6  ; 1
+dw PalmBrush, -320*10     ; 2
+dw SnakeBrush, -320*2     ; 3
+dw RockBrush, 0           ; 4
+dw TriggerBrush, 320*3    ; 5
+dw BridgeBrush, 0         ; 6
+dw ShipMiddleBrush, 0     ; 7
+dw Gold2Brush, 320        ; 8
+dw GoldBrush, 320         ; 9
+dw TriggerActBrush, 320*3 ; 10
 
 IndieTopBrush:
 db 0x7, 0x1
@@ -745,15 +769,24 @@ dw 0001010101010100b
 
 GoldBrush:
 db 0x6, 0xd
-dw 0000111111000000b
-dw 0000111011000000b
-dw 0011101110010000b
-dw 0011101110010000b
-dw 0011101010010000b
-dw 0000111001000000b
+dw 0000111111110000b
+dw 0011101111101100b
+dw 1110111010111011b
+dw 1010111010101010b
+dw 0001101110100100b
+dw 0000010101010000b
+
+Gold2Brush:
+db 0x6, 0xd
+dw 0000001100000000b
+dw 0000001100000000b
+dw 0000001000000000b
+dw 0000001000000000b
+dw 0000000100000000b
+dw 0000000100000000b
 
 
-; TERRAIN TILES
+; =========================================== TERRAIN TILES DATA ===============
 
 TerrainTiles:
 db 0x8, 0x05          ; 0x1 Shore left bank
@@ -836,7 +869,7 @@ dw 1011111010101111b
 dw 0110111111111010b
 dw 0001101010101010b
 
-; META TILES
+; =========================================== META-TILES DECLARATION ===========
 ; nibble - tile id
 ; 1 bit - X mirror
 ; 1 bit - Y mirror
@@ -860,11 +893,11 @@ db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
 
-; LEVEL DATA
-; nibble - meta-tile id
+; =========================================== LEVEL DATA =======================
 ; 1 bit - X mirror
 ; 1 bit - Y mirror
 ; 2 bits - unused 
+
 LevelData:
 db 00000000b, 00000011b, 00000001b, 00010001b
 db 00000001b, 00010001b, 00010001b, 00010011b
@@ -899,22 +932,38 @@ db 00100001b, 00110001b, 00110011b, 00000000b
 db 00100011b, 00100001b, 00100001b, 00110001b
 db 00110011b, 00000000b, 00000000b, 00000000b
 
+; =========================================== ENTITIES DATA ====================
+
 EntityCount:
-dw 0x33
+dw 0x41
 
 EntityData:
 db 2
 dw 0x0008
 db 2
 dw 0x000a
+db 2
+dw 0x000d
+db 2
+dw 0x000e
+db 2
+dw 0x0013
+db 2
+dw 0x0014
 db 4
 dw 0x001e
 db 2
 dw 0x0105
 db 4
 dw 0x0107
+db 5
+dw 0x010a
 db 3
 dw 0x010c
+db 2
+dw 0x0113
+db 2
+dw 0x0114
 db 3
 dw 0x0117
 db 2
@@ -923,10 +972,10 @@ db 2
 dw 0x0206
 db 2
 dw 0x0209
-db 5
-dw 0x020a
 db 2
 dw 0x020c
+db 2
+dw 0x0212
 db 2
 dw 0x0213
 db 2
@@ -955,6 +1004,8 @@ db 2
 dw 0x0409
 db 6
 dw 0x0410
+db 2
+dw 0x041d
 db 5
 dw 0x041e
 db 7
@@ -974,6 +1025,12 @@ dw 0x0713
 db 3
 dw 0x071b
 db 2
+dw 0x071d
+db 2
+dw 0x071e
+db 2
+dw 0x071f
+db 2
 dw 0x0807
 db 2
 dw 0x080a
@@ -981,6 +1038,12 @@ db 2
 dw 0x080b
 db 2
 dw 0x0813
+db 2
+dw 0x081d
+db 8
+dw 0x081e
+db 2
+dw 0x081f
 db 2
 dw 0x0906
 db 2
@@ -1003,15 +1066,12 @@ db 2
 dw 0x0e16
 db 5
 dw 0x0e17
-db 5
+db 2
 dw 0x0f17
 
-
-
-GameTick:
-dw 0x0
-
-Logo:
-db "P1X"
+; =========================================== THE END ====================
 ; Thanks for reading the source code!
 ; Visit http://smol.p1x.in for more.
+
+Logo:
+db "P1X"    ; Use HEX viewer to see P1X at the end of binary
