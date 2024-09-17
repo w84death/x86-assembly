@@ -40,7 +40,7 @@ ID_ROCK equ 3
 ID_TRIGGER equ 4
 ID_BRIDGE equ 5
 ID_SHIP equ 6
-ID_ARTIFACT equ 7
+ID_GOLD equ 7
 
 ; =========================================== INITIALIZATION ===================
 start:
@@ -72,10 +72,10 @@ spawn_entities:
     mov [di+1], ax         ; Save position
 
     mov ah, 0x0                ; No mirroring
-    cmp al, 0x20               ; Check side of the screen (16 points as middle)
-    jl .skip_mirror_x          ; mirror if on the left side
-      inc ah                   ; 1 for X mirroring
-    .skip_mirror_x:
+    ;cmp al, 0x10               ; Check side of the screen (16 points as middle)
+    ;jl .skip_mirror_x          ; mirror if on the left side
+    ;  inc ah                   ; 1 for X mirroring
+    ;.skip_mirror_x:
     mov byte [di+4], ah        ;  Save mirror (0 or 1)
 
     mov byte al, [si]           ; Get sprite id
@@ -89,18 +89,20 @@ spawn_entities:
 
     mov byte [di+5], 0x01   ; Save basic state
 
-add si, 0x03            ; Move to the next entity in code
-add di, 0x06            ; Move to the next entity in memory
+  add si, 0x03            ; Move to the next entity in code
+  add di, 0x06            ; Move to the next entity in memory
 loop .next_entitie
 
 mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
 
 ; =========================================== GAME LOGIC =======================
+
 game_loop:
   xor di, di
   xor si, si
 
 ; =========================================== DRAW BACKGROUND ==================
+
 draw_bg:
   mov ax, COLOR_SKY               ; Set starting sky color
   mov cl, 0xa                  ; 10 bars to draw
@@ -143,42 +145,8 @@ draw_ocean:
 
   loop .ll
 
-; =========================================== SKETCHPAD ========================
-
-; anim_ocean:
-;   add si, 2
-;   mov cl, 8
-;   .anim:
-;     ror word [si], 2
-;     add si, 2
-;   loop .anim
-
-
-; draw_ship:
-;   mov cx, 0x040f
-;   call conv_pos2mem
-;   sub di, 8
-;   mov si, ShipEndBrush
-;   call draw_sprite
-;   add di, 16
-;   mov dx, 0x01
-;   call draw_sprite
-;   mov si, ShipMiddleBrush
-;   sub di, 8
-;   call draw_sprite
-
-; draw_player:
-;   call conv_pos2mem
-;   sub di, 320*6
-;   mov si, IndieTopBrush
-;   mov dl, 0x1
-;   call draw_sprite
-;   add di, 320*7
-;   mov si, IndieBottomBrush
-;   call draw_sprite
-
-
 ; =========================================== DRAWING LEVEL ====================
+
 draw_level:
   mov si, LevelData
   mov di, LEVEL_START_POSITION
@@ -282,25 +250,11 @@ draw_level:
     cmp cx, 0x80           ; 128 = 16*8
   jl .next_meta_tile
 
-
-; =========================================== DRAW ENTITIES ===================
-
-; draw_player:
-;   mov cx, 0x040a
-;   call conv_pos2mem
-;   sub di, 320*6
-;   mov si, IndieTopBrush
-;   mov dl, 0x1
-;   call draw_sprite
-;   add di, 320*7
-;   mov si, IndieBottomBrush
-;   call draw_sprite
-
-
 ; =========================================== SORT ENITIES ===============
 ; Sort entities by Y position
 ; Expects: entities array
 ; Returns: sorted entities array
+
 sort_entities:
   xor ax, ax
 
@@ -351,6 +305,7 @@ sort_entities:
 
     pop cx
     loop .outer_loop
+
 
 ; =========================================== DRAW ENITIES ===============
 
@@ -419,6 +374,7 @@ vga_blit:
     pop ds
     pop es
 
+
 ; =========================================== V-SYNC ======================
 
 wait_for_vsync:
@@ -431,6 +387,7 @@ wait_for_vsync:
         in al, dx
         and al, 08h
         jz .wait2
+
 
 ; =========================================== GAME TICK ========================
 
@@ -467,6 +424,7 @@ ret
 ; =========================================== RANDOM MOVE  =====================
 ; Expects: CX - position YY/XX
 ; Return: CX - updated pos
+
 random_move:
   rdtsc
   and ax, 0x13
@@ -493,6 +451,7 @@ random_move:
 ; =========================================== CHECK BOUNDS =====================
 ; Expects: CX - Position YY/XX
 ; Return: AX - Zero if hit bound, 1 if no bounds at this location
+
 check_bounds:
   xor ax, ax                                ; Assume bound hit (AX = 0)
   cmp ch, 0x0f
@@ -510,6 +469,7 @@ check_bounds:
 ; DI - positon (linear)
 ; DX - settings: 00 normal, 01 mirrored x, 10 mirrored y, 11 mirrored x&y
 ; Return: -
+
 draw_sprite:
     pusha
     xor cx, cx
@@ -614,6 +574,7 @@ get_bits_from_word:
 ; Set the speaker frequency
 ; Expects: BX - frequency value
 ; Return: -
+
 beep:
   mov al, 0x0B6  ; Command to set the speaker frequency
   out 0x43, al   ; Write the command to the PIT chip
@@ -647,6 +608,9 @@ db 0x00, 0x06, 0x77, 0x2e   ; 0x7 Palm
 db 0x00, 0x27, 0x2a, 0x2b   ; 0x8 Snake
 db 0x00, 0x26, 0x43, 0x44   ; 0x9 Artifact
 db 0x00, 0x15, 0x19, 0x1a   ; 0xa Rock
+db 0x00, 0x76, 0x1c, 0x1d   ; 0xb Trigger off
+db 0x00, 0x76, 0x18, 0x5c   ; 0xc Trigger Act
+db 0x00, 0x2b, 0x2c, 0x5b   ; 0xd Gold
 
 ; =========================================== BRUSHES DATA =====================
 ; Set of 8x8 tiles for constructing meta-tiles
@@ -657,11 +621,11 @@ dw IndieTopBrush, -320*6
 dw PalmBrush, -320*10
 dw SnakeBrush, -320*2
 dw RockBrush, 0
-dw TriggerBrush, 320*2
+dw TriggerBrush, 320*3
 dw BridgeBrush, 0
 dw ShipMiddleBrush, 0
-dw ArtifactBrush, -320*2
-dw TriggerActBrush, 320*4
+dw GoldBrush, 320
+dw TriggerActBrush, 320*3
 
 IndieTopBrush:
 db 0x7, 0x1
@@ -690,17 +654,6 @@ dw 0011000010101100b
 dw 0000100001101000b
 dw 0000010001010100b
 dw 0000110101010000b
-
-ArtifactBrush:
-db 0x8, 0x9
-dw 0011001110001100b
-dw 0000011111010000b
-dw 0011110101111000b
-dw 0000011111010000b
-dw 0011001110001100b
-dw 0000001110000000b
-dw 0000111110100000b
-dw 0011111010101000b
 
 OceanBrush:
 db 0x8, 0x3
@@ -764,20 +717,20 @@ dw 0101101010101010b
 dw 0001010101010101b
 
 TriggerBrush:
-db 0x6, 0x0
+db 0x5, 0xb
 dw 0011111111111100b
-dw 1111111111111111b
-dw 1111111111111111b
-dw 1010111111111010b
+dw 1110101010101011b
+dw 1010101010101010b
 dw 0110101010101001b
 dw 0001010101010100b
 
 TriggerActBrush:
-db 0x4, 0x0
+db 0x5, 0xc
+dw 0001010101010100b
+dw 0110101010101001b
+dw 1010101010101010b
+dw 1110101010101011b
 dw 0011111111111100b
-dw 1111111111111111b
-dw 1111111111111111b
-dw 1010111111111010b
 
 RockBrush:
 db 0x8, 0xa
@@ -789,6 +742,15 @@ dw 1011111010111001b
 dw 0111111011111101b
 dw 0101111110110101b
 dw 0001010101010100b
+
+GoldBrush:
+db 0x6, 0xd
+dw 0000111111000000b
+dw 0000111011000000b
+dw 0011101110010000b
+dw 0011101110010000b
+dw 0011101010010000b
+dw 0000111001000000b
 
 
 ; TERRAIN TILES
@@ -1041,7 +1003,7 @@ db 2
 dw 0x0e16
 db 5
 dw 0x0e17
-db 2
+db 5
 dw 0x0f17
 
 
