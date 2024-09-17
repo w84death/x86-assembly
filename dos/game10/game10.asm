@@ -27,6 +27,12 @@ _PLAYER_ENTITY_ID_ equ 0x7000
 _REQUEST_POSITION_ equ 0x7002
 _ENTITIES_ equ 0x7010
 
+_ID_ equ 0
+_POS_ equ 1
+_BRUSH_ equ 3
+_MIRROR_ equ 5
+_STATE_ equ 6
+
 ; =========================================== MAGIC NUMBERS ====================
 
 BEEPER_ENABLED equ 0x01
@@ -71,10 +77,10 @@ spawn_entities:
 
   mov cx, [EntityCount]
   .next_entitie:
-    mov ax, [si+1]         ; Get position
-    mov [di+1], ax         ; Save position
+    mov ax, [si+_POS_]         ; Get position
+    mov [di+_POS_], ax         ; Save position
 
-    mov byte [di+4], 0x0        ;  Save mirror (none)
+    mov byte [di+_MIRROR_], 0x0       ;  Save mirror (none)
 
     mov byte al, [si]           ; Get sprite id
     dec al                    ; Convert to engine numbering from level editor
@@ -83,12 +89,12 @@ spawn_entities:
     shl al, 2               ; Shift to ref (id*2 bytes)
     add bl, al                  ; Add sprite id to the offset index
     mov ax, [bx]              ; Get sprite data offset
-    mov [di+3], ax       ; Save sprite data offset
+    mov [di+_BRUSH_], ax       ; Save sprite data offset
 
-    mov byte [di+5], 0x01   ; Save basic state
+    mov byte [di+_STATE_], 0x01   ; Save basic state
 
   add si, 0x03            ; Move to the next entity in code
-  add di, 0x06            ; Move to the next entity in memory
+  add di, 0x07            ; Move to the next entity in memory
 loop .next_entitie
 
 mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
@@ -266,14 +272,14 @@ sort_entities:
     .inner_loop:
       push cx
       mov bx, [si+1]  ; Get Y of current entity
-      mov dx, [si+7]  ; Get Y of next entity
+      mov dx, [si+8]  ; Get Y of next entity
 
       cmp bh, dh      ; Compare Y values
       jle .no_swap
 
 
         mov di, si
-        add di, 6
+        add di, 7
 
         mov ax, [_PLAYER_ENTITY_ID_]
         cmp ax, si
@@ -286,7 +292,7 @@ sort_entities:
           mov [_PLAYER_ENTITY_ID_], si
         .swap_entities:
 
-        mov cx, 6       ; 6 bytes per entity, so we move 3 words
+        mov cx, 7       ; 6 bytes per entity, so we move 3 words
         .swap_loop:
           mov al, [si]
           xchg al, [di]
@@ -294,10 +300,10 @@ sort_entities:
           inc si
           inc di
           loop .swap_loop
-        sub si, 6       ; Reset SI to start of current entity
+        sub si, 7       ; Reset SI to start of current entity
 
       .no_swap:
-      add si, 6       ; Move to next entity
+      add si, 7       ; Move to next entity
       pop cx
       loop .inner_loop
 
@@ -314,10 +320,16 @@ draw_entities:
     push cx
     push si
 
-    cmp byte [si+5], 0x0
+_ID_ equ 0
+_POS_ equ 1
+_BRUSH_ equ 3
+_MIRROR_ equ 5
+_STATE_ equ 6
+
+    cmp byte [si+_STATE_], 0x0
     jz .skip_entity
 
-    mov cx, [si+1]
+    mov cx, [si+_POS_]
     call conv_pos2mem       ; Convert position to memory
 
     mov byte al, [si]       ; Get brush id in AL
@@ -328,8 +340,8 @@ draw_entities:
     movzx bx, al            ; Get address to BX
     add di, [BrushRefs + bx]  ; Get shift and apply to destination position
 
-    mov dl, [si+4] ; Get sprite mirror flag
-    mov bx, [si+3] ; Get sprite data offset
+    mov dl, [si+_MIRROR_]   ; Get brush mirror flag
+    mov bx, [si+_BRUSH_]    ; Get brush data address
     mov si, bx
     call draw_sprite
 
@@ -364,15 +376,17 @@ draw_entities:
       and ax, 0x8
       cmp ax, 0x4
       jl .skip_gold_draw
+      xor dx, dx
       mov si, GoldBrush
       call draw_sprite
     .skip_gold_draw:
 
     .skip_entity:
     pop si
-    add si, 0x6
+    add si, 0x7
     pop cx
-  loop .next
+    dec cx
+  jg .next
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 
