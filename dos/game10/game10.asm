@@ -177,20 +177,20 @@ draw_level:
     shl ax, 0x2           ; ID*4 Move to position; 4 bytes per tile
     add si, ax            ; Meta-tile address
     
-    mov ax, 0x0123        ; Default order: 0, 1, 2, 3
+    mov dx, 0x0123        ; Default order: 0, 1, 2, 3
     test bl, 2           ; Mirror Y?
     jz .check_x
-    xchg ah, al          ; Order: 2, 3, 0, 1
+    rol dx, 8            ; Rotate to get 0x2301
     .check_x:
         test bl, 1           ; Mirror X?
         jz .push_tiles
-        xchg ah, al          ; Order: 3, 2, 1, 0
-        rol ax, 8            ; Order: 1, 0, 3, 2
+        xchg dh, dl          ; Order: 3, 2, 1, 0
+        rol dx, 4            ; Order: 1, 0, 3, 2
     .push_tiles:
         mov cx, 4            ; 4 tiles to push
     .next_tile_push:
-        push ax              ; Push the tile ID
-        ror ax, 4            ; Rotate to get the next tile ID in AL
+        push dx              ; Push the tile ID
+        ror dx, 4            ; Rotate to get the next tile ID in AL
         loop .next_tile_push
     
     mov cx, 0x4           ; 2x2 tiles
@@ -202,12 +202,12 @@ draw_level:
       mov byte al, [si]   ; Read meta-tile with order
       pop si
       mov bh, al
-      shr bh, 0x4
-      and bh, 0x2         ; Tile mirror - BH
+      shr bh, 4            ; Extract the upper 4 bits
+      and bh, 3            ; Mask to get the mirror flags (both X and Y)
 
-      xor bl, bh          ; invert original tile mirror by meta-tile mirror
+      xor bh, bl          ; invert original tile mirror by meta-tile mirror
       mov dl, bh          ; set final mirror for tile
-
+      
       and ax, 0xf         ; First nibble
       dec ax              ; We do not have tile 0, shifting values
      imul ax, 18          ; Move to position
