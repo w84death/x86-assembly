@@ -185,7 +185,8 @@ draw_level:
         test bl, 1           ; Mirror X?
         jz .push_tiles
         xchg dh, dl          ; Order: 3, 2, 1, 0
-        rol dx, 4            ; Order: 1, 0, 3, 2
+        rol dx, 8            ; Order: 1, 0, 3, 2
+
     .push_tiles:
         mov cx, 4            ; 4 tiles to push
     .next_tile_push:
