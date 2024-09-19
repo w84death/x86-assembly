@@ -141,7 +141,6 @@ draw_ocean:
        
     add di, 320*7
     pop cx
-
   loop .ll
 
   mov ax, [GameTick]
@@ -150,14 +149,7 @@ draw_ocean:
   jnz skip_anim
     mov si, PaletteSets
     add si, 3*4
-    mov al, [si]
-    mov ah, [si+1]
-    mov [si], ah
-    mov ah, [si+2]
-    mov [si+1], ah
-    mov ah, [si+3]
-    mov [si+2], ah
-    mov [si+3], al
+    rol dword [si], 8
   skip_anim:
 
 ; =========================================== DRAWING LEVEL ====================
@@ -184,51 +176,36 @@ draw_level:
     mov si, MetaTiles
     shl ax, 0x2           ; ID*4 Move to position; 4 bytes per tile
     add si, ax            ; Meta-tile address
-
-    test bl, 1            ; Mirror X?
-    jnz .no_mirror_x
-      jmp .mirror_x
-    .no_mirror_x:
-    test bl, 2            ; Mirror Y?
-    jnz .no_mirror_xy
-      push 2              ; Mirror just Y
-      push 3
-      push 0
-      push 1
-      jmp .done_mirroring
-    .no_mirror_xy:
-      push 0              ; No mirroring
-      push 1
-      push 2
-      push 3
-      jmp .done_mirroring
-    .mirror_x:
-    test bl, 2
-    jz .mirror_xy
-      push 1            ; Mirror just X
-      push 0
-      push 3
-      push 2
-      jmp .done_mirroring
-    .mirror_xy:
-      push 3            ; Mirror both X and Y
-      push 2
-      push 1
-      push 0
-    .done_mirroring:
-
+    
+    mov ax, 0x0123        ; Default order: 0, 1, 2, 3
+    test bl, 2           ; Mirror Y?
+    jz .check_x
+    xchg ah, al          ; Order: 2, 3, 0, 1
+    .check_x:
+        test bl, 1           ; Mirror X?
+        jz .push_tiles
+        xchg ah, al          ; Order: 3, 2, 1, 0
+        rol ax, 8            ; Order: 1, 0, 3, 2
+    .push_tiles:
+        mov cx, 4            ; 4 tiles to push
+    .next_tile_push:
+        push ax              ; Push the tile ID
+        ror ax, 4            ; Rotate to get the next tile ID in AL
+        loop .next_tile_push
+    
     mov cx, 0x4           ; 2x2 tiles
     .next_tile:
       pop dx              ; Get tile order
+      and dx, 0x7
       push si
       add si, dx
       mov byte al, [si]   ; Read meta-tile with order
       pop si
       mov bh, al
       shr bh, 0x4
-      and bh, 0x3         ; Tile mirror - BH
+      and bh, 0x2         ; Tile mirror - BH
 
-      xor bh, bl          ; invert original tile mirror by meta-tile mirror
+      xor bl, bh          ; invert original tile mirror by meta-tile mirror
       mov dl, bh          ; set final mirror for tile
 
       and ax, 0xf         ; First nibble
@@ -602,6 +579,7 @@ draw_sprite:
 ; AX - source
 ; CL - number of bits to convert
 ; Return: BX
+
 get_bits_from_word:
     xor bx, bx          ; Clear BX
     .rotate_loop:
@@ -812,6 +790,8 @@ dw 0000000100000000b
 
 
 ; =========================================== TERRAIN TILES DATA ===============
+; 8x8 tiles for terrain
+; Data: number of lines, palettDefaulte id, lines (8 pixels) of palette color id
 
 TerrainTiles:
 db 0x8, 0x05          ; 0x1 Shore left bank
@@ -895,10 +875,8 @@ dw 0110111111111010b
 dw 0001101010101010b
 
 ; =========================================== META-TILES DECLARATION ===========
-; nibble - tile id
-; 1 bit - X mirror
-; 1 bit - Y mirror
-; 2 bit - unused
+; 4x4 meta-tiles for level
+; Data: 4x4 tiles id
 
 MetaTiles:
 db 00000000b, 00000000b, 00000000b, 00000000b
@@ -919,9 +897,9 @@ db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
 
 ; =========================================== LEVEL DATA =======================
-; 1 bit - X mirror
-; 1 bit - Y mirror
-; 2 bits - unused 
+; 16x16 level data
+; Data: 4x4 meta-tiles id
+; First nibble is meta-tile id, next 2 bits ar nibbles XY mirroring
 
 LevelData:
 db 00000000b, 00000011b, 00000001b, 00010001b
