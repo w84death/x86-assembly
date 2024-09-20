@@ -180,13 +180,13 @@ draw_level:
     mov dx, 0x0123        ; Default order: 0, 1, 2, 3
     test bl, 2           ; Mirror Y?
     jz .check_x
-    rol dx, 8            ; Rotate to get 0x2301
+    xchg dh, dl          ; Order: 2, 3, 0, 1
     .check_x:
         test bl, 1           ; Mirror X?
         jz .push_tiles
-        xchg dh, dl          ; Order: 3, 2, 1, 0
+        xchg dh, dl          ; Order: 2, 3, 0, 1
         rol dx, 8            ; Order: 1, 0, 3, 2
-
+    
     .push_tiles:
         mov cx, 4            ; 4 tiles to push
     .next_tile_push:
