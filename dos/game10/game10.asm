@@ -177,23 +177,24 @@ draw_level:
     shl ax, 0x2           ; ID*4 Move to position; 4 bytes per tile
     add si, ax            ; Meta-tile address
     
-    mov dx, 0x0123        ; Default order: 0, 1, 2, 3
-    test bl, 2           ; Mirror Y?
-    jz .check_x
-    xchg dh, dl          ; Order: 2, 3, 0, 1
+    mov     dx, 0x0123       ; Default order: 0, 1, 2, 3
     .check_x:
-        test bl, 1           ; Mirror X?
-        jz .push_tiles
-        xchg dh, dl          ; Order: 2, 3, 0, 1
-        rol dx, 8            ; Order: 1, 0, 3, 2
-    
+      test    bl, 2
+      jz      .check_x
+      xchg    dh, dl           ; Swap top and bottom rows (Order: 2, 3, 0, 1)
+    .check_x:
+      test    bl, 1
+      jz      .push_tiles
+      ror     dh, 4            ; Swap nibbles in dh (tiles in positions 0 and 1)
+      ror     dl, 4            ; Swap nibbles in dl (tiles in positions 2 and 3)
+
     .push_tiles:
-        mov cx, 4            ; 4 tiles to push
+        mov     cx, 4            ; 4 tiles to push
     .next_tile_push:
-        push dx              ; Push the tile ID
-        ror dx, 4            ; Rotate to get the next tile ID in AL
-        loop .next_tile_push
-    
+        push    dx               ; Push the tile ID
+        ror     dx, 4            ; Rotate dx to get the next tile ID in place
+        loop    .next_tile_push
+
     mov cx, 0x4           ; 2x2 tiles
     .next_tile:
       pop dx              ; Get tile order

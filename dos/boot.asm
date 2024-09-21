@@ -3,6 +3,7 @@
 ;
 ; Description:
 ;   16-bit real mode bootloader for the floppy disk.
+;   Loads 4 sectors from the disk to the memory and jumps to the loaded code.
 ;
 ; Size category: 512 bytes
 ;
