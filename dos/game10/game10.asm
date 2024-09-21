@@ -117,7 +117,7 @@ check_keyboard:
   jz .no_key_press           ; Jump if Zero Flag is set (no key pressed)
 
   mov si, [_PLAYER_ENTITY_ID_]
-  mov cx, [si+1]   ; Load player position into CX (Y in CH, X in CL)
+  mov cx, [si+_POS_]   ; Load player position into CX (Y in CH, X in CL)
 
   mov ah, 00h         ; BIOS keyboard read function
   int 16h             ; Call BIOS interrupt
@@ -143,14 +143,14 @@ check_keyboard:
   cmp ah, 4Bh         ; Compare scan code with left arrow
   jne .check_right
     dec cl
-    mov byte [si+3], 0x01
+    mov byte [si+_MIRROR_], 0x01
     jmp .check_move
 
   .check_right:
   cmp ah, 4Dh         ; Compare scan code with right arrow
   jne .no_key
     inc cl
-    mov byte [si+3], 0x00
+    mov byte [si+_MIRROR_], 0x00
     ;jmp .check_move
 
   .check_move:
@@ -171,7 +171,7 @@ check_keyboard:
     add bl, ah
     call beep
   .no_key_press:
-  
+
 ; =========================================== DRAW BACKGROUND ==================
 
 draw_bg:
@@ -474,6 +474,7 @@ wait_for_vsync:
 ; =========================================== GAME TICK ========================
 
 inc word [GameTick]
+call no_beep
 
 ; =========================================== ESC OR LOOP ======================
 
