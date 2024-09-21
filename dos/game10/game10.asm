@@ -29,9 +29,9 @@ _ENTITIES_ equ 0x7010
 
 _ID_ equ 0
 _POS_ equ 1
-_BRUSH_ equ 3
-_MIRROR_ equ 5
-_STATE_ equ 6
+_MIRROR_ equ 3
+_STATE_ equ 4
+
 
 ; =========================================== MAGIC NUMBERS ====================
 
@@ -41,6 +41,8 @@ LEVEL_START_POSITION equ 320*68+32
 SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3636
+
+ENTITY_SIZE  equ 6
 
 ID_PLAYER equ 0 
 ID_PALM equ 1
@@ -85,16 +87,11 @@ spawn_entities:
     mov byte al, [si]           ; Get sprite id
     dec al                    ; Convert to engine numbering from level editor
     mov byte [di], al             ; Save sprite id
-    mov bx, BrushRefs        ; Get sprite data offset table
-    shl al, 2               ; Shift to ref (id*2 bytes)
-    add bl, al                  ; Add sprite id to the offset index
-    mov ax, [bx]              ; Get sprite data offset
-    mov [di+_BRUSH_], ax       ; Save sprite data offset
 
     mov byte [di+_STATE_], 0x01   ; Save basic state
 
   add si, 0x03            ; Move to the next entity in code
-  add di, 0x07            ; Move to the next entity in memory
+  add di, ENTITY_SIZE            ; Move to the next entity in memory
 loop .next_entitie
 
 mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
@@ -261,14 +258,14 @@ sort_entities:
     .inner_loop:
       push cx
       mov bx, [si+1]  ; Get Y of current entity
-      mov dx, [si+8]  ; Get Y of next entity
+      mov dx, [si+ENTITY_SIZE+1]  ; Get Y of next entity
 
       cmp bh, dh      ; Compare Y values
       jle .no_swap
 
 
         mov di, si
-        add di, 7
+        add di, ENTITY_SIZE
 
         mov ax, [_PLAYER_ENTITY_ID_]
         cmp ax, si
@@ -281,7 +278,7 @@ sort_entities:
           mov [_PLAYER_ENTITY_ID_], si
         .swap_entities:
 
-        mov cx, 7       ; 6 bytes per entity, so we move 3 words
+        mov cx, ENTITY_SIZE       ; 6 bytes per entity, so we move 3 words
         .swap_loop:
           mov al, [si]
           xchg al, [di]
@@ -289,10 +286,10 @@ sort_entities:
           inc si
           inc di
           loop .swap_loop
-        sub si, 7       ; Reset SI to start of current entity
+        sub si, ENTITY_SIZE       ; Reset SI to start of current entity
 
       .no_swap:
-      add si, 7       ; Move to next entity
+      add si, ENTITY_SIZE       ; Move to next entity
       pop cx
       loop .inner_loop
 
@@ -309,12 +306,6 @@ draw_entities:
     push cx
     push si
 
-_ID_ equ 0
-_POS_ equ 1
-_BRUSH_ equ 3
-_MIRROR_ equ 5
-_STATE_ equ 6
-
     cmp byte [si+_STATE_], 0x0
     jz .skip_entity
 
@@ -323,18 +314,19 @@ _STATE_ equ 6
 
     mov byte al, [si]       ; Get brush id in AL
     mov ah, al              ; Save a copy in AH
+    shl al, 2   
     mov bx, BrushRefs       ; Get brush data offset table
-    shl al, 2               ; Shift to ref (id*2 bytes)
+    add bl, al              ; Shift to ref (id*2 bytes)
+    mov si, [bx]            ; Get shift and apply to destination position
+
     add al, 2               ; offest is at next byte (+2)
     movzx bx, al            ; Get address to BX
     add di, [BrushRefs + bx]  ; Get shift and apply to destination position
-
-    mov dl, [si+_MIRROR_]   ; Get brush mirror flag
-    mov bx, [si+_BRUSH_]    ; Get brush data address
-    mov si, bx
+    
+    mov bl, [si+_MIRROR_]     ; Get brush mirror flag
     call draw_sprite
 
-    cmp ah, ID_PLAYER       ; Test (copy) id for player
+    cmp ah, ID_PLAYER 
     jnz .skip_player_draw
       mov si, IndieBottomBrush
       add di, 320*7
@@ -372,7 +364,7 @@ _STATE_ equ 6
 
     .skip_entity:
     pop si
-    add si, 0x7
+    add si, ENTITY_SIZE
     pop cx
     dec cx
   jg .next
