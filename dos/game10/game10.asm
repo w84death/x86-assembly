@@ -227,7 +227,6 @@ draw_level:
         add di, 320*8-16  ; Word wrap
       .skip_set_new_line:
       
-      ;inc si
     loop .next_tile
     sub di, 320*8
     .skip_meta_tile:
@@ -634,15 +633,16 @@ db 0x00, 0x46, 0x5a, 0x5c   ; 0x5 Terrain 1 - shore
 db 0x47, 0x46, 0x45, 0x54   ; 0x6 Terrain 2 - in  land
 db 0x00, 0x06, 0x77, 0x2e   ; 0x7 Palm
 db 0x00, 0x27, 0x2a, 0x2b   ; 0x8 Snake
-db 0x00, 0x26, 0x43, 0x44   ; 0x9 Artifact
+db 0x00, 0x26, 0x43, 0x44   ; 0x9 Gold Coin
 db 0x00, 0x15, 0x19, 0x1a   ; 0xa Rock
 db 0x00, 0x76, 0x1c, 0x1d   ; 0xb Trigger off
 db 0x00, 0x76, 0x18, 0x5c   ; 0xc Trigger Act
 db 0x00, 0x2b, 0x2c, 0x5b   ; 0xd Gold
 
-; =========================================== BRUSHES DATA =====================
-; Set of 8xY brushes for entities
-; Data: number of lines, palettDefaulte id, lines (8 pixels) of palette color id
+
+; =========================================== BRUSH REFERENCES =================
+; Brush data offset table
+; Data: offset to brush data, Y shift
 
 BrushRefs:
 dw IndieTopBrush, -320*6  ; 1
@@ -655,6 +655,10 @@ dw ShipMiddleBrush, 0     ; 7
 dw Gold2Brush, 320        ; 8
 dw GoldBrush, 320         ; 9
 dw TriggerActBrush, 320*3 ; 10
+
+; =========================================== BRUSHES DATA =====================
+; Set of 8xY brushes for entities
+; Data: number of lines, palettDefaulte id, lines (8 pixels) of palette color id
 
 IndieTopBrush:
 db 0x7, 0x1
@@ -940,9 +944,13 @@ db 00110011b, 00000000b, 00000000b, 00000000b
 ; =========================================== ENTITIES DATA ====================
 
 EntityCount:
-dw 0x41
+dw 0x40
 
 EntityData:
+db 1
+dw 0x0404
+db 1
+dw 0x0d07
 db 2
 dw 0x0008
 db 2
@@ -955,22 +963,10 @@ db 2
 dw 0x0013
 db 2
 dw 0x0014
-db 4
-dw 0x001e
-db 2
-dw 0x0105
-db 4
-dw 0x0107
-db 5
-dw 0x010a
-db 3
-dw 0x010c
 db 2
 dw 0x0113
 db 2
 dw 0x0114
-db 3
-dw 0x0117
 db 2
 dw 0x0204
 db 2
@@ -1003,32 +999,16 @@ db 2
 dw 0x0316
 db 2
 dw 0x031e
-db 1
-dw 0x0404
-db 2
-dw 0x0409
-db 6
-dw 0x0410
 db 2
 dw 0x041d
-db 5
-dw 0x041e
-db 7
-dw 0x0502
-db 6
-dw 0x0510
 db 2
 dw 0x0606
-db 4
-dw 0x060d
 db 2
 dw 0x0706
 db 2
 dw 0x070b
 db 2
 dw 0x0713
-db 3
-dw 0x071b
 db 2
 dw 0x071d
 db 2
@@ -1045,8 +1025,6 @@ db 2
 dw 0x0813
 db 2
 dw 0x081d
-db 8
-dw 0x081e
 db 2
 dw 0x081f
 db 2
@@ -1058,21 +1036,45 @@ dw 0x090a
 db 2
 dw 0x0917
 db 2
-dw 0x0d07
+dw 0x0e08
+db 2
+dw 0x0f17
+db 3
+dw 0x010c
+db 3
+dw 0x0117
+db 3
+dw 0x071b
+db 4
+dw 0x001e
+db 4
+dw 0x0107
+db 4
+dw 0x060d
 db 4
 dw 0x0d0a
 db 4
 dw 0x0d13
 db 5
-dw 0x0e07
-db 2
-dw 0x0e08
-db 2
+dw 0x010a
+db 5
+dw 0x041e
+db 5
 dw 0x0e16
 db 5
 dw 0x0e17
-db 2
-dw 0x0f17
+db 5
+dw 0x0e07
+db 6
+dw 0x0410
+db 6
+dw 0x0510
+db 7
+dw 0x0502
+db 8
+dw 0x081e
+db 8
+dw 0x081e
 
 ; =========================================== THE END ====================
 ; Thanks for reading the source code!
