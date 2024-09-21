@@ -11,6 +11,8 @@
 ; Web: smol.p1x.in/assembly/#dinopix
 ; License: MIT
 
+; TODO: add flag for bg color attribute for different floppies colors
+
 org 0x7C00
 use16 
 

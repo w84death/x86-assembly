@@ -13,7 +13,7 @@
 ; Size category: <2KB
 ;
 ; Author: Krzysztof Krystian Jankowski
-; Web: smol.p1x.in/assembly/#dinopix
+; Web: smol.p1x.in/assembly/#forgotten-isles
 ; License: MIT
 
 org 0x100
@@ -107,6 +107,71 @@ game_loop:
   xor di, di
   xor si, si
 
+
+
+
+; =========================================== KEYBOARD INPUT ==================
+check_keyboard:
+  mov ah, 01h         ; BIOS keyboard status function
+  int 16h             ; Call BIOS interrupt
+  jz .no_key_press           ; Jump if Zero Flag is set (no key pressed)
+
+  mov si, [_PLAYER_ENTITY_ID_]
+  mov cx, [si+1]   ; Load player position into CX (Y in CH, X in CL)
+
+  mov ah, 00h         ; BIOS keyboard read function
+  int 16h             ; Call BIOS interrupt
+
+  .check_enter:
+  cmp ah, 1ch         ; Compare scan code with enter
+  jne .check_up
+    jmp restart_game
+
+  .check_up:
+  cmp ah, 48h         ; Compare scan code with up arrow
+  jne .check_down
+    dec ch
+    jmp .check_move
+
+  .check_down:
+  cmp ah, 50h         ; Compare scan code with down arrow
+  jne .check_left
+    inc ch
+    jmp .check_move
+
+  .check_left:
+  cmp ah, 4Bh         ; Compare scan code with left arrow
+  jne .check_right
+    dec cl
+    mov byte [si+3], 0x01
+    jmp .check_move
+
+  .check_right:
+  cmp ah, 4Dh         ; Compare scan code with right arrow
+  jne .no_key
+    inc cl
+    mov byte [si+3], 0x00
+    ;jmp .check_move
+
+  .check_move:
+  call check_friends
+  jz .collision
+  call check_water_tile
+  jz .collision
+  call check_bounds
+  jz .collision
+
+  mov word [si+1], cx
+
+  .collision:
+  mov word [_REQUEST_POSITION_], cx
+
+  .no_key:
+    mov bx, BEEPER_FREQ
+    add bl, ah
+    call beep
+  .no_key_press:
+  
 ; =========================================== DRAW BACKGROUND ==================
 
 draw_bg:
@@ -373,6 +438,7 @@ draw_entities:
     dec cx
   jg .next
 
+
 ; =========================================== VGA BLIT PROCEDURE ===============
 
 vga_blit:
@@ -390,7 +456,6 @@ vga_blit:
 
     pop ds
     pop es
-
 
 ; =========================================== V-SYNC ======================
 
@@ -480,6 +545,60 @@ check_bounds:
   cmp ax, 0x0
   ret
 
+; =========================================== CHECK FRIEDS =====================
+; Expects: CX - Position YY/XX
+; Return: AX - Zero if hit bound, 1 if no bunds at this location
+check_friends:
+  push si
+  push cx
+  xor bx, bx
+  mov ax, cx
+
+  mov cx, [EntityCount]
+  mov si, _ENTITIES_
+  .next_entity:
+    cmp word [si+_POS_], ax
+    jnz .different
+    inc bx
+    .different:
+    add si, 0x6
+  loop .next_entity
+
+  pop cx
+  pop si
+  cmp bx,0x1
+  jnz .no_friend
+  mov ax, 0x0
+ret
+  .no_friend:
+  mov ax, 0x1
+ret
+
+; =========================================== CHECK WATER TILE ================
+; Expects: CX - Player position (CH: Y 0-15, CL: X 0-31)
+; Returns: AL - 1 if water (0xF), 0 otherwise
+check_water_tile:
+    push cx
+
+    ; mov ax, cx
+    ; shl ah, 2       ; Y * 4
+    ; mov bl, ah      ; add shift to target position
+    ; cmp al, 0x0f    ; check if X is > 15
+    ; jle .no_shift   ; if not, skip
+    ;   sub al, 0x10    ; if yes, subtract 16 from X
+    ;   add bx, 0x2     ; add 2 to target position
+    ; .no_shift:
+    ; mov dx, [LevelData + bx] ; get target data
+    ; shr al, 0x2     ; X / 4
+    ; inc al
+    ; shl al, 0x2       ; cl * 4
+    ; mov cl, al      ; move X / 4 to cl
+    ; rol dx, cl      ; rotate left by cl
+    ; and dl, 0x0F    ; Check last nibble
+    ; cmp dl, 0x0F    ; Check if it's water (0xF)
+
+    pop cx
+    ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
 ; Expects:
