@@ -32,7 +32,6 @@ _POS_ equ 1
 _MIRROR_ equ 3
 _STATE_ equ 4
 
-
 ; =========================================== MAGIC NUMBERS ====================
 
 BEEPER_ENABLED equ 0x01
@@ -77,22 +76,28 @@ spawn_entities:
   mov si, EntityData
   mov di, _ENTITIES_
 
-  mov cx, [EntityCount]
   .next_entitie:
-    mov ax, [si+_POS_]         ; Get position
-    mov [di+_POS_], ax         ; Save position
+    mov bl, [si]
+    cmp bl, 0x0
+    jz .done
 
-    mov byte [di+_MIRROR_], 0x0       ;  Save mirror (none)
+    dec bl            ; Conv level id to game id
+    inc si
+    mov al, [si]
+    inc si
+    mov cl, al
+    .next_in_group:
+      mov byte [di], bl           ; Save sprite id
+      mov ax, [si]          ; Get position
+      mov [di+_POS_], ax          ; Save position
+      mov byte [di+_MIRROR_], 0x0 ;  Save mirror (none)
+      mov byte [di+_STATE_], 0x01 ; Save basic state
 
-    mov byte al, [si]           ; Get sprite id
-    dec al                    ; Convert to engine numbering from level editor
-    mov byte [di], al             ; Save sprite id
-
-    mov byte [di+_STATE_], 0x01   ; Save basic state
-
-  add si, 0x03            ; Move to the next entity in code
-  add di, ENTITY_SIZE            ; Move to the next entity in memory
-loop .next_entitie
+      add si, 0x02                  ; Move to the next entity in code
+      add di, ENTITY_SIZE           ; Move to the next entity in memory
+    loop .next_in_group
+  jmp .next_entitie
+  .done:
 
 mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
 
@@ -262,7 +267,6 @@ sort_entities:
 
       cmp bh, dh      ; Compare Y values
       jle .no_swap
-
 
         mov di, si
         add di, ENTITY_SIZE
@@ -936,137 +940,88 @@ db 00110011b, 00000000b, 00000000b, 00000000b
 ; =========================================== ENTITIES DATA ====================
 
 EntityCount:
-dw 0x40
+dw 0x0045
 
 EntityData:
-db 1
-dw 0x0404
-db 1
-dw 0x0d07
-db 2
+db 1, 1
+dw 0x0306
+db 2, 52
 dw 0x0008
-db 2
 dw 0x000a
-db 2
 dw 0x000d
-db 2
 dw 0x000e
-db 2
 dw 0x0013
-db 2
 dw 0x0014
-db 2
+dw 0x0105
 dw 0x0113
-db 2
 dw 0x0114
-db 2
-dw 0x0204
-db 2
 dw 0x0206
-db 2
 dw 0x0209
-db 2
 dw 0x020c
-db 2
 dw 0x0212
-db 2
 dw 0x0213
-db 2
 dw 0x0215
-db 2
+dw 0x0305
+dw 0x0307
 dw 0x0308
-db 2
 dw 0x0309
-db 2
 dw 0x030a
-db 2
 dw 0x030b
-db 2
 dw 0x030c
-db 2
 dw 0x0312
-db 2
 dw 0x0313
-db 2
 dw 0x0316
-db 2
 dw 0x031e
-db 2
+dw 0x0409
 dw 0x041d
-db 2
 dw 0x0606
-db 2
+dw 0x060e
+dw 0x0704
 dw 0x0706
-db 2
 dw 0x070b
-db 2
 dw 0x0713
-db 2
 dw 0x071d
-db 2
 dw 0x071e
-db 2
 dw 0x071f
-db 2
+dw 0x0804
 dw 0x0807
-db 2
 dw 0x080a
-db 2
 dw 0x080b
-db 2
 dw 0x0813
-db 2
 dw 0x081d
-db 2
 dw 0x081f
-db 2
 dw 0x0906
-db 2
 dw 0x0907
-db 2
 dw 0x090a
-db 2
 dw 0x0917
-db 2
+dw 0x0d07
 dw 0x0e08
-db 2
-dw 0x0f17
-db 3
-dw 0x010c
-db 3
-dw 0x0117
-db 3
-dw 0x071b
-db 4
-dw 0x001e
-db 4
-dw 0x0107
-db 4
-dw 0x060d
-db 4
-dw 0x0d0a
-db 4
-dw 0x0d13
-db 5
-dw 0x010a
-db 5
-dw 0x041e
-db 5
 dw 0x0e16
-db 5
-dw 0x0e17
-db 5
+dw 0x0f17
+db 3, 3
+dw 0x010c
+dw 0x0117
+dw 0x071b
+db 4, 5
+dw 0x001e
+dw 0x0107
+dw 0x060d
+dw 0x0d0a
+dw 0x0d13
+db 5, 4
+dw 0x010a
+dw 0x041e
 dw 0x0e07
-db 6
+dw 0x0e17
+db 6, 2
 dw 0x0410
-db 6
 dw 0x0510
-db 7
+db 7, 1
 dw 0x0502
-db 8
+db 8, 1
 dw 0x081e
-db 8
-dw 0x081e
+
+db 0x0 ; End
 
 ; =========================================== THE END ====================
 ; Thanks for reading the source code!
