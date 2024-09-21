@@ -11,7 +11,6 @@ fi
 
 filename=$1
 
-
 if [ $# -eq 2 ]; then
     dd if=/dev/zero of=floppy.img bs=1474560 count=1
     
@@ -24,6 +23,10 @@ if [ $# -eq 2 ]; then
         echo "Failed to assemble ${filename}/${filename}.asm"
         exit 1
     fi
+
+    echo "=========================="
+    echo "GAME CODE SIZE: $(stat -c %s game.bin) bytes"
+    echo "=========================="
 
     dd if=boot.bin of=floppy.img bs=512 count=1 conv=notrunc
     dd if=game.bin of=floppy.img bs=512 seek=1 conv=notrunc

@@ -178,7 +178,7 @@ draw_level:
     add si, ax            ; Meta-tile address
     
     mov     dx, 0x0123       ; Default order: 0, 1, 2, 3
-    .check_x:
+    .check_y:
       test    bl, 2
       jz      .check_x
       xchg    dh, dl           ; Swap top and bottom rows (Order: 2, 3, 0, 1)
