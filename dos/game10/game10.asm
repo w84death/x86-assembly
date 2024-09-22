@@ -36,6 +36,7 @@ _STATE_ equ 4 ; 1 bytes
 
 ENTITY_SIZE  equ 5
 BEEPER_FREQ equ 4800
+BEEPER_ALERT equ 2400
 LEVEL_START_POSITION equ 320*68+32
 SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
@@ -272,7 +273,7 @@ check_keyboard:
   .check_enter:
   cmp ah, 1ch         ; Compare scan code with enter
   jne .check_up
-    jmp restart_game
+    
 
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
@@ -311,10 +312,13 @@ check_keyboard:
   mov word [si+_POS_], cx
 
   .collision:
-  mov word [_REQUEST_POSITION_], cx
-
+    mov word [_REQUEST_POSITION_], cx
+    mov bx, BEEPER_ALERT
+    call beep
+    jmp .no_key_press
   .no_key:
-  ; sound beep
+    mov bx, BEEPER_FREQ
+    call beep
   .no_key_press:
 
 
@@ -548,6 +552,7 @@ wait_for_vsync:
 ; =========================================== GAME TICK ========================
 
 inc word [GameTick]
+call no_beep
 
 ; =========================================== ESC OR LOOP ======================
 
