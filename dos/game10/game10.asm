@@ -659,11 +659,11 @@ ret
 
 check_water_tile:
   mov ax, cx
-  shr ah, 1       
-  shr al, 1    
+  shr ah, 1       ; Y / 2
+  shr al, 1       ; X / 2
   movzx bx, ah
-  shl bx, 3
-  add bl, al
+  shl bx, 3       ; Y / 2 * 8
+  add bl, al      ; Y / 2 * 8 + X / 2
   add bx, LevelData
   mov al, [bx]    ; Read tile
   test al, 0x40   ; Check if movable
