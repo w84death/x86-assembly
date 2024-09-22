@@ -656,22 +656,17 @@ ret
 ; =========================================== CHECK WATER TILE ================
 ; Expects: CX - Player position (CH: Y 0-15, CL: X 0-31)
 ; Returns: AL - 0 if water (0xF), 1 otherwise
-check_water_tile:
-  mov ax, 0
-  ret
 
+check_water_tile:
   mov ax, cx
   shr ah, 1       
   shr al, 1    
   movzx bx, ah
   shl bx, 3
   add bl, al
-  push si
-  mov si, LevelData
-  add si, bx
-  mov al, [si]    ; Read tile
-  pop si
-  test al, 0x40
+  add bx, LevelData
+  mov al, [bx]    ; Read tile
+  test al, 0x40   ; Check if movable
   ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
@@ -1121,7 +1116,7 @@ db 00000000b, 00000000b, 00001100b, 00000000b
 db 00000000b, 00000000b, 01000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 01000011b
 db 00010001b, 00000001b, 01010011b, 00000000b
-db 01000011b, 00010001b, 01010001b, 00000001b
+db 01000011b, 00010001b, 01010001b, 01000001b
 db 01010011b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 01100011b
 db 01100001b, 01110001b, 01110011b, 00000000b
