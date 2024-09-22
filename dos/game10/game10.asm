@@ -35,8 +35,9 @@ _STATE_ equ 4 ; 1 bytes
 ; =========================================== MAGIC NUMBERS ====================
 
 ENTITY_SIZE  equ 5
-BEEPER_FREQ equ 4800
-BEEPER_ALERT equ 1400
+BEEPER_FREQ equ 4400
+BEEPER_ALERT equ 5500
+BEEP_GOLD equ 800
 LEVEL_START_POSITION equ 320*68+32
 SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
