@@ -2,12 +2,12 @@
 ; DOS VERSION
 ;
 ; Description:
-;   You are an intrepid explorer stranded on the Forgotten Isles, a chain of 
-;   islands shrouded in myth. These islands were once home to an advanced 
-;   civilization known for their ingenious engineering and mystical practices. 
-;   Scattered across the islands are pressure plates that, when activated, 
-;   reveal clues and alter the landscape by raising bridges or opening gates. 
-;   However, these plates require a sustained weight to remain activated, 
+;   You are an intrepid explorer stranded on the Forgotten Isles, a chain of
+;   islands shrouded in myth. These islands were once home to an advanced
+;   civilization known for their ingenious engineering and mystical practices.
+;   Scattered across the islands are pressure plates that, when activated,
+;   reveal clues and alter the landscape by raising bridges or opening gates.
+;   However, these plates require a sustained weight to remain activated,
 ;   necessitating the use of rocks to keep them pressed while you progress.
 ;
 ; Size category: <2KB
@@ -36,13 +36,13 @@ _STATE_ equ 4 ; 1 bytes
 
 ENTITY_SIZE  equ 5
 BEEPER_FREQ equ 4800
-BEEPER_ALERT equ 2400
+BEEPER_ALERT equ 1400
 LEVEL_START_POSITION equ 320*68+32
 SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3636
 
-ID_PLAYER equ 0 
+ID_PLAYER equ 0
 ID_PALM equ 1
 ID_SNAKE equ 2
 ID_ROCK equ 3
@@ -99,7 +99,7 @@ spawn_entities:
       mov [di+_POS_], ax          ; Save position
       mov byte [di+_MIRROR_], 0x0 ;  Save mirror (none)
       mov byte [di+_STATE_], STATE_IDLE ; Save basic state
-      cmp bl, ID_SNAKE  
+      cmp bl, ID_SNAKE
       jnz .skip_state
         mov byte [di+_STATE_], STATE_EXPLORING ; Save basic state
       .skip_state:
@@ -151,7 +151,7 @@ draw_ocean:
       call draw_sprite
       add di, 8
     loop .l
-       
+
     add di, 320*7
     pop cx
   loop .ll
@@ -181,15 +181,15 @@ draw_level:
     and bl, 0x3           ; Read XY mirroring - BL
 
     and ax, 0xf           ; Read first nibble - AX
-    jnz .not_empty 
+    jnz .not_empty
       add di, 16
       jmp .skip_meta_tile
     .not_empty:
-    
+
     mov si, MetaTiles
     shl ax, 0x2           ; ID*4 Move to position; 4 bytes per tile
     add si, ax            ; Meta-tile address
-    
+
     mov     dx, 0x0123       ; Default order: 0, 1, 2, 3
     .check_y:
       test    bl, 2
@@ -222,35 +222,35 @@ draw_level:
 
       xor bh, bl          ; invert original tile mirror by meta-tile mirror
       mov dl, bh          ; set final mirror for tile
-      
+
       and ax, 0xf         ; First nibble
       dec ax              ; We do not have tile 0, shifting values
      imul ax, 18          ; Move to position
-      
+
       push si
       mov si, TerrainTiles
       add si, ax
       call draw_sprite
       pop si
-    
+
       add di, 8
 
       cmp cx, 0x3
       jnz .skip_set_new_line
         add di, 320*8-16  ; Word wrap
       .skip_set_new_line:
-      
+
     loop .next_tile
     sub di, 320*8
     .skip_meta_tile:
-      
+
     pop si
     inc si
     pop cx
     inc cx
     test cx, 0xf
-    jnz .no_new_line 
-      add di, 320*16-(16*16)  ; Move to the next display line 
+    jnz .no_new_line
+      add di, 320*16-(16*16)  ; Move to the next display line
     .no_new_line:
 
     cmp cx, 0x80           ; 128 = 16*8
@@ -273,7 +273,7 @@ check_keyboard:
   .check_enter:
   cmp ah, 1ch         ; Compare scan code with enter
   jne .check_up
-    
+
 
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
@@ -310,12 +310,13 @@ check_keyboard:
   jz .collision
 
   mov word [si+_POS_], cx
-
+  jmp .no_col
   .collision:
     mov word [_REQUEST_POSITION_], cx
     mov bx, BEEPER_ALERT
     call beep
     jmp .no_key_press
+  .no_col:
   .no_key:
     mov bx, BEEPER_FREQ
     call beep
@@ -460,7 +461,7 @@ draw_entities:
 
     mov byte al, [si]       ; Get brush id in AL
     mov ah, al              ; Save a copy in AH
-    shl al, 2   
+    shl al, 2
     mov bx, BrushRefs       ; Get brush reference table
     add bl, al              ; Shift to ref (id*2 bytes)
     mov dx, [bx]            ; Get brush data address
@@ -473,7 +474,7 @@ draw_entities:
     pop si
     call draw_sprite
 
-    cmp ah, ID_PLAYER 
+    cmp ah, ID_PLAYER
     jnz .skip_player_draw
       mov si, IndieBottomBrush
       add di, 320*7
@@ -561,7 +562,7 @@ call no_beep
     jnz game_loop               ; If not zero, loop again
 
 ; =========================================== TERMINATE PROGRAM ================
-  
+
   exit:
     mov ax, 0x0003             ; Return to text mode
     int 0x10                   ; Video BIOS interrupt
@@ -838,16 +839,16 @@ db 0x00, 0x2b, 0x2c, 0x5b   ; 0xd Gold
 ; Data: offset to brush data, Y shift
 
 BrushRefs:
-dw IndieTopBrush, -320*6  
-dw PalmBrush, -320*10     
-dw SnakeBrush, -320*2     
-dw RockBrush, 0           
-dw TriggerBrush, 320      
-dw BridgeBrush, 0         
+dw IndieTopBrush, -320*6
+dw PalmBrush, -320*10
+dw SnakeBrush, -320*2
+dw RockBrush, 0
+dw TriggerBrush, 320
+dw BridgeBrush, 0
 dw ShipMiddleBrush, 0
-dw Gold2Brush, 320        
-dw GoldBrush, 320         
-dw TriggerActBrush, 320   
+dw Gold2Brush, 320
+dw GoldBrush, 320
+dw TriggerActBrush, 320
 
 ; =========================================== BRUSHES DATA =====================
 ; Set of 8xY brushes for entities
