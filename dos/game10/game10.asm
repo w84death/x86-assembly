@@ -459,12 +459,14 @@ draw_entities:
     shl al, 2   
     mov bx, BrushRefs       ; Get brush reference table
     add bl, al              ; Shift to ref (id*2 bytes)
-    mov si, [bx]            ; Get brush data address
+    mov dx, [bx]            ; Get brush data address
+    push dx
 
     add al, 2               ; offest is at next byte (+2)
     movzx bx, al            ; Get address to BX
     add di, [BrushRefs + bx]  ; Get shift and apply to destination position
-    ;mov dl, [si+_MIRROR_]     ; Get brush mirror flag
+    mov dl, [si+_MIRROR_]     ; Get brush mirror flag
+    pop si
     call draw_sprite
 
     cmp ah, ID_PLAYER 
@@ -831,16 +833,16 @@ db 0x00, 0x2b, 0x2c, 0x5b   ; 0xd Gold
 ; Data: offset to brush data, Y shift
 
 BrushRefs:
-dw IndieTopBrush, -320*6  ; 1
-dw PalmBrush, -320*10     ; 2
-dw SnakeBrush, -320*2     ; 3
-dw RockBrush, 0           ; 4
-dw TriggerBrush, 320      ; 5
-dw BridgeBrush, 0         ; 6
-dw ShipMiddleBrush, 0     ; 7
-dw Gold2Brush, 320        ; 8
-dw GoldBrush, 320         ; 9
-dw TriggerActBrush, 320   ; 10
+dw IndieTopBrush, -320*6  
+dw PalmBrush, -320*10     
+dw SnakeBrush, -320*2     
+dw RockBrush, 0           
+dw TriggerBrush, 320      
+dw BridgeBrush, 0         
+dw ShipMiddleBrush, 0
+dw Gold2Brush, 320        
+dw GoldBrush, 320         
+dw TriggerActBrush, 320   
 
 ; =========================================== BRUSHES DATA =====================
 ; Set of 8xY brushes for entities
