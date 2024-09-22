@@ -27,21 +27,19 @@ _PLAYER_ENTITY_ID_ equ 0x7000
 _REQUEST_POSITION_ equ 0x7002
 _ENTITIES_ equ 0x7010
 
-_ID_ equ 0
-_POS_ equ 1
-_MIRROR_ equ 3
-_STATE_ equ 4
+_ID_ equ 0  ; 1 byte
+_POS_ equ 1 ; 2 bytes / word
+_MIRROR_ equ 3  ; 1 byte
+_STATE_ equ 4 ; 1 bytes
 
 ; =========================================== MAGIC NUMBERS ====================
 
-BEEPER_ENABLED equ 0x01
+ENTITY_SIZE  equ 5
 BEEPER_FREQ equ 4800
 LEVEL_START_POSITION equ 320*68+32
 SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3636
-
-ENTITY_SIZE  equ 6
 
 ID_PLAYER equ 0 
 ID_PALM equ 1
@@ -52,7 +50,14 @@ ID_BRIDGE equ 5
 ID_SHIP equ 6
 ID_GOLD equ 7
 
+STATE_DEACTIVATED equ 0
+STATE_IDLE equ 1
+STATE_EXPLORING equ 2
+STATE_WAITING equ 3
+STATE_SERVED equ 4
+
 ; =========================================== INITIALIZATION ===================
+
 start:
     mov ax,0x13                             ; Init VGA 320x200x256
     int 0x10                                ; Video BIOS interrupt
@@ -72,6 +77,7 @@ restart_game:
 ; =========================================== SPAWN ENTITIES ==================
 ; Expects: entities array from level data
 ; Returns: entities in memory array
+
 spawn_entities:
   mov si, EntityData
   mov di, _ENTITIES_
@@ -91,7 +97,11 @@ spawn_entities:
       mov ax, [si]          ; Get position
       mov [di+_POS_], ax          ; Save position
       mov byte [di+_MIRROR_], 0x0 ;  Save mirror (none)
-      mov byte [di+_STATE_], 0x01 ; Save basic state
+      mov byte [di+_STATE_], STATE_IDLE ; Save basic state
+      cmp bl, ID_SNAKE  
+      jnz .skip_state
+        mov byte [di+_STATE_], STATE_EXPLORING ; Save basic state
+      .skip_state:
 
       add si, 0x02                  ; Move to the next entity in code
       add di, ENTITY_SIZE           ; Move to the next entity in memory
@@ -100,10 +110,6 @@ spawn_entities:
   .done:
 
 mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
-
-
-
-
 
 ; =========================================== GAME LOGIC =======================
 
@@ -139,7 +145,7 @@ draw_ocean:
 
     mov cx, 40
     .l:
-      ;xor dl, 0x1
+      xor dl, 0x1
       add dl, dh
       call draw_sprite
       add di, 8
@@ -251,6 +257,7 @@ draw_level:
 
 
 ; =========================================== KEYBOARD INPUT ==================
+
 check_keyboard:
   mov ah, 01h         ; BIOS keyboard status function
   int 16h             ; Call BIOS interrupt
@@ -283,14 +290,14 @@ check_keyboard:
   cmp ah, 4Bh         ; Compare scan code with left arrow
   jne .check_right
     dec cl
-    mov byte [si+_MIRROR_], 0x01
+    mov byte [si+_MIRROR_], 0x1
     jmp .check_move
 
   .check_right:
   cmp ah, 4Dh         ; Compare scan code with right arrow
   jne .no_key
     inc cl
-    mov byte [si+_MIRROR_], 0x00
+    mov byte [si+_MIRROR_], 0x0
     ;jmp .check_move
 
   .check_move:
@@ -301,16 +308,80 @@ check_keyboard:
   call check_bounds
   jz .collision
 
-  mov word [si+1], cx
+  mov word [si+_POS_], cx
 
   .collision:
   mov word [_REQUEST_POSITION_], cx
 
   .no_key:
-    mov bx, BEEPER_FREQ
-    add bl, ah
-    call beep
+  ; sound beep
   .no_key_press:
+
+
+; =========================================== AI ENITIES ===============
+
+ai_entities:
+  mov si, _ENTITIES_
+  mov cx, [EntityCount]
+  .next_entity:
+    push cx
+
+    test byte [si+_STATE_], STATE_EXPLORING
+    jz .skip_entity
+      rdtsc
+      and ax, SPEED_EXPLORE
+      cmp ax, SPEED_EXPLORE
+      jnz .skip_entity
+
+      .explore:
+        mov cx, [si+_POS_]
+        call random_move
+
+        call check_bounds
+        jz .can_not_move
+
+        call check_friends
+        jz .can_not_move
+
+        ; call check_water_tile
+        ; jz .move_to_new_pos
+
+          ; mov byte al, [si+_STATE_]
+          ; and al, 0x8
+          ; cmp al, 0x8 ; already served
+          ; jz .can_not_move
+          ; mov byte [si+3], 0x0e ; second fish sprite
+          ; mov byte [si+_STATE_], 0x02 ; waiting
+          ; jmp .can_not_move
+        .move_to_new_pos:
+          cmp cx, [si+_POS_]
+          jg .skip_mirror_x
+            mov byte [si+_MIRROR_], 0x1
+          .skip_mirror_x:
+          mov word [si+_POS_], cx
+        .can_not_move:
+
+      .skip_explore:
+      ; mov byte al, [si+5]   ; State
+      ; and al, 0x2
+      ; cmp al, 0x2
+      ; jnz .skip_waiting
+      ; .waiting:
+      ; mov word  cx,[si+1]
+      ;   cmp word cx, [_REQUEST_POSITION_]
+      ;   jne .wait_more
+      ;     mov byte [si+3],0x00 ; First fish sprite
+      ;     xor byte [si+_MIRROR_],0x01 ; Reverse
+      ;     mov byte [si+5],0x09 ; Served
+      ;     mov word [_REQUEST_POSITION_], 0x0000
+      ;  .wait_more:
+      ; .skip_waiting:
+
+    .skip_entity:
+    add si, ENTITY_SIZE
+    pop cx
+  loop .next_entity
+
 
 ; =========================================== SORT ENITIES ===============
 ; Sort entities by Y position
@@ -329,8 +400,8 @@ sort_entities:
 
     .inner_loop:
       push cx
-      mov bx, [si+1]  ; Get Y of current entity
-      mov dx, [si+ENTITY_SIZE+1]  ; Get Y of next entity
+      mov bx, [si+_POS_]  ; Get Y of current entity
+      mov dx, [si+ENTITY_SIZE+_POS_]  ; Get Y of next entity
 
       cmp bh, dh      ; Compare Y values
       jle .no_swap
@@ -377,7 +448,7 @@ draw_entities:
     push cx
     push si
 
-    cmp byte [si+_STATE_], 0x0
+    cmp byte [si+_STATE_], STATE_DEACTIVATED
     jz .skip_entity
 
     mov cx, [si+_POS_]
@@ -386,15 +457,14 @@ draw_entities:
     mov byte al, [si]       ; Get brush id in AL
     mov ah, al              ; Save a copy in AH
     shl al, 2   
-    mov bx, BrushRefs       ; Get brush data offset table
+    mov bx, BrushRefs       ; Get brush reference table
     add bl, al              ; Shift to ref (id*2 bytes)
-    mov si, [bx]            ; Get shift and apply to destination position
+    mov si, [bx]            ; Get brush data address
 
     add al, 2               ; offest is at next byte (+2)
     movzx bx, al            ; Get address to BX
     add di, [BrushRefs + bx]  ; Get shift and apply to destination position
-    
-    mov bl, [si+_MIRROR_]     ; Get brush mirror flag
+    ;mov dl, [si+_MIRROR_]     ; Get brush mirror flag
     call draw_sprite
 
     cmp ah, ID_PLAYER 
@@ -407,17 +477,18 @@ draw_entities:
     cmp ah, ID_BRIDGE
     jnz .skip_bridge_draw
       add di, 8
-      mov dl, 0x01
+      mov dl, 0x1
       call draw_sprite
     .skip_bridge_draw:
 
     cmp ah, ID_SHIP
     jnz .skip_ship_draw
+      xor dl, dl ; mo mirror
       sub di, 8
       mov si, ShipEndBrush
       call draw_sprite
       add di, 16
-      mov dl, 0x01
+      inc dl ; mirror x
       mov si, ShipEndBrush
       call draw_sprite
     .skip_ship_draw:
@@ -428,7 +499,7 @@ draw_entities:
       and ax, 0x8
       cmp ax, 0x4
       jl .skip_gold_draw
-      xor dx, dx
+      xor dl, dl ; no mirror
       mov si, GoldBrush
       call draw_sprite
     .skip_gold_draw:
@@ -472,11 +543,9 @@ wait_for_vsync:
         and al, 08h
         jz .wait2
 
-
 ; =========================================== GAME TICK ========================
 
 inc word [GameTick]
-call no_beep
 
 ; =========================================== ESC OR LOOP ======================
 
@@ -515,11 +584,12 @@ random_move:
   and ax, 0x13
   jz .skip_move
 
+.move_x:
   test ax, 0x3
   jz .move_y
     dec cl
-    test byte [si+4], 0x01
-    jnz .skip_move
+    test ax, 0x10
+    jz .skip_move
     add cl, 2
   ret
 
@@ -564,7 +634,7 @@ check_friends:
     jnz .different
     inc bx
     .different:
-    add si, 0x6
+    add si, ENTITY_SIZE
   loop .next_entity
 
   pop cx
@@ -606,7 +676,7 @@ check_water_tile:
 ; =========================================== DRAW SPRITE PROCEDURE ============
 ; Expects:
 ; DI - positon (linear)
-; DX - settings: 00 normal, 01 mirrored x, 10 mirrored y, 11 mirrored x&y
+; DL - settings: 0 normal, 1 mirrored x, 2 mirrored y, 3 mirrored x&y
 ; Return: -
 
 draw_sprite:
@@ -623,14 +693,12 @@ draw_sprite:
     mov bp, ax
     add bp, PaletteSets
 
-    mov bl, dl              ; Check x mirror
-    and bl, 0x1
+    test dl, 0x1              ; Check x mirror
     jz .no_x_mirror
       add di, 0x7             ; Move point to the last right pixel
     .no_x_mirror:
 
-    mov bl, dl              ; Check
-    and bl, 0x2
+    test dl, 0x2              ; Check
     jz .no_y_mirror
       add si, cx
       add si, cx              ; Move to the last position
@@ -767,12 +835,12 @@ dw IndieTopBrush, -320*6  ; 1
 dw PalmBrush, -320*10     ; 2
 dw SnakeBrush, -320*2     ; 3
 dw RockBrush, 0           ; 4
-dw TriggerBrush, 320*3    ; 5
+dw TriggerBrush, 320      ; 5
 dw BridgeBrush, 0         ; 6
 dw ShipMiddleBrush, 0     ; 7
 dw Gold2Brush, 320        ; 8
 dw GoldBrush, 320         ; 9
-dw TriggerActBrush, 320*3 ; 10
+dw TriggerActBrush, 320   ; 10
 
 ; =========================================== BRUSHES DATA =====================
 ; Set of 8xY brushes for entities
@@ -1062,7 +1130,7 @@ db 00110011b, 00000000b, 00000000b, 00000000b
 ; =========================================== ENTITIES DATA ====================
 
 EntityCount:
-dw 0x0045
+dw 0x45
 
 EntityData:
 db 1, 1
