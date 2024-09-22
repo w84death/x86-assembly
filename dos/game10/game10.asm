@@ -306,7 +306,7 @@ check_keyboard:
   call check_friends
   jz .collision
   call check_water_tile
-  jz .collision
+  jz .no_move
   call check_bounds
   jz .collision
 
@@ -314,6 +314,7 @@ check_keyboard:
   jmp .no_col
   .collision:
     mov word [_REQUEST_POSITION_], cx
+  .no_move:
     mov bx, BEEPER_ALERT
     call beep
     jmp .no_key_press
@@ -349,8 +350,8 @@ ai_entities:
         call check_friends
         jz .can_not_move
 
-        ; call check_water_tile
-        ; jz .move_to_new_pos
+        call check_water_tile
+        jz .can_not_move
 
           ; mov byte al, [si+_STATE_]
           ; and al, 0x8
@@ -572,6 +573,7 @@ call no_beep
 ; =========================================== CNVERT XY TO MEM =================
 ; Expects: CX - position YY/XX
 ; Return: DI memory position
+
 conv_pos2mem:
   mov di, LEVEL_START_POSITION
   xor ax, ax               ; Clear AX
@@ -629,7 +631,7 @@ check_bounds:
 
 ; =========================================== CHECK FRIEDS =====================
 ; Expects: CX - Position YY/XX
-; Return: AX - Zero if hit bound, 1 if no bunds at this location
+; Return: AX - Zero if hit entity, 1 if clear
 check_friends:
   push si
   push cx
@@ -648,39 +650,29 @@ check_friends:
 
   pop cx
   pop si
-  cmp bx,0x1
-  jnz .no_friend
-  mov ax, 0x0
-ret
-  .no_friend:
-  mov ax, 0x1
+  cmp bx,0x1 
 ret
 
 ; =========================================== CHECK WATER TILE ================
 ; Expects: CX - Player position (CH: Y 0-15, CL: X 0-31)
-; Returns: AL - 1 if water (0xF), 0 otherwise
+; Returns: AL - 0 if water (0xF), 1 otherwise
 check_water_tile:
-    push cx
+  mov ax, 0
+  ret
 
-    ; mov ax, cx
-    ; shl ah, 2       ; Y * 4
-    ; mov bl, ah      ; add shift to target position
-    ; cmp al, 0x0f    ; check if X is > 15
-    ; jle .no_shift   ; if not, skip
-    ;   sub al, 0x10    ; if yes, subtract 16 from X
-    ;   add bx, 0x2     ; add 2 to target position
-    ; .no_shift:
-    ; mov dx, [LevelData + bx] ; get target data
-    ; shr al, 0x2     ; X / 4
-    ; inc al
-    ; shl al, 0x2       ; cl * 4
-    ; mov cl, al      ; move X / 4 to cl
-    ; rol dx, cl      ; rotate left by cl
-    ; and dl, 0x0F    ; Check last nibble
-    ; cmp dl, 0x0F    ; Check if it's water (0xF)
-
-    pop cx
-    ret
+  mov ax, cx
+  shr ah, 1       
+  shr al, 1    
+  movzx bx, ah
+  shl bx, 3
+  add bl, al
+  push si
+  mov si, LevelData
+  add si, bx
+  mov al, [si]    ; Read tile
+  pop si
+  test al, 0x40
+  ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
 ; Expects:
@@ -1098,43 +1090,43 @@ db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
 
 ; =========================================== LEVEL DATA =======================
-; 16x16 level data
+; 16x8 level data
 ; Data: 4x4 meta-tiles id
-; First nibble is meta-tile id, next 2 bits ar nibbles XY mirroring
+; Nibble is meta-tile id, 2 bits ar nibbles XY mirroring, 1 bit movable
 
 LevelData:
-db 00000000b, 00000011b, 00000001b, 00010001b
-db 00000001b, 00010001b, 00010001b, 00010011b
-db 00000000b, 00000011b, 00000001b, 00000001b
-db 00010011b, 00000000b, 00000011b, 00010011b
-db 00000000b, 00100010b, 00000101b, 00000101b
-db 00000110b, 00000110b, 00000110b, 00010010b
-db 00000000b, 00000010b, 00010110b, 00111000b
-db 00110011b, 00000000b, 00000010b, 00010010b
-db 00000000b, 00000010b, 00000101b, 00000110b
-db 00000111b, 00010111b, 00000110b, 00010010b
-db 00001100b, 00000010b, 00000110b, 00010010b
-db 00000000b, 00000000b, 00000010b, 00010010b
-db 00000000b, 00100011b, 00101000b, 00000101b
-db 00000111b, 00000110b, 00111000b, 00110011b
-db 00000000b, 00000010b, 00000101b, 00010010b
-db 00001100b, 00000011b, 00001000b, 00010010b
-db 00000000b, 00000000b, 00100011b, 00100001b
-db 00110001b, 00100001b, 00110011b, 00000000b
-db 00000000b, 00100011b, 00100001b, 00110011b
-db 00000000b, 00100011b, 00100001b, 00110011b
+db 00000000b, 01000011b, 01000001b, 001010001b
+db 00000001b, 01010001b, 01010001b, 01010011b
+db 00000000b, 01000011b, 01000001b, 01000001b
+db 01010011b, 00000000b, 01000011b, 01010011b
+db 00000000b, 01100010b, 01000101b, 01000101b
+db 00000110b, 01000110b, 01000110b, 01010010b
+db 00000000b, 01000010b, 01010110b, 01111000b
+db 01110011b, 00000000b, 01000010b, 01010010b
+db 00000000b, 01000010b, 01000101b, 01000110b
+db 01000111b, 01010111b, 01000110b, 01010010b
+db 01001100b, 01000010b, 01000110b, 01010010b
+db 00000000b, 00000000b, 01000010b, 01010010b
+db 00000000b, 01100011b, 01101000b, 01000101b
+db 01000111b, 01000110b, 01111000b, 01110011b
+db 00000000b, 01000010b, 01000101b, 01010010b
+db 01001100b, 01000011b, 01001000b, 01010010b
+db 00000000b, 00000000b, 01100011b, 01100001b
+db 01110001b, 01100001b, 01110011b, 00000000b
+db 00000000b, 01100011b, 01100001b, 01110011b
+db 00000000b, 01100011b, 01100001b, 01110011b
 db 00000000b, 00000000b, 00000000b, 00000000b
-db 00001100b, 00000000b, 00000000b, 00000000b
+db 01001100b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00001100b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000011b
-db 00010001b, 00000001b, 00010011b, 00000000b
-db 00000011b, 00010001b, 00010001b, 00000001b
-db 00010011b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00100011b
-db 00100001b, 00110001b, 00110011b, 00000000b
-db 00100011b, 00100001b, 00100001b, 00110001b
-db 00110011b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 01000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 01000011b
+db 00010001b, 00000001b, 01010011b, 00000000b
+db 01000011b, 00010001b, 01010001b, 00000001b
+db 01010011b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 01100011b
+db 01100001b, 01110001b, 01110011b, 00000000b
+db 01100011b, 01100001b, 01100001b, 01110001b
+db 01110011b, 00000000b, 00000000b, 00000000b
 
 ; =========================================== ENTITIES DATA ====================
 
