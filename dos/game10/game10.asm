@@ -101,76 +101,15 @@ spawn_entities:
 
 mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
 
+
+
+
+
 ; =========================================== GAME LOGIC =======================
 
 game_loop:
   xor di, di
   xor si, si
-
-
-
-
-; =========================================== KEYBOARD INPUT ==================
-check_keyboard:
-  mov ah, 01h         ; BIOS keyboard status function
-  int 16h             ; Call BIOS interrupt
-  jz .no_key_press           ; Jump if Zero Flag is set (no key pressed)
-
-  mov si, [_PLAYER_ENTITY_ID_]
-  mov cx, [si+_POS_]   ; Load player position into CX (Y in CH, X in CL)
-
-  mov ah, 00h         ; BIOS keyboard read function
-  int 16h             ; Call BIOS interrupt
-
-  .check_enter:
-  cmp ah, 1ch         ; Compare scan code with enter
-  jne .check_up
-    jmp restart_game
-
-  .check_up:
-  cmp ah, 48h         ; Compare scan code with up arrow
-  jne .check_down
-    dec ch
-    jmp .check_move
-
-  .check_down:
-  cmp ah, 50h         ; Compare scan code with down arrow
-  jne .check_left
-    inc ch
-    jmp .check_move
-
-  .check_left:
-  cmp ah, 4Bh         ; Compare scan code with left arrow
-  jne .check_right
-    dec cl
-    mov byte [si+_MIRROR_], 0x01
-    jmp .check_move
-
-  .check_right:
-  cmp ah, 4Dh         ; Compare scan code with right arrow
-  jne .no_key
-    inc cl
-    mov byte [si+_MIRROR_], 0x00
-    ;jmp .check_move
-
-  .check_move:
-  call check_friends
-  jz .collision
-  call check_water_tile
-  jz .collision
-  call check_bounds
-  jz .collision
-
-  mov word [si+1], cx
-
-  .collision:
-  mov word [_REQUEST_POSITION_], cx
-
-  .no_key:
-    mov bx, BEEPER_FREQ
-    add bl, ah
-    call beep
-  .no_key_press:
 
 ; =========================================== DRAW BACKGROUND ==================
 
@@ -211,8 +150,8 @@ draw_ocean:
   loop .ll
 
   mov ax, [GameTick]
-  and ax, 0x3
-  cmp ax, 0x3
+  and ax, 0x5
+  cmp ax, 0x5
   jnz skip_anim
     mov si, PaletteSets
     add si, 3*4
@@ -309,6 +248,69 @@ draw_level:
 
     cmp cx, 0x80           ; 128 = 16*8
   jl .next_meta_tile
+
+
+; =========================================== KEYBOARD INPUT ==================
+check_keyboard:
+  mov ah, 01h         ; BIOS keyboard status function
+  int 16h             ; Call BIOS interrupt
+  jz .no_key_press           ; Jump if Zero Flag is set (no key pressed)
+
+  mov si, [_PLAYER_ENTITY_ID_]
+  mov cx, [si+_POS_]   ; Load player position into CX (Y in CH, X in CL)
+
+  mov ah, 00h         ; BIOS keyboard read function
+  int 16h             ; Call BIOS interrupt
+
+  .check_enter:
+  cmp ah, 1ch         ; Compare scan code with enter
+  jne .check_up
+    jmp restart_game
+
+  .check_up:
+  cmp ah, 48h         ; Compare scan code with up arrow
+  jne .check_down
+    dec ch
+    jmp .check_move
+
+  .check_down:
+  cmp ah, 50h         ; Compare scan code with down arrow
+  jne .check_left
+    inc ch
+    jmp .check_move
+
+  .check_left:
+  cmp ah, 4Bh         ; Compare scan code with left arrow
+  jne .check_right
+    dec cl
+    mov byte [si+_MIRROR_], 0x01
+    jmp .check_move
+
+  .check_right:
+  cmp ah, 4Dh         ; Compare scan code with right arrow
+  jne .no_key
+    inc cl
+    mov byte [si+_MIRROR_], 0x00
+    ;jmp .check_move
+
+  .check_move:
+  call check_friends
+  jz .collision
+  call check_water_tile
+  jz .collision
+  call check_bounds
+  jz .collision
+
+  mov word [si+1], cx
+
+  .collision:
+  mov word [_REQUEST_POSITION_], cx
+
+  .no_key:
+    mov bx, BEEPER_FREQ
+    add bl, ah
+    call beep
+  .no_key_press:
 
 ; =========================================== SORT ENITIES ===============
 ; Sort entities by Y position
