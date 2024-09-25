@@ -89,8 +89,9 @@ spawn_entities:
     mov bl, [si]
     cmp bl, 0x0
     jz .done
+    
+    dec bl             ; Conv level id to game id
 
-    dec bl            ; Conv level id to game id
     inc si
     mov al, [si]
     inc si
@@ -102,15 +103,13 @@ spawn_entities:
       mov byte [di+_MIRROR_], 0x0 ;  Save mirror (none)
       mov byte [di+_STATE_], STATE_IDLE ; Save basic state
       mov byte [di+_MOVABLE_], 0x0 ; Save movable flag 
+      
       cmp bl, ID_SNAKE
       jnz .skip_snake
         mov byte [di+_STATE_], STATE_EXPLORING ; Save basic state
       .skip_snake:
+      
 
-      cmp bl, ID_BRIDGE
-      jnz .skip_bridge
-        mov byte [di+_MOVABLE_], 0x1 ; Save basic state
-      .skip_bridge:
 
       ; TODO: move completing 2 tile wide entities here
 
@@ -421,7 +420,7 @@ sort_entities:
       mov dx, [si+ENTITY_SIZE+_POS_]  ; Get Y of next entity
 
       cmp bh, dh      ; Compare Y values
-      jle .no_swap
+      jl .no_swap
 
         mov di, si
         add di, ENTITY_SIZE
@@ -933,15 +932,14 @@ dw 1011101101101100b
 dw 0011101011101100b
 
 BridgeBrush:
-db 0x8, 0x0
+db 0x8, 0x3
 dw 0010101111101010b
 dw 1011111010111111b
 dw 1111101111111111b
 dw 1111101011111111b
 dw 1011111010101111b
 dw 0110111111111010b
-dw 0101101010101010b
-dw 0001010101010101b
+dw 0001101010101010b
 
 TriggerBrush:
 db 0x5, 0xb
@@ -1064,7 +1062,7 @@ dw 1001001100111011b
 dw 0111100101001100b
 dw 1001011001010101b
 
-db 0x8, 0x3           ; 0x8 Bridge disabled
+db 0x8, 0x0           ; 0x8 Bridge
 dw 0000000000000000b
 dw 0010101111101010b
 dw 1011111010111111b
@@ -1072,7 +1070,8 @@ dw 1111101111111111b
 dw 1111101011111111b
 dw 1011111010101111b
 dw 0110111111111010b
-dw 0001101010101010b
+dw 0101101010101010b
+dw 0001010101010101b
 
 ; =========================================== META-TILES DECLARATION ===========
 ; 4x4 meta-tiles for level
@@ -1124,7 +1123,7 @@ db 00000000b, 01100011b, 01100001b, 01110011b
 db 00000000b, 01100011b, 01100001b, 01110011b
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 01001100b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00001100b, 00000000b
+db 00000000b, 00000000b, 01001100b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 01000011b
 db 01010001b, 01000001b, 01010011b, 00000000b
