@@ -31,10 +31,11 @@ _ID_ equ 0  ; 1 byte
 _POS_ equ 1 ; 2 bytes / word
 _MIRROR_ equ 3  ; 1 byte
 _STATE_ equ 4 ; 1 bytes
+_MOVABLE_ equ 5 ; 1 byte
 
 ; =========================================== MAGIC NUMBERS ====================
 
-ENTITY_SIZE  equ 5
+ENTITY_SIZE  equ 6
 BEEPER_FREQ equ 4400
 BEEPER_ALERT equ 5500
 BEEP_GOLD equ 800
@@ -100,10 +101,18 @@ spawn_entities:
       mov [di+_POS_], ax          ; Save position
       mov byte [di+_MIRROR_], 0x0 ;  Save mirror (none)
       mov byte [di+_STATE_], STATE_IDLE ; Save basic state
+      mov byte [di+_MOVABLE_], 0x0 ; Save movable flag 
       cmp bl, ID_SNAKE
-      jnz .skip_state
+      jnz .skip_snake
         mov byte [di+_STATE_], STATE_EXPLORING ; Save basic state
-      .skip_state:
+      .skip_snake:
+
+      cmp bl, ID_BRIDGE
+      jnz .skip_bridge
+        mov byte [di+_MOVABLE_], 0x1 ; Save basic state
+      .skip_bridge:
+
+      ; TODO: move completing 2 tile wide entities here
 
       add si, 0x02                  ; Move to the next entity in code
       add di, ENTITY_SIZE           ; Move to the next entity in memory
@@ -303,15 +312,16 @@ check_keyboard:
     ;jmp .check_move
 
   .check_move:
-  call check_friends
-  jz .collision
   call check_water_tile
   jz .no_move
   call check_bounds
-  jz .collision
+  jz .no_move
 
+  call check_friends
+  jz .collision
   mov word [si+_POS_], cx
   jmp .no_col
+
   .collision:
     mov word [_REQUEST_POSITION_], cx
   .no_move:
@@ -626,7 +636,7 @@ check_bounds:
   ja .return
   inc ax                                    ; No bound hit (AX = 1)
 .return:
-  cmp ax, 0x0
+  test ax, 0x1
   ret
 
 ; =========================================== CHECK FRIEDS =====================
@@ -643,6 +653,8 @@ check_friends:
   .next_entity:
     cmp word [si+_POS_], ax
     jnz .different
+    cmp byte [si+_MOVABLE_], 0x1
+    jz .different
     inc bx
     .different:
     add si, ENTITY_SIZE
@@ -658,15 +670,15 @@ ret
 ; Returns: AL - 0 if water (0xF), 1 otherwise
 
 check_water_tile:
-  mov ax, cx
+  mov ax, cx      ; Copy position to AX
   shr ah, 1       ; Y / 2
-  shr al, 1       ; X / 2
+  shr al, 1       ; X / 2 to convert to tile position
   movzx bx, ah
-  shl bx, 3       ; Y / 2 * 8
-  add bl, al      ; Y / 2 * 8 + X / 2
+  shl bx, 4       ; Multily by 16 tiles wide
+  add bl, al      ; Y / 2 * 16 + X / 2
   add bx, LevelData
   mov al, [bx]    ; Read tile
-  test al, 0x40   ; Check if movable
+  test al, 0x40   ; Check if movable (7th bit set)
   ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
@@ -1090,12 +1102,12 @@ db 00000000b, 00000000b, 00000000b, 00000000b
 ; Nibble is meta-tile id, 2 bits ar nibbles XY mirroring, 1 bit movable
 
 LevelData:
-db 00000000b, 01000011b, 01000001b, 001010001b
+db 00000000b, 01000011b, 01000001b, 01010001b
 db 00000001b, 01010001b, 01010001b, 01010011b
 db 00000000b, 01000011b, 01000001b, 01000001b
 db 01010011b, 00000000b, 01000011b, 01010011b
 db 00000000b, 01100010b, 01000101b, 01000101b
-db 00000110b, 01000110b, 01000110b, 01010010b
+db 01000110b, 01000110b, 01000110b, 01010010b
 db 00000000b, 01000010b, 01010110b, 01111000b
 db 01110011b, 00000000b, 01000010b, 01010010b
 db 00000000b, 01000010b, 01000101b, 01000110b
@@ -1113,10 +1125,10 @@ db 00000000b, 01100011b, 01100001b, 01110011b
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 01001100b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00001100b, 00000000b
-db 00000000b, 00000000b, 01000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 01000011b
-db 00010001b, 00000001b, 01010011b, 00000000b
-db 01000011b, 00010001b, 01010001b, 01000001b
+db 01010001b, 01000001b, 01010011b, 00000000b
+db 01000011b, 01010001b, 01010001b, 01000001b
 db 01010011b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 01100011b
 db 01100001b, 01110001b, 01110011b, 00000000b
