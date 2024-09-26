@@ -31,13 +31,24 @@ start:
     int 0x10               ; BIOS video interrupt
 
 .display_title:
-    mov dx, 0x051D          ; Row 5, Column 29
+    mov dx, 0x0510
     call set_cursor
     mov si, welcome_msg
     call print_string
 
+    mov dx, 0x0710          ; Row 5, Column 16
+    call set_cursor
+    mov si, title_msg
+    call print_string
+
+    mov dx, 0x0910          ; Row 5, Column 16
+    call set_cursor
+    mov si, desc_msg
+    call print_string
+
+
 .load_code:
-    mov dx, 0x0a04          ; Row 10, Column 4
+    mov dx, 0x1210          ; Row 10, Column 4
     call set_cursor
     mov si, loading_msg
     call print_string
@@ -60,8 +71,7 @@ start:
     mov si, done_msg
     call print_string
 
-    mov dh, 12              ; Row
-    mov dl, 4               ; Column
+    mov dx, 0x1410
     call set_cursor
     mov si, wait_msg
     call print_string
@@ -99,10 +109,12 @@ set_cursor:
     int 0x10                ; BIOS video interrupt
     ret
 
-welcome_msg db '>>> P1X Bootloader <<<', 0
-loading_msg db 'Loading four sectors... ', 0
+welcome_msg db 'P1X Bootloader V1.0', 0
+loading_msg db 'Loading [4] sectors / 2048 bytes... ', 0
 done_msg db 'Done!', 0
-wait_msg db 'Press any key to start...', 0
+title_msg db '*** Mysteries of the Forgotten Isles ***', 0
+desc_msg db 'Bring back all gold to the ship before the tides rise!', 0
+wait_msg db 'Press any key to start game...', 0
 error_msg db 'Disk Read Error!', 0
 
 times 507 - ($ - $$) db 0   ; Pad to 510 bytes

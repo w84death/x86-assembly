@@ -2,15 +2,9 @@
 ; DOS VERSION
 ;
 ; Description:
-;   You are an intrepid explorer stranded on the Forgotten Isles, a chain of
-;   islands shrouded in myth. These islands were once home to an advanced
-;   civilization known for their ingenious engineering and mystical practices.
-;   Scattered across the islands are pressure plates that, when activated,
-;   reveal clues and alter the landscape by raising bridges or opening gates.
-;   However, these plates require a sustained weight to remain activated,
-;   necessitating the use of rocks to keep them pressed while you progress.
 ;
-; Size category: <2KB
+;
+; Size category: 2KB
 ;
 ; Author: Krzysztof Krystian Jankowski
 ; Web: smol.p1x.in/assembly/#forgotten-isles
@@ -48,7 +42,7 @@ ID_PLAYER equ 0
 ID_PALM equ 1
 ID_SNAKE equ 2
 ID_ROCK equ 3
-ID_TRIGGER equ 4
+; ID_TRIGGER equ 4
 ID_BRIDGE equ 5
 ID_SHIP equ 6
 ID_GOLD equ 7
@@ -109,8 +103,6 @@ spawn_entities:
         mov byte [di+_STATE_], STATE_EXPLORING ; Save basic state
       .skip_snake:
       
-
-
       ; TODO: move completing 2 tile wide entities here
 
       add si, 0x02                  ; Move to the next entity in code
@@ -144,35 +136,9 @@ draw_bg:
      loop .draw_sky
 
 draw_ocean:
-  xor dx, dx
-  mov di, 320*60
-  mov si, OceanBrush
-
-  mov cx, 18
-  .ll:
-    push cx
-    xor dh, 0x1
-
-    mov cx, 40
-    .l:
-      xor dl, 0x1
-      add dl, dh
-      call draw_sprite
-      add di, 8
-    loop .l
-
-    add di, 320*7
-    pop cx
-  loop .ll
-
-  mov ax, [GameTick]
-  and ax, 0x5
-  cmp ax, 0x5
-  jnz skip_anim
-    mov si, PaletteSets
-    add si, 3*4
-    rol dword [si], 8
-  skip_anim:
+  mov cx, 320*70              ; 70 lines of ocean
+  mov ax, COLOR_WATER
+  rep stosw
 
 ; =========================================== DRAWING LEVEL ====================
 
@@ -529,7 +495,6 @@ draw_entities:
     dec cx
   jg .next
 
-
 ; =========================================== VGA BLIT PROCEDURE ===============
 
 vga_blit:
@@ -842,12 +807,11 @@ dw IndieTopBrush, -320*6
 dw PalmBrush, -320*10
 dw SnakeBrush, -320*2
 dw RockBrush, 0
-dw TriggerBrush, 320
+dw 0, 320
 dw BridgeBrush, 0
 dw ShipMiddleBrush, 0
 dw Gold2Brush, 320
 dw GoldBrush, 320
-dw TriggerActBrush, 320
 
 ; =========================================== BRUSHES DATA =====================
 ; Set of 8xY brushes for entities
@@ -880,17 +844,6 @@ dw 0011000010101100b
 dw 0000100001101000b
 dw 0000010001010100b
 dw 0000110101010000b
-
-OceanBrush:
-db 0x8, 0x3
-dw 1111111110100100b
-dw 0000111111111001b
-dw 0000000011111110b
-dw 0101000000001110b
-dw 0101010100001111b
-dw 1010010100001111b
-dw 1110100101000011b
-dw 1111100101000011b
 
 ShipEndBrush:
 db 0x7, 0x4
@@ -940,22 +893,6 @@ dw 1111101011111111b
 dw 1011111010101111b
 dw 0110111111111010b
 dw 0001101010101010b
-
-TriggerBrush:
-db 0x5, 0xb
-dw 0011111111111100b
-dw 1110101010101011b
-dw 1010101010101010b
-dw 0110101010101001b
-dw 0001010101010100b
-
-TriggerActBrush:
-db 0x5, 0xc
-dw 0001010101010100b
-dw 0110101010101001b
-dw 1010101010101010b
-dw 1110101010101011b
-dw 0011111111111100b
 
 RockBrush:
 db 0x8, 0xa
@@ -1141,7 +1078,7 @@ dw 0x45
 
 EntityData:
 db 1, 1
-dw 0x0306
+dw 0x0502
 db 2, 52
 dw 0x0008
 dw 0x000a
@@ -1205,16 +1142,12 @@ dw 0x0107
 dw 0x060d
 dw 0x0d0a
 dw 0x0d13
-db 5, 4
-dw 0x010a
-dw 0x041e
-dw 0x0e07
-dw 0x0e17
+
 db 6, 2
 dw 0x0410
 dw 0x0510
 db 7, 1
-dw 0x0502
+dw 0x0500
 db 8, 1
 dw 0x081e
 
