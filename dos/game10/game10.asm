@@ -50,8 +50,8 @@ ID_GOLD equ 7
 STATE_DEACTIVATED equ 0
 STATE_IDLE equ 1
 STATE_EXPLORING equ 2
-STATE_WAITING equ 3
-STATE_SERVED equ 4
+STATE_FOLLOW equ 3
+STATE_ACTIVATED equ 4
 
 ; =========================================== INITIALIZATION ===================
 
@@ -245,11 +245,6 @@ check_keyboard:
   mov ah, 00h         ; BIOS keyboard read function
   int 16h             ; Call BIOS interrupt
 
-  .check_enter:
-  cmp ah, 1ch         ; Compare scan code with enter
-  jne .check_up
-
-
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
@@ -277,13 +272,15 @@ check_keyboard:
     ;jmp .check_move
 
   .check_move:
+
+  call check_friends
+  jz .collision
+
   call check_water_tile
   jz .no_move
   call check_bounds
   jz .no_move
 
-  call check_friends
-  jz .collision
   mov word [si+_POS_], cx
   jmp .no_col
 
@@ -308,12 +305,12 @@ ai_entities:
   .next_entity:
     push cx
 
-    test byte [si+_STATE_], STATE_EXPLORING
-    jz .skip_entity
+    cmp byte [si+_STATE_], STATE_EXPLORING
+    jnz .skip_explore
       rdtsc
       and ax, SPEED_EXPLORE
       cmp ax, SPEED_EXPLORE
-      jnz .skip_entity
+      jnz .skip_explore
 
       .explore:
         mov cx, [si+_POS_]
@@ -327,14 +324,6 @@ ai_entities:
 
         call check_water_tile
         jz .can_not_move
-
-          ; mov byte al, [si+_STATE_]
-          ; and al, 0x8
-          ; cmp al, 0x8 ; already served
-          ; jz .can_not_move
-          ; mov byte [si+3], 0x0e ; second fish sprite
-          ; mov byte [si+_STATE_], 0x02 ; waiting
-          ; jmp .can_not_move
         .move_to_new_pos:
           cmp cx, [si+_POS_]
           jg .skip_mirror_x
@@ -343,23 +332,19 @@ ai_entities:
           mov word [si+_POS_], cx
         .can_not_move:
 
-      .skip_explore:
-      ; mov byte al, [si+5]   ; State
-      ; and al, 0x2
-      ; cmp al, 0x2
-      ; jnz .skip_waiting
-      ; .waiting:
-      ; mov word  cx,[si+1]
-      ;   cmp word cx, [_REQUEST_POSITION_]
-      ;   jne .wait_more
-      ;     mov byte [si+3],0x00 ; First fish sprite
-      ;     xor byte [si+_MIRROR_],0x01 ; Reverse
-      ;     mov byte [si+5],0x09 ; Served
-      ;     mov word [_REQUEST_POSITION_], 0x0000
-      ;  .wait_more:
-      ; .skip_waiting:
+    .skip_explore:
 
-    .skip_entity:
+
+    cmp byte [si+_ID_], ID_ROCK
+    jnz .skip_rock
+      mov cx, [si+_POS_]
+      cmp cx, [_REQUEST_POSITION_]
+      jnz .skip_rock
+        mov byte [si+_STATE_], STATE_FOLLOW
+        mov byte [_REQUEST_POSITION_], 0
+        mov word [si+_POS_], 0xffff
+    .skip_rock:
+
     add si, ENTITY_SIZE
     pop cx
   loop .next_entity
@@ -434,6 +419,16 @@ draw_entities:
     jz .skip_entity
 
     mov cx, [si+_POS_]
+    
+    cmp byte [si+_STATE_], STATE_FOLLOW
+    jnz .skip_follow
+        push si
+        mov si, [_PLAYER_ENTITY_ID_]
+        mov cx, [si+_POS_]   ; Load player position into CX (Y in CH, X in CL)
+        dec ch
+        pop si
+    .skip_follow:
+
     call conv_pos2mem       ; Convert position to memory
 
     mov byte al, [si]       ; Get brush id in AL
