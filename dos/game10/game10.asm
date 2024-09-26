@@ -19,6 +19,7 @@ _VGA_MEMORY_ equ 0xA000
 _DBUFFER_MEMORY_ equ 0x8000
 _PLAYER_ENTITY_ID_ equ 0x7000
 _REQUEST_POSITION_ equ 0x7002
+_HOLDING_ID_ equ 0x7004
 _ENTITIES_ equ 0x7010
 
 _ID_ equ 0  ; 1 byte
@@ -112,6 +113,7 @@ spawn_entities:
   .done:
 
 mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
+mov byte [_HOLDING_ID_], ID_PLAYER      
 
 ; =========================================== GAME LOGIC =======================
 
@@ -340,9 +342,11 @@ ai_entities:
       mov cx, [si+_POS_]
       cmp cx, [_REQUEST_POSITION_]
       jnz .skip_rock
-        mov byte [si+_STATE_], STATE_FOLLOW
-        mov byte [_REQUEST_POSITION_], 0
-        mov word [si+_POS_], 0xffff
+        cmp byte [_HOLDING_ID_], ID_PLAYER  
+        jnz .skip_rock    
+          mov byte [si+_STATE_], STATE_FOLLOW
+          mov byte [_REQUEST_POSITION_], 0
+          mov byte [_HOLDING_ID_], ID_ROCK
     .skip_rock:
 
     add si, ENTITY_SIZE
@@ -425,6 +429,7 @@ draw_entities:
         push si
         mov si, [_PLAYER_ENTITY_ID_]
         mov cx, [si+_POS_]   ; Load player position into CX (Y in CH, X in CL)
+        dec ch
         dec ch
         pop si
     .skip_follow:
@@ -610,12 +615,16 @@ check_friends:
   mov cx, [EntityCount]
   mov si, _ENTITIES_
   .next_entity:
+    cmp byte [si+_STATE_], STATE_DEACTIVATED
+    jz .skip_this_entity
+    cmp byte [si+_STATE_], STATE_FOLLOW
+    jz .skip_this_entity
     cmp word [si+_POS_], ax
-    jnz .different
+    jnz .skip_this_entity
     cmp byte [si+_MOVABLE_], 0x1
-    jz .different
+    jz .skip_this_entity
     inc bx
-    .different:
+    .skip_this_entity:
     add si, ENTITY_SIZE
   loop .next_entity
 
