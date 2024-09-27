@@ -24,16 +24,16 @@ Mouse driver may be required.
 
 # Released Projects
 
-## Land Me
+## Land Me - 512b/Boot sector
 ![Land Me gameplay](media/game1-gameplay.gif)
 
-## Game 3
+## Game 3 - 512b/Boot sector
 ![Game3](media/game3-gameplay.gif)
 
-## Game 6
+## Game 6 - 512b/Boot sector
 ![Game5](media/game6-gameplay.gif)
 
-## Game 7
+## Game 7  - 512b/DOS
 ![Game7](media/game7-screen1.jpg)
 
 
@@ -41,10 +41,10 @@ Mouse driver may be required.
 
 ## The X Project - Mysteries of the Forgotten Isles
 
-### Bootloader
+### Bootloader - 512b/firts, boot sector
 ![Game 10 bootloader](media/game10-bootloader.png)
 
-### The Game
+### The Game - 2048b/four sectors
 ![Game 10 gameplay](media/game10-alpha.png)
 
 Game10 is my current state-of-the-art engine. Includes all the features of previous games, all the tricks, and prooven solutions. 
