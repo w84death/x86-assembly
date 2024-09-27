@@ -103,6 +103,13 @@ spawn_entities:
       jnz .skip_snake
         mov byte [di+_STATE_], STATE_EXPLORING ; Save basic state
       .skip_snake:
+
+       cmp bl, ID_PALM
+      jnz .skip_palm
+        rdtsc
+        and al, 0x01
+        mov byte [di+_MIRROR_], al ; Save basic state
+      .skip_palm:
       
       ; TODO: move completing 2 tile wide entities here
 
