@@ -113,7 +113,7 @@ spawn_entities:
   .done:
 
 mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
-mov byte [_HOLDING_ID_], ID_PLAYER      
+mov byte [_HOLDING_ID_], 0x0      
 
 ; =========================================== GAME LOGIC =======================
 
@@ -247,6 +247,12 @@ check_keyboard:
   mov ah, 00h         ; BIOS keyboard read function
   int 16h             ; Call BIOS interrupt
 
+  .check_enter:
+  cmp ah, 1Ch         ; Compare scan code with enter key
+  jne .check_up
+    mov word [_HOLDING_ID_], 0x0
+    mov word [_REQUEST_POSITION_], 0x0
+    jmp .no_key_press
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
@@ -342,13 +348,20 @@ ai_entities:
       mov cx, [si+_POS_]
       cmp cx, [_REQUEST_POSITION_]
       jnz .skip_rock
-        cmp byte [_HOLDING_ID_], ID_PLAYER  
-        jnz .skip_rock    
+        cmp word [_HOLDING_ID_], 0x0  
+        jnz .skip_rock
           mov byte [si+_STATE_], STATE_FOLLOW
           mov byte [_REQUEST_POSITION_], 0
-          mov byte [_HOLDING_ID_], ID_ROCK
+          mov word [_HOLDING_ID_], ID_ROCK         
     .skip_rock:
-
+    
+    cmp byte [si+_STATE_], STATE_FOLLOW
+    jnz .no_follow
+      cmp word [_HOLDING_ID_], 0x0 
+      jnz .no_follow
+        mov byte [si+_STATE_], STATE_ACTIVATED
+    .no_follow: 
+    
     add si, ENTITY_SIZE
     pop cx
   loop .next_entity
@@ -423,28 +436,38 @@ draw_entities:
     jz .skip_entity
 
     mov cx, [si+_POS_]
+    call conv_pos2mem       ; Convert position to memory
     
     cmp byte [si+_STATE_], STATE_FOLLOW
     jnz .skip_follow
-        push si
-        mov si, [_PLAYER_ENTITY_ID_]
-        mov cx, [si+_POS_]   ; Load player position into CX (Y in CH, X in CL)
-        dec ch
-        dec ch
-        pop si
+      push si
+      mov si, [_PLAYER_ENTITY_ID_]
+      mov cx, [si+_POS_]   ; Load player position into CX (Y in CH, X in CL)
+      pop si
+      mov word [si+_POS_], cx ; Save new position
+      dec ch
+      dec ch      ; Move up over the player
+      call conv_pos2mem       ; Convert position to memory
+      add di, 320*4
     .skip_follow:
 
-    call conv_pos2mem       ; Convert position to memory
 
     mov byte al, [si]       ; Get brush id in AL
     mov ah, al              ; Save a copy in AH
-    shl al, 2
+
+    cmp ah, ID_PLAYER
+    jnz .skip_player_check
+      cmp byte [_HOLDING_ID_], 0x0
+      jz .skip_player_check
+      mov al, 0x9
+    .skip_player_check:
+    shl al, 0x2
     mov bx, BrushRefs       ; Get brush reference table
     add bl, al              ; Shift to ref (id*2 bytes)
     mov dx, [bx]            ; Get brush data address
     push dx
 
-    add al, 2               ; offest is at next byte (+2)
+    add al, 0x2               ; offest is at next byte (+2)
     movzx bx, al            ; Get address to BX
     add di, [BrushRefs + bx]  ; Get shift and apply to destination position
     mov dl, [si+_MIRROR_]     ; Get brush mirror flag
@@ -816,6 +839,7 @@ dw BridgeBrush, 0
 dw ShipMiddleBrush, 0
 dw Gold2Brush, 320
 dw GoldBrush, 320
+dw IndieTop2Brush, -320*5
 
 ; =========================================== BRUSHES DATA =====================
 ; Set of 8xY brushes for entities
@@ -830,6 +854,17 @@ dw 0000000011110000b
 dw 0000001010000000b
 dw 0000001010100000b
 dw 0000001101010000b
+
+IndieTop2Brush:
+db 0x7, 0x1
+dw 0001000101000100b
+dw 0011010101011100b
+dw 0011001111111100b
+dw 0011000011110000b
+dw 0000111010000000b
+dw 0000001010100000b
+dw 0000001111110000b
+dw 0000000101010000b
 
 IndieBottomBrush:
 db 0x4, 0x2
