@@ -361,17 +361,37 @@ ai_entities:
           mov byte [_REQUEST_POSITION_], 0
           mov word [_HOLDING_ID_], ID_ROCK         
     .skip_rock:
-    
+
+    cmp byte [si+_ID_], ID_BRIDGE
+    jnz .skip_bridge
+      mov cx, [si+_POS_]
+      cmp cx, [_REQUEST_POSITION_]
+      jnz .skip_bridge
+        cmp word [_HOLDING_ID_], ID_ROCK
+        jnz .skip_bridge
+          mov byte [si+_STATE_], STATE_DEACTIVATED
+          mov byte [_REQUEST_POSITION_], 0
+          mov word [_HOLDING_ID_], 0xffff
+    .skip_bridge:
+
     cmp byte [si+_STATE_], STATE_FOLLOW
     jnz .no_follow
       cmp word [_HOLDING_ID_], 0x0 
-      jnz .no_follow
+      jnz .check_kill
         mov byte [si+_STATE_], STATE_ACTIVATED
+      .check_kill:
+      cmp word [_HOLDING_ID_], 0xffff
+      jnz .skip_kill
+        mov byte [si+_STATE_], STATE_DEACTIVATED
+        mov word [_HOLDING_ID_], 0x0
+      .skip_kill:
+      
     .no_follow: 
     
     add si, ENTITY_SIZE
     pop cx
-  loop .next_entity
+    dec cx
+  jnz .next_entity
 
 
 ; =========================================== SORT ENITIES ===============
@@ -1184,10 +1204,15 @@ dw 0x0107
 dw 0x060d
 dw 0x0d0a
 dw 0x0d13
-
-db 6, 2
+db 6, 8
 dw 0x0410
 dw 0x0510
+dw 0x0618
+dw 0x0718
+dw 0x0a08
+dw 0x0a14
+dw 0x0b08
+dw 0x0b14
 db 7, 1
 dw 0x0500
 db 8, 1
