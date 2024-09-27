@@ -113,7 +113,7 @@ welcome_msg db 'P1X Bootloader V1.0', 0
 loading_msg db 'Loading [4] sectors / 2048 bytes... ', 0
 done_msg db 'Done!', 0
 title_msg db '*** Mysteries of the Forgotten Isles ***', 0
-desc_msg db 'Bring back all gold to the ship before the tides rise!', 0
+desc_msg db 'Bring back all gold to the ship before the tides are high!', 0xe
 wait_msg db 'Press any key to start game...', 0
 error_msg db 'Disk Read Error!', 0
 

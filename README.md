@@ -1,19 +1,32 @@
-# x86 Assembly Programs
+# x86 Assembly Programs for x86 CPUs
 
-## DOS (1Kb)
-Programs up to 1Kb (1024b) for DOS. FreeDOS and MS-DOS, COM files.
-Mouse driver required.
+A list of game and programs made mostly for bare-metal BIOS x86 environment.
+All you need to run is a floppy disk drive and boot from the provided image.
 
 ## Bootsector (512b) / No Operating System Games
-![512 bytes image](bootsector/resources/512bytes.gif)
-This image size is exactly 512 bytes. Same as the limit of bootsector programs.
+- game1 - [released] - Land Me - arcade avoid obstacles
+- game2 - abandoned - Ganja Farmer 512b - port of DOS game
+- game3 - [released] - Fly Escape - animated sprites
+- game4 - abandoned
+- game5 - abandoned - custom palettes experiments
+- game6 - [released] - Bit of a Treasure - isometric logic game, procedural levels
 
-### Prequisite for building
-- QEMU (x86_64)
-- NASM
-- FASM (for newer productions)
-### Build & Run
-```
-$ cd bootsector/
-$ ./build-and-run.sh game1
-```
+## DOS (2Kb)
+Programs up to 2Kb (2048b) for DOS. FreeDOS and MS-DOS, COM files.
+Mouse driver may be required.
+- game7 - [released] - Moth Hunter - mouse use
+- game8 - abandoned - Unnamed - 4bit sprites, smooth movment
+- game9 - abandoned - Dinopix - meta-tiles, sprite mirroring, 4-bit sprites use
+
+## BIOS (4KB) / No Operating System Games
+- game10 - in-production - The X Project - Mysteries of the Forgotten Isles
+
+Game10 is my current state-of-the-art engine. Includes all the features of previous games, all the tricks, and prooven solutions. 
+
+Main features:
+- 16-bit Assembly, FLAT assembler
+- no operating system game, runs on bare-metal x86 BIOS (i486+)
+- custom bootloader with game title + description (short!)
+- VGA graphics, 320x200
+- double-buffering and v-sync
+- 

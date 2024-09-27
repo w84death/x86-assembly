@@ -1,3 +1,4 @@
+; MOTH HUNTER
 org 0x100
 use16
 
