@@ -168,11 +168,6 @@ draw_level:
       jmp .skip_meta_tile
     .not_empty:
 
-    cmp al, 0x8           ; Bridge meta-tile
-    jnz .skip_bridge
-
-    .skip_bridge:
-
     mov si, MetaTiles
     shl ax, 0x2           ; ID*4 Move to position; 4 bytes per tile
     add si, ax            ; Meta-tile address
@@ -1132,7 +1127,7 @@ db 01110011b, 00000000b, 00000000b, 00000000b
 ; =========================================== ENTITIES DATA ====================
 
 EntityCount:
-dw 0x0040
+dw 0x0047
 
 EntityData:
 db 1, 1
@@ -1199,6 +1194,14 @@ dw 0x0d0c
 dw 0x0d13
 dw 0x0e0a
 dw 0x0e0b
+db 6, 7
+dw 0x0410
+dw 0x0411
+dw 0x0510
+dw 0x0511
+dw 0x0619
+dw 0x0719
+dw 0x0a14
 db 7, 1
 dw 0x0400
 db 8, 3
