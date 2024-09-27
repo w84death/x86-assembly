@@ -53,6 +53,7 @@ STATE_IDLE equ 1
 STATE_EXPLORING equ 2
 STATE_FOLLOW equ 3
 STATE_ACTIVATED equ 4
+STATE_INTERACTIVE equ 5
 
 ; =========================================== INITIALIZATION ===================
 
@@ -110,6 +111,17 @@ spawn_entities:
         and al, 0x01
         mov byte [di+_MIRROR_], al ; Save basic state
       .skip_palm: 
+
+      cmp bl, ID_BRIDGE
+      jz .set_interactive
+      cmp bl, ID_GOLD
+      jz .set_interactive
+      cmp bl, ID_ROCK
+      jz .set_interactive
+      jmp .skip_interactive
+      .set_interactive:
+        mov byte [di+_STATE_], STATE_INTERACTIVE
+      .skip_interactive:
       
       add si, 0x02                  ; Move to the next entity in code
       add di, ENTITY_SIZE           ; Move to the next entity in memory
@@ -347,41 +359,42 @@ ai_entities:
 
     .skip_explore:
 
-
-    cmp byte [si+_ID_], ID_ROCK
-    jnz .skip_rock
+    cmp byte [si+_STATE_], STATE_INTERACTIVE
+    jnz .skip_item
       mov cx, [si+_POS_]
       cmp cx, [_REQUEST_POSITION_]
-      jnz .skip_rock
-        cmp word [_HOLDING_ID_], 0x0  
-        jnz .skip_rock
-          mov byte [si+_STATE_], STATE_FOLLOW
-          mov byte [_REQUEST_POSITION_], 0
-          mov word [_HOLDING_ID_], ID_ROCK         
-    .skip_rock:
-
-    cmp byte [si+_ID_], ID_BRIDGE
-    jnz .skip_bridge
-      mov cx, [si+_POS_]
-      cmp cx, [_REQUEST_POSITION_]
+      jnz .skip_item
+        
+      cmp byte [si+_ID_], ID_BRIDGE
       jnz .skip_bridge
-        cmp word [_HOLDING_ID_], ID_ROCK
-        jnz .skip_bridge
+        cmp byte [_HOLDING_ID_], ID_ROCK
+        jnz .skip_item
           mov byte [si+_STATE_], STATE_DEACTIVATED
           mov byte [_REQUEST_POSITION_], 0
-          mov word [_HOLDING_ID_], 0xffff
-    .skip_bridge:
+          mov byte [_HOLDING_ID_], 0xff
+          jmp .skip_item
+      .skip_bridge:
+      
+      cmp byte [_HOLDING_ID_], 0x0  ; Check if player is holding something
+      jnz .skip_item
+      .pick_item:
+        mov byte [si+_STATE_], STATE_FOLLOW
+        mov byte [_REQUEST_POSITION_], 0
+        mov byte cl, [si+_ID_]
+        mov byte [_HOLDING_ID_], cl         
+    .skip_item:
 
+    .put_item_back:
     cmp byte [si+_STATE_], STATE_FOLLOW
     jnz .no_follow
-      cmp word [_HOLDING_ID_], 0x0 
+      cmp byte [_HOLDING_ID_], 0x0 
       jnz .check_kill
         mov byte [si+_STATE_], STATE_ACTIVATED
       .check_kill:
-      cmp word [_HOLDING_ID_], 0xffff
+      cmp byte [_HOLDING_ID_], 0xff
       jnz .skip_kill
         mov byte [si+_STATE_], STATE_DEACTIVATED
-        mov word [_HOLDING_ID_], 0x0
+        mov byte [_HOLDING_ID_], 0x0
       .skip_kill:
       
     .no_follow: 
@@ -939,14 +952,15 @@ dw 0011101011101100b
 
 BridgeBrush:
 db 0x8, 0x3             ; Non movable - bridge spot
+dw 0101000001010000b
 dw 0000000000000000b
-dw 0000000101000000b
 dw 0000010101010000b
-dw 0001010000010100b
-dw 0001000000000100b
-dw 0001010000010100b
+dw 0101000000000101b
+dw 0101000000000101b
 dw 0000010101010000b
-dw 0000000101000000b
+dw 0000000000000000b
+dw 0000010100000101b
+
 
 RockBrush:
 db 0x8, 0xa
@@ -1054,12 +1068,12 @@ dw 0111100101001100b
 dw 1001011001010101b
 
 db 0x8, 0x0           ; 0x8 Bridge Movable
-dw 0000000000000000b
-dw 0000000000000000b
+dw 0001010000000000b
+dw 0000000000010100b
 dw 0000111111100000b
 dw 0011111110101000b
-dw 1111111010101011b
-dw 0110111010111101b
+dw 1111101010101011b
+dw 0111101010111101b
 dw 0001010101010100b
 dw 0000000000000000b
 
@@ -1092,7 +1106,7 @@ db 00000000b, 00000000b, 00000000b, 00000000b
 
 LevelData:
 db 00000000b, 01000011b, 01000001b, 01010001b
-db 00000001b, 01010001b, 01010001b, 01010011b
+db 01000001b, 01010001b, 01010001b, 01010011b
 db 00000000b, 01000011b, 01000001b, 01000001b
 db 01010011b, 00000000b, 01000011b, 01010011b
 db 00000000b, 01100010b, 01000101b, 01000101b
