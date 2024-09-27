@@ -104,15 +104,13 @@ spawn_entities:
         mov byte [di+_STATE_], STATE_EXPLORING ; Save basic state
       .skip_snake:
 
-       cmp bl, ID_PALM
+      cmp bl, ID_PALM
       jnz .skip_palm
         rdtsc
         and al, 0x01
         mov byte [di+_MIRROR_], al ; Save basic state
-      .skip_palm:
+      .skip_palm: 
       
-      ; TODO: move completing 2 tile wide entities here
-
       add si, 0x02                  ; Move to the next entity in code
       add di, ENTITY_SIZE           ; Move to the next entity in memory
     loop .next_in_group
@@ -169,6 +167,11 @@ draw_level:
       add di, 16
       jmp .skip_meta_tile
     .not_empty:
+
+    cmp al, 0x8           ; Bridge meta-tile
+    jnz .skip_bridge
+
+    .skip_bridge:
 
     mov si, MetaTiles
     shl ax, 0x2           ; ID*4 Move to position; 4 bytes per tile
@@ -508,13 +511,6 @@ draw_entities:
       call draw_sprite
     .skip_player_draw:
 
-    cmp ah, ID_BRIDGE
-    jnz .skip_bridge_draw
-      add di, 8
-      mov dl, 0x1
-      call draw_sprite
-    .skip_bridge_draw:
-
     cmp ah, ID_SHIP
     jnz .skip_ship_draw
       xor dl, dl ; mo mirror
@@ -839,7 +835,7 @@ PaletteSets:
 db 0x00, 0x34, 0x17, 0x1b   ; 0x0 Grays
 db 0x00, 0x06, 0x27, 0x43   ; 0x1 Indie top
 db 0x00, 0x7f, 0x13, 0x15   ; 0x2 Indie bottom
-db 0x35, 0x35, 0x36, 0x36   ; 0x3 Ocean
+db 0x35, 0x34, 0x19, 0x1a   ; 0x3 Bridge
 db 0x00, 0xb7, 0xbb, 0x8c   ; 0x4 Wood
 db 0x00, 0x46, 0x5a, 0x5c   ; 0x5 Terrain 1 - shore
 db 0x47, 0x46, 0x45, 0x54   ; 0x6 Terrain 2 - in  land
@@ -947,14 +943,15 @@ dw 1011101101101100b
 dw 0011101011101100b
 
 BridgeBrush:
-db 0x8, 0x3
-dw 0010101111101010b
-dw 1011111010111111b
-dw 1111101111111111b
-dw 1111101011111111b
-dw 1011111010101111b
-dw 0110111111111010b
-dw 0001101010101010b
+db 0x8, 0x3             ; Non movable - bridge spot
+dw 0000000000000000b
+dw 0000000101000000b
+dw 0000010101010000b
+dw 0001010000010100b
+dw 0001000000000100b
+dw 0001010000010100b
+dw 0000010101010000b
+dw 0000000101000000b
 
 RockBrush:
 db 0x8, 0xa
@@ -1061,16 +1058,15 @@ dw 1001001100111011b
 dw 0111100101001100b
 dw 1001011001010101b
 
-db 0x8, 0x0           ; 0x8 Bridge
+db 0x8, 0x0           ; 0x8 Bridge Movable
 dw 0000000000000000b
-dw 0010101111101010b
-dw 1011111010111111b
-dw 1111101111111111b
-dw 1111101011111111b
-dw 1011111010101111b
-dw 0110111111111010b
-dw 0101101010101010b
-dw 0001010101010101b
+dw 0000000000000000b
+dw 0000111111100000b
+dw 0011111110101000b
+dw 1111111010101011b
+dw 0110111010111101b
+dw 0001010101010100b
+dw 0000000000000000b
 
 ; =========================================== META-TILES DECLARATION ===========
 ; 4x4 meta-tiles for level
@@ -1089,7 +1085,7 @@ db 00000100b, 00000101b, 00000101b, 00000101b
 db 00000100b, 00000101b, 00000101b, 00110100b
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
-db 00001000b, 00011000b, 00001000b, 00011000b
+db 00001000b, 00001000b, 00001000b, 00001000b
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
@@ -1136,12 +1132,12 @@ db 01110011b, 00000000b, 00000000b, 00000000b
 ; =========================================== ENTITIES DATA ====================
 
 EntityCount:
-dw 0x45
+dw 0x0040
 
 EntityData:
 db 1, 1
-dw 0x0502
-db 2, 52
+dw 0x0404
+db 2, 48
 dw 0x0008
 dw 0x000a
 dw 0x000d
@@ -1151,14 +1147,13 @@ dw 0x0014
 dw 0x0105
 dw 0x0113
 dw 0x0114
+dw 0x0204
 dw 0x0206
 dw 0x0209
 dw 0x020c
 dw 0x0212
 dw 0x0213
 dw 0x0215
-dw 0x0305
-dw 0x0307
 dw 0x0308
 dw 0x0309
 dw 0x030a
@@ -1171,15 +1166,12 @@ dw 0x031e
 dw 0x0409
 dw 0x041d
 dw 0x0606
-dw 0x060e
-dw 0x0704
 dw 0x0706
 dw 0x070b
 dw 0x0713
 dw 0x071d
 dw 0x071e
 dw 0x071f
-dw 0x0804
 dw 0x0807
 dw 0x080a
 dw 0x080b
@@ -1198,27 +1190,22 @@ db 3, 3
 dw 0x010c
 dw 0x0117
 dw 0x071b
-db 4, 5
+db 4, 8
 dw 0x001e
 dw 0x0107
 dw 0x060d
 dw 0x0d0a
+dw 0x0d0c
 dw 0x0d13
-db 6, 8
-dw 0x0410
-dw 0x0510
-dw 0x0618
-dw 0x0718
-dw 0x0a08
-dw 0x0a14
-dw 0x0b08
-dw 0x0b14
+dw 0x0e0a
+dw 0x0e0b
 db 7, 1
-dw 0x0500
-db 8, 1
+dw 0x0400
+db 8, 3
 dw 0x081e
-
-db 0x0 ; End
+dw 0x0e07
+dw 0x0e15
+db 0x0 ; End of entities
 
 ; =========================================== THE END ====================
 ; Thanks for reading the source code!
