@@ -25,18 +25,27 @@ Mouse driver may be required.
 # Released Projects
 
 ## Land Me
+![Land Me gameplay](media/game1-gameplay.gif)
 
 ## Game 3
+![Game3](media/game3-gameplay.gif)
 
 ## Game 6
+![Game5](media/game6-gameplay.gif)
 
-## GAme 7
+## Game 7
+![Game7](media/game7-screen1.jpg)
 
 
 # In-Production Projects
 
 ## The X Project - Mysteries of the Forgotten Isles
+
+### Bootloader
 ![Game 10 bootloader](media/game10-bootloader.png)
+
+### The Game
+![Game 10 gameplay](media/game10-alpha.png)
 
 Game10 is my current state-of-the-art engine. Includes all the features of previous games, all the tricks, and prooven solutions. 
 
