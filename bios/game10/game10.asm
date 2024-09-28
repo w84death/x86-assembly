@@ -30,9 +30,13 @@ _STATE_ equ 4 ; 1 bytes
 ; =========================================== MAGIC NUMBERS ====================
 
 ENTITY_SIZE  equ 5
-BEEPER_FREQ equ 4400
-BEEPER_ALERT equ 5500
-BEEP_GOLD equ 800
+BEEP_MOVE equ 220
+BEEP_MOVE2 equ 280
+BEEP_ALERT equ 1200
+BEEP_BRIDGE equ 10
+BEEP_PICK equ 600
+BEEP_PUT equ 400
+BEEP_GOLD equ 9000
 LEVEL_START_POSITION equ 320*68+32
 SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
@@ -310,12 +314,12 @@ check_keyboard:
   .collision:
     mov word [_REQUEST_POSITION_], cx
   .no_move:
-    mov bx, BEEPER_ALERT
+    mov bx, BEEP_ALERT
     call beep
     jmp .no_key_press
   .no_col:
   .no_key:
-    mov bx, BEEPER_FREQ
+    mov bx, BEEP_MOVE
     call beep
   .no_key_press:
 
@@ -370,6 +374,8 @@ ai_entities:
           mov byte [si+_STATE_], STATE_DEACTIVATED
           mov byte [_REQUEST_POSITION_], 0
           mov byte [_HOLDING_ID_], 0xff
+          mov bx, BEEP_BRIDGE
+          call beep
           jmp .skip_item
       .skip_bridge:
       
@@ -379,7 +385,9 @@ ai_entities:
         mov byte [si+_STATE_], STATE_FOLLOW
         mov byte [_REQUEST_POSITION_], 0
         mov byte cl, [si+_ID_]
-        mov byte [_HOLDING_ID_], cl         
+        mov byte [_HOLDING_ID_], cl 
+        mov bx, BEEP_PICK
+        call beep       
     .skip_item:
 
     .put_item_back:
@@ -388,6 +396,8 @@ ai_entities:
       cmp byte [_HOLDING_ID_], 0x0 
       jnz .check_kill
         mov byte [si+_STATE_], STATE_INTERACTIVE
+        mov bx, BEEP_PUT
+        call beep
       .check_kill:
       cmp byte [_HOLDING_ID_], 0xff
       jnz .skip_kill
@@ -792,7 +802,7 @@ draw_sprite:
 beep:
   mov al, 0x0B6  ; Command to set the speaker frequency
   out 0x43, al   ; Write the command to the PIT chip
-  mov ax, bx  ; Frequency value for 440 Hz
+  mov ax, bx  ; Frequency value 
   out 0x42, al   ; Write the low byte of the frequency value
   mov al, ah
   out 0x42, al   ; Write the high byte of the frequency value

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>PC Speaker Sound Preview</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 50px; }
+    label, input, button { font-size: 1.2em; }
+    input { width: 100px; margin: 0 10px; }
+    button { padding: 5px 15px; }
+  </style>
+</head>
+<body>
+  <h1>PC Speaker Sound Preview</h1>
+  <label for="freq">Frequency (Hz):</label>
+  <input type="number" id="freq" value="440" min="20" max="20000">
+  <button onclick="playBeep()">Play Beep</button>
+
+  <script>
+    function playBeep() {
+      var frequency = parseFloat(document.getElementById('freq').value);
+      var duration = 1 / 50; // Duration in seconds (1/50th of a second)
+
+      // Create an instance of AudioContext
+      var AudioContext = window.AudioContext || window.webkitAudioContext;
+      var audioCtx = new AudioContext();
+
+      // Create an oscillator node
+      var oscillator = audioCtx.createOscillator();
+      oscillator.type = 'square'; // Square wave to mimic PC speaker sound
+      oscillator.frequency.value = frequency;
+
+      // Connect the oscillator to the destination (speakers)
+      oscillator.connect(audioCtx.destination);
+
+      // Start the oscillator
+      oscillator.start();
+
+      // Stop the oscillator after the specified duration
+      oscillator.stop(audioCtx.currentTime + duration);
+
+      // Clean up the audio context after the sound has played
+      oscillator.onended = function() {
+        audioCtx.close();
+      };
+    }
+  </script>
+</body>
+</html>
