@@ -167,9 +167,23 @@ dw 0000000100000000b
 dw 0000000100000000b
 
 SlotBrush:
-db 0x2, 0xa
+db 0x6, 0x1
+dw 0001010101010100b
 dw 0110000000001001b
-dw 0101010101010101b
+dw 0110000000001001b
+dw 0110000000001001b
+dw 0110000000001001b
+dw 0001010101010100b
+
+ArrowBrush:
+db 0x7, 0x1
+dw 0000001110000000b
+dw 0000001110000000b
+dw 0000001110000000b
+dw 0011111110100100b
+dw 0010111110100100b
+dw 0000101110010000b
+dw 0000001001000000b
 
 
 ; =========================================== TERRAIN TILES DATA ===============
@@ -944,6 +958,19 @@ draw_entities:
       call draw_sprite
     .skip_gold_draw:
 
+    cmp ah, ID_CHEST
+    jnz .skip_chest
+      cmp byte [_HOLDING_ID_], ID_GOLD
+      jnz .skip_chest
+        mov si, ArrowBrush
+        sub di, 320*6
+        mov ax, [GameTick]
+        and ax, 0x1
+        imul ax, 320
+        add di, ax
+        call draw_sprite
+    .skip_chest:
+
     .skip_entity:
     pop si
     add si, ENTITY_SIZE
@@ -963,7 +990,7 @@ draw_score:
     cmp [_SCORE_], cl
     jl .not_gold
       mov si, GoldBrush
-      sub di, 320*6
+      ;sub di, 320*6
       call draw_sprite 
     .not_gold:
     
@@ -1063,21 +1090,22 @@ ret
 
 random_move:
   rdtsc
-  and ax, 0x13
+  and ax, 0x0f
   jz .skip_move
 
 .move_x:
-  test ax, 0x3
+rdtsc
+  test ax, 0x2
   jz .move_y
     dec cl
     test ax, 0x10
     jz .skip_move
     add cl, 2
 ret
-
 .move_y:
   dec ch
-  test ax, 0x10
+  rdtsc
+  test ax, 0x02
   jz .skip_move
   add ch, 2
 

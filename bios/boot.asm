@@ -22,21 +22,6 @@ start:
     mov ds, ax
     mov es, ax
 
-.clear_screen:
-    mov ah, 0x06          ; Clear entire screen
-    mov bh, 0x70          ; Background color
-    mov dx, 0x184F        ; Lower right corner
-    int 0x10
-
-.display_payload:
-    mov dx, 0x0000
-    mov ah, 0x2
-    mov bh, 0x0
-    int 0x10
-
-    mov si, payload_msg
-    call print_string
-
 .load_code:
     mov si, title_msg
     call print_string
@@ -58,6 +43,10 @@ start:
 .display_wait_msg:
     mov si, done_msg
     call print_string
+
+    .display_payload:
+        mov si, payload_msg
+        call print_string
 
     mov si, wait_msg
     call print_string
@@ -89,10 +78,10 @@ print_string:
 .done:
     ret
 
-title_msg db  0x0A,'P1X Bootloader V1.3',0x0A,0x0D,0x0
+title_msg db    'P1X Bootloader V1.3',0x0A,0x0D,0x0
 loading_msg db  'Loading... ',0x0
 error_msg db    'Err',0x0
-done_msg db     'OK!',0x0A,0x0D,0x0
+done_msg db     'OK!',0x0A,0x0A,0x0A,0x0D,0x0
 wait_msg db     'Press any key to start...',0x0
 payload_msg:
 db '*** MYSTERIES OF THE FORGOTTEN ISLES ***',0x0A,0x0D
@@ -101,12 +90,8 @@ db 'Explore the islands. Find all gold and bring it to the ship.',0x0A,0x0D
 db 'Use rocks to build bridges on shallow water. Avoid wildlife.',0x0A,0x0D
 db 'Have fun! :)',0x0A,0x0D
 db 0x0A
-db 'Use: Arrows to move, Space to drop items, Escape to reset.',0x0A,0x0D
+db 'Use Arrows to move, Spacebar to drop items, Escape to reset.',0x0A,0x0D
 db 0x0A
-db 0x0A
-db 0x0A,0x0D
-db '(c)2024 Krzysztof Krystian Jankowski ^ P1X',0x0A,0x0D
-db 'http://smol.p1x.in',0x0A,0x0D
 db 0x0
 
 times 507 - ($ - $$) db 0   ; Pad to 510 bytes
