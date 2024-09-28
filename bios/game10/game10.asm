@@ -162,14 +162,14 @@ dw 0000000100000000b
 dw 0000000100000000b
 
 SlotBrush:
-db 0x7, 0x1
-dw 0010011010011000b
-dw 1001000000000110b
+db 0x7, 0xa
+dw 1001010000010110b
 dw 0100000000000001b
-dw 1100000000000011b
-dw 1011110000111110b
-dw 0110101111101001b
-dw 0000011010010000b
+dw 0000000000000000b
+dw 0000000000000000b
+dw 0000000000000000b
+dw 0100000000000001b
+dw 1001010000010110b
 
 ArrowBrush:
 db 0x7, 0x1
@@ -960,20 +960,10 @@ draw_score:
 
   .game_over:
     mov byte [_GAME_STATE_], GSTATE_END
-  ; .draw_gold:
-  ;   mov si, SlotBrush
-  ;   call draw_sprite 
-  ;   cmp [_SCORE_], cl
-  ;   jl .not_gold
-  ;     mov si, GoldBrush
-  ;     call draw_sprite 
-  ;   .not_gold:
-    
-  ;   add di, 10
-  ; loop .draw_gold
   .game_on:
 
 skip_game_state_game:
+
 
 cmp byte [_GAME_STATE_], GSTATE_END
 jnz skip_game_state_end
