@@ -29,7 +29,7 @@ start:
     int 0x10
 
 .display_payload:
-    mov dx, 0x200
+    mov dx, 0x0000
     mov ah, 0x2
     mov bh, 0x0
     int 0x10

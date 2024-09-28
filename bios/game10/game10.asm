@@ -417,7 +417,7 @@ _STATE_ equ 4 ; 1 bytes
 
 ENTITY_SIZE  equ 5
 LEVEL_START_POSITION equ 320*68+32
-SPEED_EXPLORE equ 0x12c
+SPEED_EXPLORE equ 0x100
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3535
 
@@ -439,10 +439,10 @@ STATE_INTERACTIVE equ 5
 
 BEEP_MOVE equ 220
 BEEP_ALERT equ 1200
-BEEP_BRIDGE equ 80
-BEEP_PICK equ 600
-BEEP_PUT equ 400
-BEEP_GOLD equ 9000
+BEEP_BRIDGE equ 140
+BEEP_PICK equ 500
+BEEP_PUT equ 600
+BEEP_GOLD equ 3000
 
 ; =========================================== INITIALIZATION ===================
 
@@ -660,8 +660,8 @@ check_keyboard:
   mov ah, 00h         ; BIOS keyboard read function
   int 16h             ; Call BIOS interrupt
 
-  .check_enter:
-  cmp ah, 1Ch         ; Compare scan code with enter key
+  .check_spacebar:
+  cmp ah, 39h         ; Compare scan code with spacebar
   jne .check_up
     mov word [_HOLDING_ID_], 0x0
     mov word [_REQUEST_POSITION_], 0x0
@@ -749,7 +749,9 @@ ai_entities:
           cmp cx, [_REQUEST_POSITION_]
           jnz .no_player
             mov byte [_REQUEST_POSITION_], 0x0
-            mov byte [_HOLDING_ID_], 0xff
+            mov byte [_HOLDING_ID_], 0x00
+            mov bx, BEEP_ALERT
+            call beep
             jmp .skip_item
           .no_player:
     .skip_explore:
@@ -792,7 +794,7 @@ ai_entities:
         mov byte [_HOLDING_ID_], cl    
         mov bx, BEEP_PICK
         call beep 
-              
+
     .skip_item:
 
     .put_item_back:
