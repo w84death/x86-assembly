@@ -1,5 +1,5 @@
 ; GAME10 - The X Project - Mysteries of the Forgotten Isles
-; DOS VERSION
+; BIOS VERSION, P1X BOOTLOADER
 ;
 ; Description:
 ; The game is a simple exploration game where you can move around the isles
@@ -46,7 +46,7 @@ dw IndieTopBrush, -320*6
 dw PalmBrush, -320*10
 dw SnakeBrush, -320*2
 dw RockBrush, 0
-dw 0, 320
+dw 0, 0
 dw BridgeBrush, 0
 dw ChestBrush, 0
 dw Gold2Brush, 320
@@ -168,12 +168,12 @@ dw 0000000100000000b
 
 SlotBrush:
 db 0x6, 0x1
-dw 0001010101010100b
-dw 0110000000001001b
-dw 0110000000001001b
-dw 0110000000001001b
-dw 0110000000001001b
-dw 0001010101010100b
+dw 0010010000011000b
+dw 1001000000000110b
+dw 0100000000000001b
+dw 1100000000000011b
+dw 1011000000001110b
+dw 0010110000111000b
 
 ArrowBrush:
 db 0x7, 0x1
@@ -978,11 +978,10 @@ draw_entities:
     dec cx
   jg .next
 
-
 ; =========================================== DRAW UI ==========================
 
 draw_score:
-  mov di, 320*8+16
+  mov di, 320*8+48
   mov byte cl, [_SCORE_TARGET_]
   .draw_gold:
     mov si, SlotBrush
