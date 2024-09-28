@@ -288,123 +288,76 @@ db 00001000b, 00001000b, 00001000b, 00001000b
 ; Nibble is meta-tile id, 2 bits ar nibbles XY mirroring, 1 bit movable
 
 LevelData:
-db 00000000b, 01000011b, 01000001b, 01010001b
-db 01000001b, 01010001b, 01010001b, 01010011b
-db 00000000b, 01000011b, 01000001b, 01000001b
-db 01010011b, 00000000b, 01000011b, 01010011b
-db 00000000b, 01100010b, 01000100b, 01000100b
-db 01010101b, 01000100b, 01000100b, 01010010b
-db 00000000b, 01000010b, 01000100b, 01110110b
-db 01110011b, 00000000b, 01000010b, 01010010b
-db 00000000b, 01000010b, 01000101b, 01010101b
-db 01000101b, 01010101b, 01100101b, 01010010b
-db 01001000b, 01000010b, 01000101b, 01010010b
-db 00000000b, 00000000b, 01000010b, 01010010b
-db 00000000b, 01100011b, 01100110b, 01000100b
-db 01000101b, 01110101b, 01110110b, 01110011b
-db 00000000b, 01000010b, 01100101b, 01010010b
-db 01001000b, 01000011b, 01000110b, 01010010b
-db 00000000b, 00000000b, 01100011b, 01100001b
-db 01100001b, 01100001b, 01110011b, 00000000b
-db 00000000b, 01100011b, 01100001b, 01110011b
-db 00000000b, 01100011b, 01100001b, 01110011b
+db 01000011b, 01000001b, 01010011b, 00000000b
+db 00000000b, 01000011b, 01000001b, 01010011b
 db 00000000b, 00000000b, 00000000b, 00000000b
-db 01001000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 01001000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 01000011b
-db 01010001b, 01000001b, 01010011b, 00000000b
-db 01000011b, 01010001b, 01010001b, 01000001b
-db 01010011b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 01100011b
-db 01100001b, 01110001b, 01110011b, 00000000b
-db 01100011b, 01100001b, 01100001b, 01110001b
-db 01110011b, 00000000b, 00000000b, 00000000b
-
-; =========================================== ENTITIES DATA ====================
+db 01000010b, 01100101b, 01010010b, 01001000b
+db 01000011b, 01000110b, 01110110b, 01110011b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 01100011b, 01100001b, 01110011b, 00000000b
+db 01100011b, 01000101b, 01110011b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 01000011b, 01110101b, 01010011b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 01100011b, 01100001b, 01010111b, 01010011b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 01100011b, 01110011b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
 
 EntityCount:
-dw 0x0047
+dw 0x001a
 
 EntityData:
 db 1, 1
-dw 0x0404
-db 2, 48
-dw 0x0008
-dw 0x000a
-dw 0x000d
-dw 0x000e
-dw 0x0013
-dw 0x0014
-dw 0x0105
-dw 0x0113
-dw 0x0114
-dw 0x0204
-dw 0x0206
-dw 0x0209
-dw 0x020c
-dw 0x0212
-dw 0x0213
-dw 0x0215
-dw 0x0308
-dw 0x0309
-dw 0x030a
-dw 0x030b
-dw 0x030c
-dw 0x0312
-dw 0x0313
-dw 0x0316
-dw 0x031e
-dw 0x0409
-dw 0x041d
-dw 0x0606
-dw 0x0706
-dw 0x070b
-dw 0x0713
-dw 0x071d
-dw 0x071e
-dw 0x071f
-dw 0x0807
-dw 0x080a
-dw 0x080b
-dw 0x0813
-dw 0x081d
-dw 0x081f
-dw 0x0906
-dw 0x0907
-dw 0x090a
-dw 0x0917
-dw 0x0d07
-dw 0x0e08
-dw 0x0e16
-dw 0x0f17
-db 3, 3
-dw 0x010c
-dw 0x0117
-dw 0x071b
-db 4, 8
-dw 0x001e
-dw 0x0107
-dw 0x060d
-dw 0x0d0a
-dw 0x0d0c
-dw 0x0d13
-dw 0x0e0a
-dw 0x0e0b
-db 6, 7
-dw 0x0410
-dw 0x0411
-dw 0x0510
-dw 0x0511
-dw 0x0619
-dw 0x0719
-dw 0x0a14
-db 7, 1
 dw 0x0302
+db 2, 15
+dw 0x000b
+dw 0x000d
+dw 0x0103
+dw 0x010f
+dw 0x0209
+dw 0x020a
+dw 0x030a
+dw 0x030c
+dw 0x0409
+dw 0x0509
+dw 0x050c
+dw 0x050d
+dw 0x060a
+dw 0x060c
+dw 0x090d
+db 3, 1
+dw 0x000c
+db 4, 3
+dw 0x0104
+dw 0x0404
+dw 0x060b
+db 6, 2
+dw 0x0207
+dw 0x0307
+db 7, 1
+dw 0x0301
 db 8, 3
-dw 0x081e
-dw 0x0e07
-dw 0x0e15
+dw 0x010b
+dw 0x020e
+dw 0x0a0e
 db 0x0 ; End of entities
 
 ; =========================================== MEMORY ADDRESSES =================
@@ -429,7 +382,7 @@ _STATE_ equ 4 ; 1 bytes
 
 ENTITY_SIZE  equ 5
 LEVEL_START_POSITION equ 320*68+32
-SPEED_EXPLORE equ 0x100
+SPEED_EXPLORE equ 0x444
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3535
 
@@ -980,28 +933,59 @@ draw_entities:
     dec cx
   jg .next
 
-skip_game_state_game:
 
 ; =========================================== DRAW UI ==========================
 
 draw_score:
-  mov di, 320*8+48
-  mov byte cl, [_SCORE_TARGET_]
-  cmp [_SCORE_], cl
-  jl .draw_gold
+  mov di, 320*8+32
+  mov al, [_SCORE_TARGET_]
+  mov ah, [_SCORE_]
+  cmp al, ah
+  jle .game_over
+  xor cl, cl
+  .draw_spot:
+      mov si, SlotBrush
+      call draw_sprite
+      cmp cl, ah
+      jge .skip_gold_draw
+        mov si, GoldBrush
+        call draw_sprite 
+      .skip_gold_draw:
+    add di, 0xa
+    inc cl
+    cmp al, cl
+  jnz .draw_spot
+  jmp .game_on
+
+  .game_over:
     mov byte [_GAME_STATE_], GSTATE_END
-  .draw_gold:
-    mov si, SlotBrush
-    call draw_sprite 
-    cmp [_SCORE_], cl
-    jl .not_gold
-      mov si, GoldBrush
-      call draw_sprite 
-    .not_gold:
+  ; .draw_gold:
+  ;   mov si, SlotBrush
+  ;   call draw_sprite 
+  ;   cmp [_SCORE_], cl
+  ;   jl .not_gold
+  ;     mov si, GoldBrush
+  ;     call draw_sprite 
+  ;   .not_gold:
     
-    add di, 10
-  loop .draw_gold
-  .done:
+  ;   add di, 10
+  ; loop .draw_gold
+  .game_on:
+
+skip_game_state_game:
+
+cmp byte [_GAME_STATE_], GSTATE_END
+jnz skip_game_state_end
+  mov di, 320*100+154
+  mov si, GoldBrush
+  mov ax, [_GAME_TICK_]
+  and ax, 0x8
+  cmp ax, 0x4
+  jg .skip_frame
+    mov si, Gold2Brush
+  .skip_frame:
+  call draw_sprite
+skip_game_state_end:
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 

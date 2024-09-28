@@ -22,7 +22,19 @@ start:
     mov ds, ax
     mov es, ax
 
+.clear_screen:
+    mov ah, 0x06          ; Clear entire screen
+    mov bh, 0x70          ; Background color
+    mov dx, 0x184F        ; Lower right corner
+    int 0x10
+
+    xor dx, dx
+    mov ah, 0x2
+    mov bh, 0x0
+    int 0x10
+
 .load_code:
+
     mov si, title_msg
     call print_string
 
@@ -86,9 +98,8 @@ wait_msg db     'Press any key to start...',0x0
 payload_msg:
 db '*** MYSTERIES OF THE FORGOTTEN ISLES ***',0x0A,0x0D
 db 0x0A
-db 'Explore the islands. Find all gold and bring it to the ship.',0x0A,0x0D
+db 'Explore the islands. Find all gold and bring it to the chest.',0x0A,0x0D
 db 'Use rocks to build bridges on shallow water. Avoid wildlife.',0x0A,0x0D
-db 'Have fun! :)',0x0A,0x0D
 db 0x0A
 db 'Use Arrows to move, Spacebar to drop items, Escape to reset.',0x0A,0x0D
 db 0x0A
