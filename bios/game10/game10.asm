@@ -26,11 +26,10 @@ _ID_ equ 0  ; 1 byte
 _POS_ equ 1 ; 2 bytes / word
 _MIRROR_ equ 3  ; 1 byte
 _STATE_ equ 4 ; 1 bytes
-_MOVABLE_ equ 5 ; 1 byte
 
 ; =========================================== MAGIC NUMBERS ====================
 
-ENTITY_SIZE  equ 6
+ENTITY_SIZE  equ 5
 BEEPER_FREQ equ 4400
 BEEPER_ALERT equ 5500
 BEEP_GOLD equ 800
@@ -98,7 +97,6 @@ spawn_entities:
       mov [di+_POS_], ax          ; Save position
       mov byte [di+_MIRROR_], 0x0 ;  Save mirror (none)
       mov byte [di+_STATE_], STATE_IDLE ; Save basic state
-      mov byte [di+_MOVABLE_], 0x0 ; Save movable flag 
       
       cmp bl, ID_SNAKE
       jnz .skip_snake
@@ -483,10 +481,8 @@ draw_entities:
       mov cx, [si+_POS_]   ; Load player position into CX (Y in CH, X in CL)
       pop si
       mov word [si+_POS_], cx ; Save new position
-      dec ch
-      dec ch      ; Move up over the player
       call conv_pos2mem       ; Convert position to memory
-      add di, 320*4
+      sub di, 320*12          ; Move above player
     .skip_follow:
 
 
@@ -499,6 +495,7 @@ draw_entities:
       jz .skip_player_check
       mov al, 0x9
     .skip_player_check:
+
     shl al, 0x2
     mov bx, BrushRefs       ; Get brush reference table
     add bl, al              ; Shift to ref (id*2 bytes)
@@ -506,7 +503,7 @@ draw_entities:
     push dx
 
     add al, 0x2               ; offest is at next byte (+2)
-    movzx bx, al            ; Get address to BX
+    movzx bx, al              ; Get address to BX
     add di, [BrushRefs + bx]  ; Get shift and apply to destination position
     mov dl, [si+_MIRROR_]     ; Get brush mirror flag
     pop si
@@ -594,9 +591,7 @@ call no_beep
 ; =========================================== TERMINATE PROGRAM ================
 
   exit:
-    mov ax, 0x0003             ; Return to text mode
-    int 0x10                   ; Video BIOS interrupt
-    ret                       ; Return to DOS
+    ret                       ; Return to BIOS
 
 ; =========================================== CNVERT XY TO MEM =================
 ; Expects: CX - position YY/XX
@@ -675,8 +670,6 @@ check_friends:
     jz .skip_this_entity
     cmp word [si+_POS_], ax
     jnz .skip_this_entity
-    cmp byte [si+_MOVABLE_], 0x1
-    jz .skip_this_entity
     inc bx
     .skip_this_entity:
     add si, ENTITY_SIZE
@@ -744,9 +737,10 @@ draw_sprite:
         .draw_pixel:
             push cx
 
-            mov cl, 0x2
-            call get_bits_from_word
-
+            rol ax, 2
+            mov bx, ax
+            and bx, 0x3
+            
             mov si, bp      ; Palette Set
             add si, bx      ; Palette color
             mov byte bl, [si] ; Get color from the palette
@@ -789,24 +783,6 @@ draw_sprite:
     loop .plot_line
     popa
   ret
-
-
-; =========================================== CONVERT VALUE ===================
-; Expects:
-; AX - source
-; CL - number of bits to convert
-; Return: BX
-
-get_bits_from_word:
-    xor bx, bx          ; Clear BX
-    .rotate_loop:
-        rol ax, 1       ; Rotate left, moving leftmost bit to carry flag
-        adc bx, 0       ; Add carry to BX (0 or 1)
-        shl bx, 1       ; Shift BX left, making room for next bit
-        loop .rotate_loop
-    shr bx, 1           ; Adjust final result (undo last shift)
-    ret
-
 
 ; =========================================== BEEP PC SPEAKER ==================
 ; Set the speaker frequency
@@ -1092,12 +1068,7 @@ db 00000110b, 00000110b, 00000111b, 00000110b
 db 00000111b, 00000111b, 00000111b, 00000111b
 db 00000100b, 00000101b, 00000101b, 00000101b
 db 00000100b, 00000101b, 00000101b, 00110100b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
 db 00001000b, 00001000b, 00001000b, 00001000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
 
 ; =========================================== LEVEL DATA =======================
 ; 16x8 level data
@@ -1115,19 +1086,19 @@ db 00000000b, 01000010b, 01010110b, 01111000b
 db 01110011b, 00000000b, 01000010b, 01010010b
 db 00000000b, 01000010b, 01000101b, 01000110b
 db 01000111b, 01010111b, 01000110b, 01010010b
-db 01001100b, 01000010b, 01000110b, 01010010b
+db 01001010b, 01000010b, 01000110b, 01010010b
 db 00000000b, 00000000b, 01000010b, 01010010b
 db 00000000b, 01100011b, 01101000b, 01000101b
 db 01000111b, 01000110b, 01111000b, 01110011b
 db 00000000b, 01000010b, 01000101b, 01010010b
-db 01001100b, 01000011b, 01001000b, 01010010b
+db 01001010b, 01000011b, 01001000b, 01010010b
 db 00000000b, 00000000b, 01100011b, 01100001b
 db 01110001b, 01100001b, 01110011b, 00000000b
 db 00000000b, 01100011b, 01100001b, 01110011b
 db 00000000b, 01100011b, 01100001b, 01110011b
 db 00000000b, 00000000b, 00000000b, 00000000b
-db 01001100b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 01001100b, 00000000b
+db 01001010b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 01001010b, 00000000b
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000000b, 00000000b, 00000000b, 01000011b
 db 01010001b, 01000001b, 01010011b, 00000000b
