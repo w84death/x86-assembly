@@ -23,49 +23,29 @@ start:
     mov es, ax
 
 .clear_screen:
-    mov ah, 0x06           ; BIOS scroll up function
-    mov al, 0              ; Clear entire screen
-    mov bh, 0x70           ; Text attribute
-    mov cx, 0              ; Upper left corner
-    mov dx, 0x184F         ; Lower right corner
-    int 0x10               ; BIOS video interrupt
+    mov ah, 0x06          ; Clear entire screen
+    mov bh, 0x70          ; Background color
+    mov dx, 0x184F        ; Lower right corner
+    int 0x10
 
-.display_title:
-    mov dx, 0x0404
-    call set_cursor
-    mov si, welcome_msg
-    call print_string
+.display_payload:
+    mov dx, 0x200
+    mov ah, 0x2
+    mov bh, 0x0
+    int 0x10
 
-    add dh, 0x04
-    call set_cursor
     mov si, title_msg
     call print_string
-
-    add dh, 0x02
-    call set_cursor
-    mov si, line0_msg
+    mov si, payload_msg
     call print_string
-
-    inc dh
-    call set_cursor
-    mov si, line1_msg
-    call print_string
-
-    inc dh
-    call set_cursor
-    mov si, line2_msg
-    call print_string
-
 
 .load_code:
-    mov dx, 0x1204
-    call set_cursor
     mov si, loading_msg
     call print_string
 
-    mov ax, 0x7E0          ; ES = 0x7E0
+    mov ax, 0x7E0          ; Segment where code will be loaded
     mov es, ax
-    mov bx, 0x0100         ; BX = 0x0100
+    mov bx, 0x0100         ; Offset where code will be loaded
 
 .load_sectors:
     mov ax, 0x0204         ; 4 sectors to load from the disk
@@ -78,8 +58,6 @@ start:
     mov si, done_msg
     call print_string
 
-    mov dx, 0x1404
-    call set_cursor
     mov si, wait_msg
     call print_string
     
@@ -110,21 +88,18 @@ print_string:
 .done:
     ret
 
-set_cursor:
-    mov ah, 0x02            ; BIOS set cursor position function
-    mov bh, 0               ; Page number
-    int 0x10                ; BIOS video interrupt
-    ret
-
-welcome_msg db  'P1X Bootloader V1.1', 0
-loading_msg db  'Loading... ', 0
-done_msg db     'OK!', 0
-title_msg db    '*** Mysteries of the Forgotten Isles ***------------------------', 0
-line0_msg db     'Bring back all gold to the ship before the tides are high!------', 0
-line1_msg db    'Avoid wildlife. Use rocks to block them or build bridges.-------', 0
-line2_msg db     'Use arrow keys to move, SPACE to drop items, ESC to reset-------', 0
-wait_msg db     'Press any key to start game...', 0
-error_msg db    'Err', 0
+title_msg db  'P1X Bootloader V1.2',0x0A,0x0A,0x0D,0x0
+loading_msg db  0x0A,'Loading... ',0x0
+error_msg db    'Err',0x0
+done_msg db     'OK!',0x0A,0x0D,0x0
+wait_msg db     'Press any key to start...',0x0
+payload_msg:
+db 'This bootloader uses exactly 512 bytes!_______________________',0x0A,0x0D
+db '______________________________________________________________',0x0A,0x0D
+db '_______________Use this space as desire!______________________',0x0A,0x0D
+db '______________________________________________________________',0x0A,0x0D
+db '______________________________________...up to this character!',0x0A,0x0D
+db 0
 
 times 507 - ($ - $$) db 0   ; Pad to 510 bytes
 db "P1X"                    ; Use HEX viewer to see P1X at the end of binary
