@@ -31,24 +31,34 @@ start:
     int 0x10               ; BIOS video interrupt
 
 .display_title:
-    mov dx, 0x0510
+    mov dx, 0x0404
     call set_cursor
     mov si, welcome_msg
     call print_string
 
-    mov dx, 0x0710          ; Row 5, Column 16
+    add dh, 0x04
     call set_cursor
     mov si, title_msg
     call print_string
 
-    mov dx, 0x0910          ; Row 5, Column 16
+    add dh, 0x02
     call set_cursor
-    mov si, desc_msg
+    mov si, line0_msg
+    call print_string
+
+    inc dh
+    call set_cursor
+    mov si, line1_msg
+    call print_string
+
+    inc dh
+    call set_cursor
+    mov si, line2_msg
     call print_string
 
 
 .load_code:
-    mov dx, 0x1210          ; Row 10, Column 4
+    mov dx, 0x1204
     call set_cursor
     mov si, loading_msg
     call print_string
@@ -58,12 +68,9 @@ start:
     mov bx, 0x0100         ; BX = 0x0100
 
 .load_sectors:
-    mov ah, 0x02           ; BIOS read sectors function
-    mov al, 4              ; Number of sectors to read
-    mov ch, 0              ; Cylinder 0
-    mov dh, 0              ; Head 0
-    mov cl, 2              ; Sector 2 (sectors start at 1)
-    mov dl, 0               ; Boot drive number
+    mov ax, 0x0204         ; 4 sectors to load from the disk
+    xor dx, dx             ; CH = 0 cylinder, DH = 0 head
+    mov cl, 2              ; CL = start at second sector
     int 0x13               ; BIOS disk interrupt
     jc disk_error          ; Jump if carry flag set (error)
 
@@ -71,7 +78,7 @@ start:
     mov si, done_msg
     call print_string
 
-    mov dx, 0x1410
+    mov dx, 0x1404
     call set_cursor
     mov si, wait_msg
     call print_string
@@ -85,7 +92,7 @@ start:
     mov ss, ax
     mov sp, 0x7C00         ; Initialize stack pointer  
 
-    jmp 0x7E0:0x0100
+    jmp 0x7E0:0x0100        ; Jump to the loaded code; run the game!
 
 disk_error:
     mov si, error_msg
@@ -109,13 +116,15 @@ set_cursor:
     int 0x10                ; BIOS video interrupt
     ret
 
-welcome_msg db 'P1X Bootloader V1.0', 0
-loading_msg db 'Loading [4] sectors / 2048 bytes... ', 0
-done_msg db 'Done!', 0
-title_msg db '*** Mysteries of the Forgotten Isles ***', 0
-desc_msg db 'Bring back all gold to the ship before the tides are high!', 0
-wait_msg db 'Press any key to start game...', 0
-error_msg db 'Disk Read Error!', 0
+welcome_msg db  'P1X Bootloader V1.1', 0
+loading_msg db  'Loading... ', 0
+done_msg db     'OK!', 0
+title_msg db    '*** Mysteries of the Forgotten Isles ***------------------------', 0
+line0_msg db     'Bring back all gold to the ship before the tides are high!------', 0
+line1_msg db    'Avoid wildlife. Use rocks to block them or build bridges.-------', 0
+line2_msg db     'Use arrow keys to move, SPACE to drop items, ESC to reset-------', 0
+wait_msg db     'Press any key to start game...', 0
+error_msg db    'Err', 0
 
 times 507 - ($ - $$) db 0   ; Pad to 510 bytes
 db "P1X"                    ; Use HEX viewer to see P1X at the end of binary
