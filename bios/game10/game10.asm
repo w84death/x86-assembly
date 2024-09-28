@@ -437,6 +437,13 @@ STATE_FOLLOW equ 3
 STATE_ACTIVATED equ 4
 STATE_INTERACTIVE equ 5
 
+BEEP_MOVE equ 220
+BEEP_ALERT equ 1200
+BEEP_BRIDGE equ 80
+BEEP_PICK equ 600
+BEEP_PUT equ 400
+BEEP_GOLD equ 9000
+
 ; =========================================== INITIALIZATION ===================
 
 start:
@@ -695,8 +702,11 @@ check_keyboard:
 
     .move:
     mov word [si+_POS_], cx      
+    mov bx, BEEP_MOVE
     .no_move:
+    mov bx, BEEP_ALERT
     mov word [_REQUEST_POSITION_], cx
+    call beep
 
   .no_key_press:
 
@@ -754,19 +764,22 @@ ai_entities:
       jz .check_bridge
       cmp byte [si+_ID_], ID_CHEST
       jnz .skip_check_interactions
-
+      
       .check_interactions:
         cmp byte [_HOLDING_ID_], ID_GOLD
         jnz .skip_item
         inc byte [_SCORE_]
+        mov bx, BEEP_GOLD
         jmp .clear_item
       .check_bridge:
         cmp byte [_HOLDING_ID_], ID_ROCK
         jnz .skip_item
         mov byte [si+_STATE_], STATE_DEACTIVATED
+        mov bx, BEEP_BRIDGE
       .clear_item:          
           mov byte [_REQUEST_POSITION_], 0
           mov byte [_HOLDING_ID_], 0xff
+          call beep
           jmp .skip_item
       .skip_check_interactions:
 
@@ -777,7 +790,9 @@ ai_entities:
         mov byte [_REQUEST_POSITION_], 0
         mov byte cl, [si+_ID_]
         mov byte [_HOLDING_ID_], cl    
-    
+        mov bx, BEEP_PICK
+        call beep 
+              
     .skip_item:
 
     .put_item_back:
@@ -786,6 +801,8 @@ ai_entities:
       cmp byte [_HOLDING_ID_], 0x0 
       jnz .check_kill
         mov byte [si+_STATE_], STATE_INTERACTIVE
+        mov bx, BEEP_PUT
+        call beep
       .check_kill:
       cmp byte [_HOLDING_ID_], 0xff
       jnz .skip_kill
@@ -986,6 +1003,7 @@ wait_for_vsync:
 ; =========================================== GAME TICK ========================
 
 inc word [GameTick]
+call no_beep
 
 ; =========================================== ESC OR LOOP ======================
 
@@ -997,6 +1015,29 @@ inc word [GameTick]
 
   exit:
     ret                       ; Return to BIOS
+
+; =========================================== BEEP PC SPEAKER ==================
+; Set the speaker frequency
+; Expects: BX - frequency value
+; Return: -
+
+beep:
+  mov al, 0x0B6  ; Command to set the speaker frequency
+  out 0x43, al   ; Write the command to the PIT chip
+  mov ax, bx  ; Frequency value 
+  out 0x42, al   ; Write the low byte of the frequency value
+  mov al, ah
+  out 0x42, al   ; Write the high byte of the frequency value
+  in al, 0x61    ; Read the PIC chip
+  or al, 0x03    ; Set bit 0 to enable the speaker
+  out 0x61, al   ; Write the updated value back to the PIC chip
+ret
+
+no_beep:
+  in al, 0x61    ; Read the PIC chip
+  and al, 0x0FC  ; Clear bit 0 to disable the speaker
+  out 0x61, al   ; Write the updated value back to the PIC chip
+ret
 
 ; =========================================== CNVERT XY TO MEM =================
 ; Expects: CX - position YY/XX
@@ -1030,7 +1071,7 @@ random_move:
     test ax, 0x10
     jz .skip_move
     add cl, 2
-  ret
+ret
 
 .move_y:
   dec ch
@@ -1039,7 +1080,7 @@ random_move:
   add ch, 2
 
 .skip_move:
-  ret
+ret
 
 
 ; =========================================== CHECK BOUNDS =====================
@@ -1055,7 +1096,7 @@ check_bounds:
   inc ax                                    ; No bound hit (AX = 1)
 .return:
   test ax, 0x1
-  ret
+ret
 
 ; =========================================== CHECK FRIEDS =====================
 ; Expects: CX - Position YY/XX
@@ -1099,7 +1140,7 @@ check_water_tile:
   add bx, LevelData
   mov al, [bx]    ; Read tile
   test al, 0x40   ; Check if movable (7th bit set)
-  ret
+ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
 ; Expects:
@@ -1108,86 +1149,86 @@ check_water_tile:
 ; Return: -
 
 draw_sprite:
-    pusha
-    xor cx, cx
-    mov byte cl, [si]       ; lines
-    inc si
+  pusha
+  xor cx, cx
+  mov byte cl, [si]       ; lines
+  inc si
 
-    xor ax, ax
-    mov byte al, [si]       ; Palette
-    inc si
+  xor ax, ax
+  mov byte al, [si]       ; Palette
+  inc si
 
-    shl ax, 0x2              ; each set is 4x 1 byte
-    mov bp, ax
-    add bp, PaletteSets
+  shl ax, 0x2              ; each set is 4x 1 byte
+  mov bp, ax
+  add bp, PaletteSets
 
-    test dl, 0x1              ; Check x mirror
-    jz .no_x_mirror
-      add di, 0x7             ; Move point to the last right pixel
-    .no_x_mirror:
+  test dl, 0x1              ; Check x mirror
+  jz .no_x_mirror
+    add di, 0x7             ; Move point to the last right pixel
+  .no_x_mirror:
 
-    test dl, 0x2              ; Check
-    jz .no_y_mirror
-      add si, cx
-      add si, cx              ; Move to the last position
-      sub si, 0x2             ; Back one word
-    .no_y_mirror:
+  test dl, 0x2              ; Check
+  jz .no_y_mirror
+    add si, cx
+    add si, cx              ; Move to the last position
+    sub si, 0x2             ; Back one word
+  .no_y_mirror:
 
-    .plot_line:
-        push cx           ; Save lines couter
-        mov ax, [si]      ; Get sprite line
-        xor bx, bx
-        mov cl, 0x08      ; 8 pixels in line
-        push si
-        .draw_pixel:
-            push cx
+  .plot_line:
+      push cx           ; Save lines couter
+      mov ax, [si]      ; Get sprite line
+      xor bx, bx
+      mov cl, 0x08      ; 8 pixels in line
+      push si
+      .draw_pixel:
+          push cx
 
-            rol ax, 2
-            mov bx, ax
-            and bx, 0x3
-            
-            mov si, bp      ; Palette Set
-            add si, bx      ; Palette color
-            mov byte bl, [si] ; Get color from the palette
+          rol ax, 2
+          mov bx, ax
+          and bx, 0x3
+          
+          mov si, bp      ; Palette Set
+          add si, bx      ; Palette color
+          mov byte bl, [si] ; Get color from the palette
 
-            cmp bl, 0x0        ; transparency
-            jz .skip_pixel
-              mov byte [es:di], bl  ; Write pixel color
-            .skip_pixel:     ; Or skip this pixel - alpha color
+          cmp bl, 0x0        ; transparency
+          jz .skip_pixel
+            mov byte [es:di], bl  ; Write pixel color
+          .skip_pixel:     ; Or skip this pixel - alpha color
 
-            inc di           ; Move destination to next pixel (+1)
+          inc di           ; Move destination to next pixel (+1)
 
-            mov bl, dl
-            and bl, 0x1
-            jz .no_x_mirror2          ; Jump if not
-              dec di           ; Remove previous shift (now it's 0)
-              dec di           ; Move destination 1px left (-1)
-            .no_x_mirror2:
+          mov bl, dl
+          and bl, 0x1
+          jz .no_x_mirror2          ; Jump if not
+            dec di           ; Remove previous shift (now it's 0)
+            dec di           ; Move destination 1px left (-1)
+          .no_x_mirror2:
 
-            pop cx
-            loop .draw_pixel
+          pop cx
+          loop .draw_pixel
 
-        pop si
-        add si, 0x2               ; Move to the next sprite line data
+      pop si
+      add si, 0x2               ; Move to the next sprite line data
 
-        mov bl, dl
-        and bl, 0x2
-        jz .no_y_mirror2
-          sub si, 0x4
-        .no_y_mirror2:
+      mov bl, dl
+      and bl, 0x2
+      jz .no_y_mirror2
+        sub si, 0x4
+      .no_y_mirror2:
 
-        add di, 312          ; Move to next line in destination
+      add di, 312          ; Move to next line in destination
 
-        mov bl, dl
-        and bl, 0x1
-        jz .no_x_mirror3
-          add di, 0x10           ; If mirrored adjust next line position
-        .no_x_mirror3:
+      mov bl, dl
+      and bl, 0x1
+      jz .no_x_mirror3
+        add di, 0x10           ; If mirrored adjust next line position
+      .no_x_mirror3:
 
-    pop cx                   ; Restore line counter
-    loop .plot_line
-    popa
-  ret
+  pop cx                   ; Restore line counter
+  loop .plot_line
+  popa
+ret
 
 ; ========================================== SAFETY CHECK ====================== 
 
