@@ -638,9 +638,10 @@ check_keyboard:
   .check_spacebar:
   cmp ah, 39h         ; Compare scan code with spacebar
   jne .check_up
-    mov word [_HOLDING_ID_], 0x0
+    mov byte [_HOLDING_ID_], 0x0
     mov word [_REQUEST_POSITION_], 0x0
     jmp .no_key_press
+
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
@@ -720,7 +721,7 @@ ai_entities:
         .check_if_player:
           cmp cx, [_REQUEST_POSITION_]
           jnz .no_player
-            mov byte [_REQUEST_POSITION_], 0x0
+            mov word [_REQUEST_POSITION_], 0x0
             mov byte [_HOLDING_ID_], 0x00
             mov bx, BEEP_ALERT
             call beep
@@ -751,7 +752,7 @@ ai_entities:
         jnz .skip_item
         mov byte [si+_STATE_], STATE_DEACTIVATED
       .clear_item:          
-          mov byte [_REQUEST_POSITION_], 0
+          mov word [_REQUEST_POSITION_], 0
           mov byte [_HOLDING_ID_], 0xff
           jmp .skip_item
       .skip_check_interactions:
@@ -760,7 +761,7 @@ ai_entities:
       jnz .skip_item
       .pick_item:
         mov byte [si+_STATE_], STATE_FOLLOW
-        mov byte [_REQUEST_POSITION_], 0
+        mov word [_REQUEST_POSITION_], 0
         mov byte cl, [si+_ID_]
         mov byte [_HOLDING_ID_], cl    
         mov bx, BEEP_PICK
