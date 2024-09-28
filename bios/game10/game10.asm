@@ -16,11 +16,6 @@ use16
 
 jmp start
 
-; =========================================== GAME LIVE VARIABLES ==============
-
-GameTick:
-dw 0x0
-
 ; =========================================== COLOR PALETTES ===================
 ; Set of four colors per palette. 0x00 is transparency; use 0x10 for black.
 
@@ -167,13 +162,14 @@ dw 0000000100000000b
 dw 0000000100000000b
 
 SlotBrush:
-db 0x6, 0x1
-dw 0010010000011000b
+db 0x7, 0x1
+dw 0010011010011000b
 dw 1001000000000110b
 dw 0100000000000001b
 dw 1100000000000011b
-dw 1011000000001110b
-dw 0010110000111000b
+dw 1011110000111110b
+dw 0110101111101001b
+dw 0000011010010000b
 
 ArrowBrush:
 db 0x7, 0x1
@@ -415,12 +411,14 @@ db 0x0 ; End of entities
 
 _VGA_MEMORY_ equ 0xA000
 _DBUFFER_MEMORY_ equ 0x2000
+_ENTITIES_ equ 0x1000
 _PLAYER_ENTITY_ID_ equ 0x1800
 _REQUEST_POSITION_ equ 0x1802
 _HOLDING_ID_ equ 0x1804
 _SCORE_ equ 0x1805
 _SCORE_TARGET_ equ 0x1806
-_ENTITIES_ equ 0x1000
+_GAME_TICK_ equ 0x1807
+_GAME_STATE_ equ 0x1809
 
 _ID_ equ 0  ; 1 byte
 _POS_ equ 1 ; 2 bytes / word
@@ -451,6 +449,10 @@ STATE_FOLLOW equ 3
 STATE_ACTIVATED equ 4
 STATE_INTERACTIVE equ 5
 
+GSTATE_INTRO equ 0
+GSTATE_GAME equ 1
+GSTATE_END equ 2
+
 BEEP_MOVE equ 220
 BEEP_ALERT equ 1200
 BEEP_BRIDGE equ 140
@@ -475,6 +477,8 @@ set_keyboard_rate:
     int 16h
 
 restart_game:
+
+mov byte [_GAME_STATE_], GSTATE_GAME
 
 ; =========================================== SPAWN ENTITIES ==================
 ; Expects: entities array from level data
@@ -568,6 +572,10 @@ draw_ocean:
   mov cx, 320*70              ; 70 lines of ocean
   mov ax, COLOR_WATER
   rep stosw
+
+
+cmp byte [_GAME_STATE_], GSTATE_GAME
+jnz skip_game_state_game
 
 ; =========================================== DRAWING LEVEL ====================
 
@@ -716,11 +724,8 @@ check_keyboard:
 
     .move:
     mov word [si+_POS_], cx      
-    mov bx, BEEP_MOVE
     .no_move:
-    mov bx, BEEP_ALERT
     mov word [_REQUEST_POSITION_], cx
-    call beep
 
   .no_key_press:
 
@@ -786,16 +791,15 @@ ai_entities:
         jnz .skip_item
         inc byte [_SCORE_]
         mov bx, BEEP_GOLD
+        call beep
         jmp .clear_item
       .check_bridge:
         cmp byte [_HOLDING_ID_], ID_ROCK
         jnz .skip_item
         mov byte [si+_STATE_], STATE_DEACTIVATED
-        mov bx, BEEP_BRIDGE
       .clear_item:          
           mov byte [_REQUEST_POSITION_], 0
           mov byte [_HOLDING_ID_], 0xff
-          call beep
           jmp .skip_item
       .skip_check_interactions:
 
@@ -817,8 +821,6 @@ ai_entities:
       cmp byte [_HOLDING_ID_], 0x0 
       jnz .check_kill
         mov byte [si+_STATE_], STATE_INTERACTIVE
-        mov bx, BEEP_PUT
-        call beep
       .check_kill:
       cmp byte [_HOLDING_ID_], 0xff
       jnz .skip_kill
@@ -949,7 +951,7 @@ draw_entities:
 
     cmp ah, ID_GOLD
     jnz .skip_gold_draw
-      mov ax, [GameTick]
+      mov ax, [_GAME_TICK_]
       and ax, 0x8
       cmp ax, 0x4
       jl .skip_gold_draw
@@ -964,7 +966,7 @@ draw_entities:
       jnz .skip_chest
         mov si, ArrowBrush
         sub di, 320*6
-        mov ax, [GameTick]
+        mov ax, [_GAME_TICK_]
         and ax, 0x1
         imul ax, 320
         add di, ax
@@ -978,18 +980,22 @@ draw_entities:
     dec cx
   jg .next
 
+skip_game_state_game:
+
 ; =========================================== DRAW UI ==========================
 
 draw_score:
   mov di, 320*8+48
   mov byte cl, [_SCORE_TARGET_]
+  cmp [_SCORE_], cl
+  jl .draw_gold
+    mov byte [_GAME_STATE_], GSTATE_END
   .draw_gold:
     mov si, SlotBrush
     call draw_sprite 
     cmp [_SCORE_], cl
     jl .not_gold
       mov si, GoldBrush
-      ;sub di, 320*6
       call draw_sprite 
     .not_gold:
     
@@ -1030,7 +1036,7 @@ wait_for_vsync:
 
 ; =========================================== GAME TICK ========================
 
-inc word [GameTick]
+inc word [_GAME_TICK_]
 call no_beep
 
 ; =========================================== ESC OR LOOP ======================
