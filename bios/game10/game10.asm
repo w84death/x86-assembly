@@ -17,11 +17,12 @@ use16
 ; =========================================== MEMORY ADDRESSES =================
 
 _VGA_MEMORY_ equ 0xA000
-_DBUFFER_MEMORY_ equ 0x8000
-_PLAYER_ENTITY_ID_ equ 0x7000
-_REQUEST_POSITION_ equ 0x7002
-_HOLDING_ID_ equ 0x7004
-_ENTITIES_ equ 0x7010
+_DBUFFER_MEMORY_ equ 0x2000
+_PLAYER_ENTITY_ID_ equ 0x1800
+_REQUEST_POSITION_ equ 0x1802
+_HOLDING_ID_ equ 0x1804
+_SCORE_ equ 0x1805
+_ENTITIES_ equ 0x1000
 
 _ID_ equ 0  ; 1 byte
 _POS_ equ 1 ; 2 bytes / word
@@ -31,13 +32,6 @@ _STATE_ equ 4 ; 1 bytes
 ; =========================================== MAGIC NUMBERS ====================
 
 ENTITY_SIZE  equ 5
-BEEP_MOVE equ 220
-BEEP_MOVE2 equ 280
-BEEP_ALERT equ 1200
-BEEP_BRIDGE equ 80
-BEEP_PICK equ 600
-BEEP_PUT equ 400
-BEEP_GOLD equ 9000
 LEVEL_START_POSITION equ 320*68+32
 SPEED_EXPLORE equ 0x12c
 COLOR_SKY equ 0x3b3b
@@ -121,6 +115,8 @@ spawn_entities:
       jz .set_interactive
       cmp bl, ID_ROCK
       jz .set_interactive
+      cmp bl, ID_SHIP
+      jz .set_interactive
       jmp .skip_interactive
       .set_interactive:
         mov byte [di+_STATE_], STATE_INTERACTIVE
@@ -134,6 +130,7 @@ spawn_entities:
 
 mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
 mov byte [_HOLDING_ID_], 0x0      
+mov byte [_SCORE_], 0x0
 
 ; =========================================== GAME LOGIC =======================
 
@@ -294,34 +291,25 @@ check_keyboard:
 
   .check_right:
   cmp ah, 4Dh         ; Compare scan code with right arrow
-  jne .no_key
+  jne .no_key_press
     inc cl
     mov byte [si+_MIRROR_], 0x0
     ;jmp .check_move
 
   .check_move:
+    call check_friends
+    jz .collision
+    call check_water_tile
+    jz .no_move
+    call check_bounds
+    jz .no_move
 
-  call check_friends
-  jz .collision
+    mov word [si+_POS_], cx
+    jmp .no_move
+    .collision:
+      mov word [_REQUEST_POSITION_], cx
+    .no_move:
 
-  call check_water_tile
-  jz .no_move
-  call check_bounds
-  jz .no_move
-
-  mov word [si+_POS_], cx
-  jmp .no_col
-
-  .collision:
-    mov word [_REQUEST_POSITION_], cx
-  .no_move:
-    mov bx, BEEP_ALERT
-    call beep
-    jmp .no_key_press
-  .no_col:
-  .no_key:
-    mov bx, BEEP_MOVE
-    call beep
   .no_key_press:
 
 
@@ -369,26 +357,32 @@ ai_entities:
       jnz .skip_item
         
       cmp byte [si+_ID_], ID_BRIDGE
-      jnz .skip_bridge
+      jz .check_bridge
+      cmp byte [si+_ID_], ID_SHIP
+      jnz .skip_check_interactions
+
+      .check_interactions:
+        cmp byte [_HOLDING_ID_], ID_GOLD
+        jnz .skip_item
+        inc byte [_SCORE_]
+        jmp .clear_item
+      .check_bridge:
         cmp byte [_HOLDING_ID_], ID_ROCK
         jnz .skip_item
-          mov byte [si+_STATE_], STATE_DEACTIVATED
+        mov byte [si+_STATE_], STATE_DEACTIVATED
+      .clear_item:          
           mov byte [_REQUEST_POSITION_], 0
           mov byte [_HOLDING_ID_], 0xff
-          mov bx, BEEP_BRIDGE
-          call beep
           jmp .skip_item
-      .skip_bridge:
-      
+      .skip_check_interactions:
+
       cmp byte [_HOLDING_ID_], 0x0  ; Check if player is holding something
       jnz .skip_item
       .pick_item:
         mov byte [si+_STATE_], STATE_FOLLOW
         mov byte [_REQUEST_POSITION_], 0
         mov byte cl, [si+_ID_]
-        mov byte [_HOLDING_ID_], cl 
-        mov bx, BEEP_PICK
-        call beep       
+        mov byte [_HOLDING_ID_], cl    
     .skip_item:
 
     .put_item_back:
@@ -397,8 +391,6 @@ ai_entities:
       cmp byte [_HOLDING_ID_], 0x0 
       jnz .check_kill
         mov byte [si+_STATE_], STATE_INTERACTIVE
-        mov bx, BEEP_PUT
-        call beep
       .check_kill:
       cmp byte [_HOLDING_ID_], 0xff
       jnz .skip_kill
@@ -557,6 +549,21 @@ draw_entities:
     dec cx
   jg .next
 
+
+; =========================================== DRAW UI ==========================
+
+draw_score:
+  mov di, 320*8+16
+  mov si, GoldBrush
+  mov byte cl, [_SCORE_]
+  cmp cl, 0x0
+  jz .done
+  .draw_gold:
+    call draw_sprite 
+    add di, 10
+  loop .draw_gold
+  .done:
+
 ; =========================================== VGA BLIT PROCEDURE ===============
 
 vga_blit:
@@ -591,7 +598,6 @@ wait_for_vsync:
 ; =========================================== GAME TICK ========================
 
 inc word [GameTick]
-call no_beep
 
 ; =========================================== ESC OR LOOP ======================
 
@@ -794,29 +800,6 @@ draw_sprite:
     loop .plot_line
     popa
   ret
-
-; =========================================== BEEP PC SPEAKER ==================
-; Set the speaker frequency
-; Expects: BX - frequency value
-; Return: -
-
-beep:
-  mov al, 0x0B6  ; Command to set the speaker frequency
-  out 0x43, al   ; Write the command to the PIT chip
-  mov ax, bx  ; Frequency value 
-  out 0x42, al   ; Write the low byte of the frequency value
-  mov al, ah
-  out 0x42, al   ; Write the high byte of the frequency value
-  in al, 0x61    ; Read the PIC chip
-  or al, 0x03    ; Set bit 0 to enable the speaker
-  out 0x61, al   ; Write the updated value back to the PIC chip
-ret
-
-no_beep:
-  in al, 0x61    ; Read the PIC chip
-  and al, 0x0FC  ; Clear bit 0 to disable the speaker
-  out 0x61, al   ; Write the updated value back to the PIC chip
-ret
 
 ; =========================================== GAME LIVE VARIABLES ==============
 
@@ -1196,14 +1179,18 @@ dw 0x0619
 dw 0x0719
 dw 0x0a14
 db 7, 1
-dw 0x0400
+dw 0x0401
 db 8, 3
 dw 0x081e
 dw 0x0e07
 dw 0x0e15
 db 0x0 ; End of entities
 
-; =========================================== THE END ====================
+; ========================================== SAFETY CHECK ====================== 
+
+; times 0x7FD - ($ - $$) db 0x0   ; Pad to 2048 bytes
+
+; =========================================== THE END ==========================
 ; Thanks for reading the source code!
 ; Visit http://smol.p1x.in for more.
 
