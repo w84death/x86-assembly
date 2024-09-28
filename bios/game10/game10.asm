@@ -14,6 +14,389 @@
 org 0x100
 use16
 
+jmp start
+
+; =========================================== GAME LIVE VARIABLES ==============
+
+GameTick:
+dw 0x0
+
+; =========================================== COLOR PALETTES ===================
+; Set of four colors per palette. 0x00 is transparency; use 0x10 for black.
+
+PaletteSets:
+db 0x00, 0x34, 0x17, 0x1b   ; 0x0 Grays
+db 0x00, 0x06, 0x27, 0x43   ; 0x1 Indie top
+db 0x00, 0x7f, 0x13, 0x15   ; 0x2 Indie bottom
+db 0x35, 0x34, 0x19, 0x1a   ; 0x3 Bridge
+db 0x00, 0x06, 0x42, 0x43   ; 0x4 Chest
+db 0x00, 0x46, 0x5a, 0x5c   ; 0x5 Terrain 1 - shore
+db 0x47, 0x46, 0x45, 0x54   ; 0x6 Terrain 2 - in  land
+db 0x00, 0x06, 0x77, 0x2e   ; 0x7 Palm
+db 0x00, 0x27, 0x2a, 0x2b   ; 0x8 Snake
+db 0x00, 0x2b, 0x2c, 0x5b   ; 0x9 Gold Coin
+db 0x00, 0x15, 0x19, 0x1a   ; 0xa Rock
+
+; =========================================== BRUSH REFERENCES =================
+; Brush data offset table
+; Data: offset to brush data, Y shift
+
+BrushRefs:
+dw IndieTopBrush, -320*6
+dw PalmBrush, -320*10
+dw SnakeBrush, -320*2
+dw RockBrush, 0
+dw 0, 320
+dw BridgeBrush, 0
+dw ChestBrush, 0
+dw Gold2Brush, 320
+dw GoldBrush, 320
+dw IndieTop2Brush, -320*5
+
+; =========================================== BRUSHES DATA =====================
+; Set of 8xY brushes for entities
+; Data: number of lines, palettDefaulte id, lines (8 pixels) of palette color id
+
+IndieTopBrush:
+db 0x7, 0x1
+dw 0000000101010000b
+dw 0000010101010100b
+dw 0000001111110000b
+dw 0000000011110000b
+dw 0000001010000000b
+dw 0000001010100000b
+dw 0000001101010000b
+
+IndieTop2Brush:
+db 0x7, 0x1
+dw 0001000101000100b
+dw 0011010101011100b
+dw 0011001111111100b
+dw 0011000011110000b
+dw 0000111010000000b
+dw 0000001010100000b
+dw 0000001111110000b
+dw 0000000101010000b
+
+IndieBottomBrush:
+db 0x4, 0x2
+dw 0000000101010000b
+dw 0000000100010000b
+dw 0000001000100000b
+dw 0000001000100000b
+
+SnakeBrush:
+db 0x8, 0x8
+dw 0000000011011101b
+dw 0000001111111111b
+dw 0000001110001011b
+dw 0000001010110001b
+dw 0011000010101100b
+dw 0000100001101000b
+dw 0000010001010100b
+dw 0000110101010000b
+
+ChestBrush:
+db 0x8, 0x4
+dw 0011111111111100b
+dw 1111101010101111b
+dw 1110101010101011b
+dw 1110101010101011b
+dw 0111111111111101b
+dw 0101010101010101b
+dw 0101011111010101b
+dw 0001010101010100b
+
+PalmBrush:
+db 0x10, 0x7
+dw 0010100000101010b
+dw 1011111010111110b
+dw 1011101011101011b
+dw 1010111110111011b
+dw 1011111010111110b
+dw 1011101010101110b
+dw 1110111001101110b
+dw 0011000101111011b
+dw 0000000001000000b
+dw 0000000001000000b
+dw 0000000100001000b
+dw 1011000100101100b
+dw 1110110111101110b
+dw 0010110101111011b
+dw 1011101101101100b
+dw 0011101011101100b
+
+BridgeBrush:
+db 0x8, 0x3             ; Non movable - bridge spot
+dw 0101000001010000b
+dw 0000000000000000b
+dw 0000010101010000b
+dw 0101000000000101b
+dw 0101000000000101b
+dw 0000010101010000b
+dw 0000000000000000b
+dw 0000010100000101b
+
+RockBrush:
+db 0x8, 0xa
+dw 0000111111110000b
+dw 0011111110101100b
+dw 1111101111111111b
+dw 1110111110101111b
+dw 1011111010111001b
+dw 0111111011111101b
+dw 0101111110110101b
+dw 0001010101010100b
+
+GoldBrush:
+db 0x6, 0x9
+dw 0000111111110000b
+dw 0011101111101100b
+dw 1110111010111011b
+dw 1010111010101010b
+dw 0001101110100100b
+dw 0000010101010000b
+
+Gold2Brush:
+db 0x6, 0x9
+dw 0000001100000000b
+dw 0000001100000000b
+dw 0000001000000000b
+dw 0000001000000000b
+dw 0000000100000000b
+dw 0000000100000000b
+
+SlotBrush:
+db 0x2, 0xa
+dw 0110000000001001b
+dw 0101010101010101b
+
+
+; =========================================== TERRAIN TILES DATA ===============
+; 8x8 tiles for terrain
+; Data: number of lines, palettDefaulte id, lines (8 pixels) of palette color id
+
+TerrainTiles:
+db 0x8, 0x05          ; 0x1 Shore left bank
+dw 0010111101010101b
+dw 0010111111010101b
+dw 0010101111010101b
+dw 0000101111010101b
+dw 0000101111010101b
+dw 0010101111010101b
+dw 0010111101010101b
+dw 0010111111010101b
+
+db 0x8, 0x05          ; 0x2 Shore top bank
+dw 0000000000000000b
+dw 1010100000101010b
+dw 1111101010101111b
+dw 1111111111111111b
+dw 0111111111111101b
+dw 0101010101010101b
+dw 0101010101010101b
+dw 0101010101010101b
+
+db 0x8, 0x5          ; 0x3 Shore corner outside
+dw 0000101010101010b
+dw 0010101111111110b
+dw 1010111111111111b
+dw 1011111111111111b
+dw 1011111101010111b
+dw 1011110101010101b
+dw 1011110101010101b
+dw 1011110101010101b
+
+db 0x8, 0x5          ; 0x4 Shore corner filler inside
+dw 1010111101010101b
+dw 1011110101010101b
+dw 1111010101010101b
+dw 1101010101010101b
+dw 0101010101010101b
+dw 0101010101010101b
+dw 0101010101010101b
+dw 0101010101010101b
+
+db 0x8, 0x6          ; 0x5 Ground light
+dw 0110010101011001b
+dw 1001011001010110b
+dw 0101100101101001b
+dw 0101010101010110b
+dw 1001010110100101b
+dw 0110100101010101b
+dw 1001010110100110b
+dw 0110010101011001b
+
+db 0x8, 0x6           ; 0x6 Ground medium
+dw 0110001001001001b
+dw 1001010100100001b
+dw 0100100101000110b
+dw 0101010001101001b
+dw 0101001000010101b
+dw 1001010001100100b
+dw 0101100101010110b
+dw 0101010101010010b
+
+db 0x8, 0x6           ; 0x7 Ground dense
+dw 1011001001001001b
+dw 1110110100110001b
+dw 0011000101000111b
+dw 0101101110101001b
+dw 0101111011101101b
+dw 1001001100111011b
+dw 0111100101001100b
+dw 1001011001010101b
+
+db 0x8, 0x0           ; 0x8 Bridge Movable
+dw 0001010000000000b
+dw 0000000000010100b
+dw 0000111111100000b
+dw 0011111110101000b
+dw 1111101010101011b
+dw 0111101010111101b
+dw 0001010101010100b
+dw 0000000000000000b
+
+; =========================================== META-TILES DECLARATION ===========
+; 4x4 meta-tiles for level
+; Data: 4x4 tiles id
+
+MetaTiles:
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000010b, 00000010b, 00000101b, 00000101b
+db 00000001b, 00000101b, 00000001b, 00000101b
+db 00000011b, 00000010b, 00000001b, 00000101b
+db 00000101b, 00000110b, 00010110b, 00000101b
+db 00000110b, 00000111b, 00000111b, 00000111b
+db 00000100b, 00110101b, 00100101b, 00000110b
+db 00000100b, 00010110b, 00000110b, 00110100b
+db 00001000b, 00001000b, 00001000b, 00001000b
+
+; =========================================== LEVEL DATA =======================
+; 16x8 level data
+; Data: 4x4 meta-tiles id
+; Nibble is meta-tile id, 2 bits ar nibbles XY mirroring, 1 bit movable
+
+LevelData:
+db 00000000b, 01000011b, 01000001b, 01010001b
+db 01000001b, 01010001b, 01010001b, 01010011b
+db 00000000b, 01000011b, 01000001b, 01000001b
+db 01010011b, 00000000b, 01000011b, 01010011b
+db 00000000b, 01100010b, 01000100b, 01000100b
+db 01010101b, 01000100b, 01000100b, 01010010b
+db 00000000b, 01000010b, 01000100b, 01110110b
+db 01110011b, 00000000b, 01000010b, 01010010b
+db 00000000b, 01000010b, 01000101b, 01010101b
+db 01000101b, 01010101b, 01100101b, 01010010b
+db 01001000b, 01000010b, 01000101b, 01010010b
+db 00000000b, 00000000b, 01000010b, 01010010b
+db 00000000b, 01100011b, 01100110b, 01000100b
+db 01000101b, 01110101b, 01110110b, 01110011b
+db 00000000b, 01000010b, 01100101b, 01010010b
+db 01001000b, 01000011b, 01000110b, 01010010b
+db 00000000b, 00000000b, 01100011b, 01100001b
+db 01100001b, 01100001b, 01110011b, 00000000b
+db 00000000b, 01100011b, 01100001b, 01110011b
+db 00000000b, 01100011b, 01100001b, 01110011b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 01001000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 01001000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 01000011b
+db 01010001b, 01000001b, 01010011b, 00000000b
+db 01000011b, 01010001b, 01010001b, 01000001b
+db 01010011b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 00000000b, 01100011b
+db 01100001b, 01110001b, 01110011b, 00000000b
+db 01100011b, 01100001b, 01100001b, 01110001b
+db 01110011b, 00000000b, 00000000b, 00000000b
+
+; =========================================== ENTITIES DATA ====================
+
+EntityCount:
+dw 0x0047
+
+EntityData:
+db 1, 1
+dw 0x0404
+db 2, 48
+dw 0x0008
+dw 0x000a
+dw 0x000d
+dw 0x000e
+dw 0x0013
+dw 0x0014
+dw 0x0105
+dw 0x0113
+dw 0x0114
+dw 0x0204
+dw 0x0206
+dw 0x0209
+dw 0x020c
+dw 0x0212
+dw 0x0213
+dw 0x0215
+dw 0x0308
+dw 0x0309
+dw 0x030a
+dw 0x030b
+dw 0x030c
+dw 0x0312
+dw 0x0313
+dw 0x0316
+dw 0x031e
+dw 0x0409
+dw 0x041d
+dw 0x0606
+dw 0x0706
+dw 0x070b
+dw 0x0713
+dw 0x071d
+dw 0x071e
+dw 0x071f
+dw 0x0807
+dw 0x080a
+dw 0x080b
+dw 0x0813
+dw 0x081d
+dw 0x081f
+dw 0x0906
+dw 0x0907
+dw 0x090a
+dw 0x0917
+dw 0x0d07
+dw 0x0e08
+dw 0x0e16
+dw 0x0f17
+db 3, 3
+dw 0x010c
+dw 0x0117
+dw 0x071b
+db 4, 8
+dw 0x001e
+dw 0x0107
+dw 0x060d
+dw 0x0d0a
+dw 0x0d0c
+dw 0x0d13
+dw 0x0e0a
+dw 0x0e0b
+db 6, 7
+dw 0x0410
+dw 0x0411
+dw 0x0510
+dw 0x0511
+dw 0x0619
+dw 0x0719
+dw 0x0a14
+db 7, 1
+dw 0x0302
+db 8, 3
+dw 0x081e
+dw 0x0e07
+dw 0x0e15
+db 0x0 ; End of entities
+
 ; =========================================== MEMORY ADDRESSES =================
 
 _VGA_MEMORY_ equ 0xA000
@@ -22,6 +405,7 @@ _PLAYER_ENTITY_ID_ equ 0x1800
 _REQUEST_POSITION_ equ 0x1802
 _HOLDING_ID_ equ 0x1804
 _SCORE_ equ 0x1805
+_SCORE_TARGET_ equ 0x1806
 _ENTITIES_ equ 0x1000
 
 _ID_ equ 0  ; 1 byte
@@ -43,7 +427,7 @@ ID_SNAKE equ 2
 ID_ROCK equ 3
 ; ID_TRIGGER equ 4
 ID_BRIDGE equ 5
-ID_SHIP equ 6
+ID_CHEST equ 6
 ID_GOLD equ 7
 
 STATE_DEACTIVATED equ 0
@@ -90,6 +474,11 @@ spawn_entities:
     mov al, [si]
     inc si
     mov cl, al
+
+    cmp bl, ID_GOLD
+    jnz .not_gold
+    mov [_SCORE_TARGET_], cl
+    .not_gold:
     .next_in_group:
       mov byte [di], bl           ; Save sprite id
       mov ax, [si]          ; Get position
@@ -115,7 +504,7 @@ spawn_entities:
       jz .set_interactive
       cmp bl, ID_ROCK
       jz .set_interactive
-      cmp bl, ID_SHIP
+      cmp bl, ID_CHEST
       jz .set_interactive
       jmp .skip_interactive
       .set_interactive:
@@ -298,17 +687,16 @@ check_keyboard:
 
   .check_move:
     call check_friends
-    jz .collision
+    jz .no_move
     call check_water_tile
     jz .no_move
     call check_bounds
     jz .no_move
 
-    mov word [si+_POS_], cx
-    jmp .no_move
-    .collision:
-      mov word [_REQUEST_POSITION_], cx
+    .move:
+    mov word [si+_POS_], cx      
     .no_move:
+    mov word [_REQUEST_POSITION_], cx
 
   .no_key_press:
 
@@ -347,7 +735,13 @@ ai_entities:
           .skip_mirror_x:
           mov word [si+_POS_], cx
         .can_not_move:
-
+        .check_if_player:
+          cmp cx, [_REQUEST_POSITION_]
+          jnz .no_player
+            mov byte [_REQUEST_POSITION_], 0x0
+            mov byte [_HOLDING_ID_], 0xff
+            jmp .skip_item
+          .no_player:
     .skip_explore:
 
     cmp byte [si+_STATE_], STATE_INTERACTIVE
@@ -358,7 +752,7 @@ ai_entities:
         
       cmp byte [si+_ID_], ID_BRIDGE
       jz .check_bridge
-      cmp byte [si+_ID_], ID_SHIP
+      cmp byte [si+_ID_], ID_CHEST
       jnz .skip_check_interactions
 
       .check_interactions:
@@ -383,6 +777,7 @@ ai_entities:
         mov byte [_REQUEST_POSITION_], 0
         mov byte cl, [si+_ID_]
         mov byte [_HOLDING_ID_], cl    
+    
     .skip_item:
 
     .put_item_back:
@@ -519,18 +914,6 @@ draw_entities:
       call draw_sprite
     .skip_player_draw:
 
-    cmp ah, ID_SHIP
-    jnz .skip_ship_draw
-      xor dl, dl ; mo mirror
-      sub di, 8
-      mov si, ShipEndBrush
-      call draw_sprite
-      add di, 16
-      inc dl ; mirror x
-      mov si, ShipEndBrush
-      call draw_sprite
-    .skip_ship_draw:
-
     cmp ah, ID_GOLD
     jnz .skip_gold_draw
       mov ax, [GameTick]
@@ -554,12 +937,17 @@ draw_entities:
 
 draw_score:
   mov di, 320*8+16
-  mov si, GoldBrush
-  mov byte cl, [_SCORE_]
-  cmp cl, 0x0
-  jz .done
+  mov byte cl, [_SCORE_TARGET_]
   .draw_gold:
+    mov si, SlotBrush
     call draw_sprite 
+    cmp [_SCORE_], cl
+    jl .not_gold
+      mov si, GoldBrush
+      sub di, 320*6
+      call draw_sprite 
+    .not_gold:
+    
     add di, 10
   loop .draw_gold
   .done:
@@ -800,391 +1188,6 @@ draw_sprite:
     loop .plot_line
     popa
   ret
-
-; =========================================== GAME LIVE VARIABLES ==============
-
-GameTick:
-dw 0x0
-
-; =========================================== COLOR PALETTES ===================
-; Set of four colors per palette. 0x00 is transparency; use 0x10 for black.
-
-PaletteSets:
-db 0x00, 0x34, 0x17, 0x1b   ; 0x0 Grays
-db 0x00, 0x06, 0x27, 0x43   ; 0x1 Indie top
-db 0x00, 0x7f, 0x13, 0x15   ; 0x2 Indie bottom
-db 0x35, 0x34, 0x19, 0x1a   ; 0x3 Bridge
-db 0x00, 0x34, 0x06, 0x2a   ; 0x4 Ship
-db 0x00, 0x46, 0x5a, 0x5c   ; 0x5 Terrain 1 - shore
-db 0x47, 0x46, 0x45, 0x54   ; 0x6 Terrain 2 - in  land
-db 0x00, 0x06, 0x77, 0x2e   ; 0x7 Palm
-db 0x00, 0x27, 0x2a, 0x2b   ; 0x8 Snake
-db 0x00, 0x2b, 0x2c, 0x5b   ; 0x9 Gold Coin
-db 0x00, 0x15, 0x19, 0x1a   ; 0xa Rock
-
-; =========================================== BRUSH REFERENCES =================
-; Brush data offset table
-; Data: offset to brush data, Y shift
-
-BrushRefs:
-dw IndieTopBrush, -320*6
-dw PalmBrush, -320*10
-dw SnakeBrush, -320*2
-dw RockBrush, 0
-dw 0, 320
-dw BridgeBrush, 0
-dw ShipMiddleBrush, 0
-dw Gold2Brush, 320
-dw GoldBrush, 320
-dw IndieTop2Brush, -320*5
-
-; =========================================== BRUSHES DATA =====================
-; Set of 8xY brushes for entities
-; Data: number of lines, palettDefaulte id, lines (8 pixels) of palette color id
-
-IndieTopBrush:
-db 0x7, 0x1
-dw 0000000101010000b
-dw 0000010101010100b
-dw 0000001111110000b
-dw 0000000011110000b
-dw 0000001010000000b
-dw 0000001010100000b
-dw 0000001101010000b
-
-IndieTop2Brush:
-db 0x7, 0x1
-dw 0001000101000100b
-dw 0011010101011100b
-dw 0011001111111100b
-dw 0011000011110000b
-dw 0000111010000000b
-dw 0000001010100000b
-dw 0000001111110000b
-dw 0000000101010000b
-
-IndieBottomBrush:
-db 0x4, 0x2
-dw 0000000101010000b
-dw 0000000100010000b
-dw 0000001000100000b
-dw 0000001000100000b
-
-SnakeBrush:
-db 0x8, 0x8
-dw 0000000011011101b
-dw 0000001111111111b
-dw 0000001110001011b
-dw 0000001010110001b
-dw 0011000010101100b
-dw 0000100001101000b
-dw 0000010001010100b
-dw 0000110101010000b
-
-ShipEndBrush:
-db 0x7, 0x4
-dw 0000101010101111b
-dw 0000111111111010b
-dw 0000101111111111b
-dw 0000010101011011b
-dw 0000000111111111b
-dw 0000011010101010b
-dw 0000000101010101b
-
-ShipMiddleBrush:
-db 0x7, 0x4
-dw 1111101010111111b
-dw 1111111111111111b
-dw 1111111111111111b
-dw 1111111111111111b
-dw 1010111110101011b
-dw 1010100110101010b
-dw 0101010101010101b
-
-PalmBrush:
-db 0x10, 0x7
-dw 0010100000101010b
-dw 1011111010111110b
-dw 1011101011101011b
-dw 1010111110111011b
-dw 1011111010111110b
-dw 1011101010101110b
-dw 1110111001101110b
-dw 0011000101111011b
-dw 0000000001000000b
-dw 0000000001000000b
-dw 0000000100001000b
-dw 1011000100101100b
-dw 1110110111101110b
-dw 0010110101111011b
-dw 1011101101101100b
-dw 0011101011101100b
-
-BridgeBrush:
-db 0x8, 0x3             ; Non movable - bridge spot
-dw 0101000001010000b
-dw 0000000000000000b
-dw 0000010101010000b
-dw 0101000000000101b
-dw 0101000000000101b
-dw 0000010101010000b
-dw 0000000000000000b
-dw 0000010100000101b
-
-RockBrush:
-db 0x8, 0xa
-dw 0000111111110000b
-dw 0011111110101100b
-dw 1111101111111111b
-dw 1110111110101111b
-dw 1011111010111001b
-dw 0111111011111101b
-dw 0101111110110101b
-dw 0001010101010100b
-
-GoldBrush:
-db 0x6, 0x9
-dw 0000111111110000b
-dw 0011101111101100b
-dw 1110111010111011b
-dw 1010111010101010b
-dw 0001101110100100b
-dw 0000010101010000b
-
-Gold2Brush:
-db 0x6, 0x9
-dw 0000001100000000b
-dw 0000001100000000b
-dw 0000001000000000b
-dw 0000001000000000b
-dw 0000000100000000b
-dw 0000000100000000b
-
-
-; =========================================== TERRAIN TILES DATA ===============
-; 8x8 tiles for terrain
-; Data: number of lines, palettDefaulte id, lines (8 pixels) of palette color id
-
-TerrainTiles:
-db 0x8, 0x05          ; 0x1 Shore left bank
-dw 0010111101010101b
-dw 0010111111010101b
-dw 0010101111010101b
-dw 0000101111010101b
-dw 0000101111010101b
-dw 0010101111010101b
-dw 0010111101010101b
-dw 0010111111010101b
-
-db 0x8, 0x05          ; 0x2 Shore top bank
-dw 0000000000000000b
-dw 1010100000101010b
-dw 1111101010101111b
-dw 1111111111111111b
-dw 0111111111111101b
-dw 0101010101010101b
-dw 0101010101010101b
-dw 0101010101010101b
-
-db 0x8, 0x5          ; 0x3 Shore corner outside
-dw 0000101010101010b
-dw 0010101111111110b
-dw 1010111111111111b
-dw 1011111111111111b
-dw 1011111101010111b
-dw 1011110101010101b
-dw 1011110101010101b
-dw 1011110101010101b
-
-db 0x8, 0x5          ; 0x4 Shore corner filler inside
-dw 1010111101010101b
-dw 1011110101010101b
-dw 1111010101010101b
-dw 1101010101010101b
-dw 0101010101010101b
-dw 0101010101010101b
-dw 0101010101010101b
-dw 0101010101010101b
-
-db 0x8, 0x6          ; 0x5 Ground light
-dw 0110010101011001b
-dw 1001011001010110b
-dw 0101100101101001b
-dw 0101010101010110b
-dw 1001010110100101b
-dw 0110100101010101b
-dw 1001010110100110b
-dw 0110010101011001b
-
-db 0x8, 0x6           ; 0x6 Ground medium
-dw 0110001001001001b
-dw 1001010100100001b
-dw 0100100101000110b
-dw 0101010001101001b
-dw 0101001000010101b
-dw 1001010001100100b
-dw 0101100101010110b
-dw 0101010101010010b
-
-db 0x8, 0x6           ; 0x7 Ground dense
-dw 1011001001001001b
-dw 1110110100110001b
-dw 0011000101000111b
-dw 0101101110101001b
-dw 0101111011101101b
-dw 1001001100111011b
-dw 0111100101001100b
-dw 1001011001010101b
-
-db 0x8, 0x0           ; 0x8 Bridge Movable
-dw 0001010000000000b
-dw 0000000000010100b
-dw 0000111111100000b
-dw 0011111110101000b
-dw 1111101010101011b
-dw 0111101010111101b
-dw 0001010101010100b
-dw 0000000000000000b
-
-; =========================================== META-TILES DECLARATION ===========
-; 4x4 meta-tiles for level
-; Data: 4x4 tiles id
-
-MetaTiles:
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000010b, 00000010b, 00000101b, 00000101b
-db 00000001b, 00000101b, 00000001b, 00000101b
-db 00000011b, 00000010b, 00000001b, 00000101b
-db 00000101b, 00000110b, 00010110b, 00000101b
-db 00000110b, 00000111b, 00000111b, 00000111b
-db 00000100b, 00110101b, 00100101b, 00000110b
-db 00000100b, 00010110b, 00000110b, 00110100b
-db 00001000b, 00001000b, 00001000b, 00001000b
-
-; =========================================== LEVEL DATA =======================
-; 16x8 level data
-; Data: 4x4 meta-tiles id
-; Nibble is meta-tile id, 2 bits ar nibbles XY mirroring, 1 bit movable
-
-LevelData:
-db 00000000b, 01000011b, 01000001b, 01010001b
-db 01000001b, 01010001b, 01010001b, 01010011b
-db 00000000b, 01000011b, 01000001b, 01000001b
-db 01010011b, 00000000b, 01000011b, 01010011b
-db 00000000b, 01100010b, 01000100b, 01000100b
-db 01010101b, 01000100b, 01000100b, 01010010b
-db 00000000b, 01000010b, 01000100b, 01110110b
-db 01110011b, 00000000b, 01000010b, 01010010b
-db 00000000b, 01000010b, 01000101b, 01010101b
-db 01000101b, 01010101b, 01100101b, 01010010b
-db 01001000b, 01000010b, 01000101b, 01010010b
-db 00000000b, 00000000b, 01000010b, 01010010b
-db 00000000b, 01100011b, 01100110b, 01000100b
-db 01000101b, 01110101b, 01110110b, 01110011b
-db 00000000b, 01000010b, 01100101b, 01010010b
-db 01001000b, 01000011b, 01000110b, 01010010b
-db 00000000b, 00000000b, 01100011b, 01100001b
-db 01100001b, 01100001b, 01110011b, 00000000b
-db 00000000b, 01100011b, 01100001b, 01110011b
-db 00000000b, 01100011b, 01100001b, 01110011b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 01001000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 01001000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 01000011b
-db 01010001b, 01000001b, 01010011b, 00000000b
-db 01000011b, 01010001b, 01010001b, 01000001b
-db 01010011b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 01100011b
-db 01100001b, 01110001b, 01110011b, 00000000b
-db 01100011b, 01100001b, 01100001b, 01110001b
-db 01110011b, 00000000b, 00000000b, 00000000b
-
-; =========================================== ENTITIES DATA ====================
-
-EntityCount:
-dw 0x0047
-
-EntityData:
-db 1, 1
-dw 0x0404
-db 2, 48
-dw 0x0008
-dw 0x000a
-dw 0x000d
-dw 0x000e
-dw 0x0013
-dw 0x0014
-dw 0x0105
-dw 0x0113
-dw 0x0114
-dw 0x0204
-dw 0x0206
-dw 0x0209
-dw 0x020c
-dw 0x0212
-dw 0x0213
-dw 0x0215
-dw 0x0308
-dw 0x0309
-dw 0x030a
-dw 0x030b
-dw 0x030c
-dw 0x0312
-dw 0x0313
-dw 0x0316
-dw 0x031e
-dw 0x0409
-dw 0x041d
-dw 0x0606
-dw 0x0706
-dw 0x070b
-dw 0x0713
-dw 0x071d
-dw 0x071e
-dw 0x071f
-dw 0x0807
-dw 0x080a
-dw 0x080b
-dw 0x0813
-dw 0x081d
-dw 0x081f
-dw 0x0906
-dw 0x0907
-dw 0x090a
-dw 0x0917
-dw 0x0d07
-dw 0x0e08
-dw 0x0e16
-dw 0x0f17
-db 3, 3
-dw 0x010c
-dw 0x0117
-dw 0x071b
-db 4, 8
-dw 0x001e
-dw 0x0107
-dw 0x060d
-dw 0x0d0a
-dw 0x0d0c
-dw 0x0d13
-dw 0x0e0a
-dw 0x0e0b
-db 6, 7
-dw 0x0410
-dw 0x0411
-dw 0x0510
-dw 0x0511
-dw 0x0619
-dw 0x0719
-dw 0x0a14
-db 7, 1
-dw 0x0401
-db 8, 3
-dw 0x081e
-dw 0x0e07
-dw 0x0e15
-db 0x0 ; End of entities
 
 ; ========================================== SAFETY CHECK ====================== 
 
