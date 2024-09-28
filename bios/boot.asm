@@ -34,12 +34,13 @@ start:
     mov bh, 0x0
     int 0x10
 
-    mov si, title_msg
-    call print_string
     mov si, payload_msg
     call print_string
 
 .load_code:
+    mov si, title_msg
+    call print_string
+
     mov si, loading_msg
     call print_string
 
@@ -88,18 +89,25 @@ print_string:
 .done:
     ret
 
-title_msg db  'P1X Bootloader V1.2',0x0A,0x0A,0x0D,0x0
-loading_msg db  0x0A,'Loading... ',0x0
+title_msg db  0x0A,'P1X Bootloader V1.3',0x0A,0x0D,0x0
+loading_msg db  'Loading... ',0x0
 error_msg db    'Err',0x0
 done_msg db     'OK!',0x0A,0x0D,0x0
 wait_msg db     'Press any key to start...',0x0
 payload_msg:
-db 'This bootloader uses exactly 512 bytes!_______________________',0x0A,0x0D
-db '______________________________________________________________',0x0A,0x0D
-db '_______________Use this space as desire!______________________',0x0A,0x0D
-db '______________________________________________________________',0x0A,0x0D
-db '______________________________________...up to this character!',0x0A,0x0D
-db 0
+db '*** MYSTERIES OF THE FORGOTTEN ISLES ***',0x0A,0x0D
+db 0x0A
+db 'Explore the islands. Find all gold and bring it to the ship.',0x0A,0x0D
+db 'Use rocks to build bridges on shallow water. Avoid wildlife.',0x0A,0x0D
+db 'Have fun! :)',0x0A,0x0D
+db 0x0A
+db 'Use: Arrows to move, Space to drop items, Escape to reset.',0x0A,0x0D
+db 0x0A
+db 0x0A
+db 0x0A,0x0D
+db '(c)2024 Krzysztof Krystian Jankowski ^ P1X',0x0A,0x0D
+db 'http://smol.p1x.in',0x0A,0x0D
+db 0x0
 
 times 507 - ($ - $$) db 0   ; Pad to 510 bytes
 db "P1X"                    ; Use HEX viewer to see P1X at the end of binary

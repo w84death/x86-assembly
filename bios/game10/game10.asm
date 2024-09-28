@@ -2,7 +2,8 @@
 ; DOS VERSION
 ;
 ; Description:
-;
+; The game is a simple exploration game where you can move around the isles
+; and interact with the environment. 
 ;
 ; Size category: 2KB
 ;
