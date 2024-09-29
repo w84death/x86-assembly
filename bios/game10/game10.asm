@@ -722,7 +722,6 @@ check_keyboard:
   cmp ah, 39h         ; Compare scan code with spacebar
   jne .check_up
     mov byte [_HOLDING_ID_], 0x0
-    ; mov word [_REQUEST_POSITION_], 0x0
     jmp .no_key_press
 
   .check_up:
@@ -791,6 +790,11 @@ ai_entities:
       .explore:
         mov cx, [si+_POS_]
         call random_move
+          mov byte [si+_MIRROR_], 0x0
+          cmp byte cl, [si+_POS_]
+          jg .skip_mirror_x
+          mov byte [si+_MIRROR_], 0x1
+          .skip_mirror_x:
 
         call check_bounds
         jz .can_not_move
@@ -801,10 +805,6 @@ ai_entities:
         call check_water_tile
         jz .can_not_move
         .move_to_new_pos:
-          cmp cx, [si+_POS_]
-          jg .skip_mirror_x
-            mov byte [si+_MIRROR_], 0x1
-          .skip_mirror_x:
           mov word [si+_POS_], cx
         .can_not_move:
         .check_if_player:
@@ -997,6 +997,7 @@ draw_entities:
     cmp ah, ID_GOLD
     jnz .skip_gold_draw
       mov ax, [_GAME_TICK_]
+      add ax, cx
       and ax, 0x8
       cmp ax, 0x4
       jl .skip_gold_draw
@@ -1157,22 +1158,25 @@ ret
 ; Return: CX - updated pos
 
 random_move:
-.move_x:
-rdtsc
+
+  rdtsc
   test ax, 0x2
   jz .move_y
+  
+  .move_x:  
     dec cl
-    test ax, 0x10
+    rdtsc
+    test ax, 0x2
     jz .skip_move
-    add cl, 2
+    add cl, 0x2
     ret
 
 .move_y:
   dec ch
   rdtsc
-  test ax, 0x02
+  test ax, 0x2
   jz .skip_move
-  add ch, 2
+  add ch, 0x2
 
 .skip_move:
 ret
