@@ -1158,27 +1158,22 @@ ret
 ; Return: CX - updated pos
 
 random_move:
-
   rdtsc
-  test ax, 0x2
-  jz .move_y
-  
-  .move_x:  
-    dec cl
-    rdtsc
-    test ax, 0x2
-    jz .skip_move
-    add cl, 0x2
-    ret
-
-.move_y:
-  dec ch
-  rdtsc
-  test ax, 0x2
-  jz .skip_move
-  add ch, 0x2
-
-.skip_move:
+  and ax, 0x2
+  dec ax
+  mov bx, [_GAME_TICK_]
+  add bx, cx
+  and bx, 0x8
+  cmp bx, 0x2
+  jl .move_x
+  cmp bx, 0x5
+  jg .move_y
+ret
+  .move_x:
+  add cl, al
+ret
+  .move_y:
+  add ch, al
 ret
 
 
@@ -1221,7 +1216,7 @@ check_friends:
   .done:
   pop cx
   pop si
-  cmp bx,0x1 
+  cmp bx, 0x1 
 ret
 
 ; =========================================== CHECK WATER TILE ================
