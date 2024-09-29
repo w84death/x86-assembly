@@ -2,11 +2,55 @@
 ; BIOS VERSION, P1X BOOTLOADER
 ;
 ; Description:
-; The game is a simple exploration game where you can move around the isles
-; and interact with the environment. 
+; The sun was setting over the remote island of Kai'ula, casting a golden 
+; glow over the dense jungle and turquoise lagoon. Jack "The Hunter" Hawkins, 
+; renowned treasure hunter, stood at the edge of a narrow clearing, his eyes 
+; scanning the terrain for any sign of what he had been searching for – gold 
+; coins.
+; 
+; Legend had it that the infamous pirate, Captain Kanaq, had hidden his vast 
+; fortune on this very island centuries ago. Rumors whispered of a map etched 
+; into the bark of an ancient tree, pointing to the location of the treasure. 
+; Jack had spent years tracking down every lead, pouring over dusty tomes and 
+; speaking with seasoned sailors who claimed to have heard tales from Captain 
+; Kanaq's own crew.
+; 
+; As he ventured deeper into the jungle, the air grew thick with humidity and 
+; the sounds of the rainforest came alive – birds chirping, insects buzzing, 
+; and the distant roar of a waterfall. Jack pushed aside vines and branches, 
+; his machete slicing through the undergrowth with ease. He had been 
+; searching for hours, but so far, nothing.
+; 
+; Just as he was about to give up, Jack spotted it – an ancient tree with 
+; bark that seemed to shimmer in the fading light. He approached cautiously, 
+; his heart racing with excitement. As he reached out to touch the trunk, a 
+; section of the bark swung open, revealing a narrow crevice. Inside, etched 
+; into the wooden surface, was the map.
+; 
+; Jack's eyes widened as he studied the crude drawing, which seemed to point 
+; to a location deep within the island's interior. He knew that this was it – 
+; his chance at finding the treasure and making history.
+; 
+; With renewed energy, Jack set off towards the designated spot, following 
+; the winding path etched onto the map. Sweat dripped from his brow as he 
+; climbed up steep slopes and navigated treacherous ravines. Finally, after 
+; what felt like an eternity, he reached a small clearing surrounded by 
+; towering palm trees.
+; 
+; In the center of the clearing stood an ancient stone pedestal, upon which 
+; rested a chest adorned with intricate carvings. Jack's heart skipped a beat 
+; as he lifted the lid, revealing a hoard of gold coins that glittered in the 
+; fading light.
+; 
+; With trembling hands, Jack reached for the treasure, his mind racing with 
+; thoughts of the adventure to come – returning home with the prize, sharing 
+; the tale with the world, and cementing his reputation as one of the 
+; greatest treasure hunters of all time. As he lifted the lid, a faint 
+; whisper echoed through the jungle – "The Hunter has struck gold."
+; 
 ;
-; Size category: 2KB
-;
+; Size category: 2048 bytes / 2KB
+; Bootloader: 512 bytes
 ; Author: Krzysztof Krystian Jankowski
 ; Web: smol.p1x.in/assembly/#forgotten-isles
 ; License: MIT
