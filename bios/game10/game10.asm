@@ -1172,7 +1172,7 @@ rng:
   mov al, dl
   pop cx
   xor ax, cx
-  add byte al, [_GAME_TICK_]
+  add byte ah, [_GAME_TICK_]
 ret
 
 ; =========================================== CHECK BOUNDS =====================
