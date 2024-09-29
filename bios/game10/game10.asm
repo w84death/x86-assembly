@@ -182,15 +182,14 @@ dw 0000101110010000b
 dw 0000001001000000b
 
 SkullBrush:
-db 0x8, 0x0a
+db 0x7, 0x0a
 dw 0000010101010000b
 dw 0001010101010100b
 dw 0001110111010100b
 dw 0001010101010100b
-dw 0000010101010000b
 dw 0100010101010001b
-dw 0001000101000100b
-dw 0100000000000001b
+dw 0001010101010100b
+dw 0100000101000001b
 
 ; =========================================== TERRAIN TILES DATA ===============
 ; 8x8 tiles for terrain
@@ -328,18 +327,15 @@ db 01100011b, 01100001b, 01010111b, 01000001b
 db 01010011b, 00000000b, 00000000b, 01000011b
 db 01000001b, 01000110b, 01010010b, 00000000b
 db 01100011b, 01100001b, 01100110b, 01010010b
-db 00000000b, 01001000b, 01100011b, 01100001b
+db 01001000b, 01001000b, 01100011b, 01100001b
 db 01110011b, 01001000b, 01001000b, 01100011b
 db 01100001b, 01100001b, 01110011b, 00000000b
 db 00000000b, 01001000b, 01100011b, 01110011b
 
-EntityCount:
-dw 0x003e
-
 EntityData:
 db 1, 1
 dw 0x0301
-db 2, 26
+db 2, 28
 dw 0x0103
 dw 0x020a
 dw 0x030a
@@ -366,6 +362,8 @@ dw 0x0c0f
 dw 0x0d02
 dw 0x0d08
 dw 0x0d0e
+dw 0x0e06
+dw 0x0f07
 db 3, 5
 dw 0x000c
 dw 0x081e
@@ -403,8 +401,8 @@ dw 0x0300
 db 8, 5
 dw 0x0104
 dw 0x010b
-dw 0x0710
-dw 0x0a01
+dw 0x070f
+dw 0x0902
 dw 0x0d13
 db 0x0 ; End of entities
 
@@ -430,8 +428,8 @@ _STATE_ equ 4   ; 1 bytes
 ; =========================================== MAGIC NUMBERS ====================
 
 ENTITY_SIZE  equ 5
+MAX_ENTITIES equ 64
 LEVEL_START_POSITION equ 320*68+32
-SPEED_EXPLORE equ 0x444
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3535
 
@@ -445,17 +443,18 @@ ID_CHEST equ 6
 ID_GOLD equ 7
 
 STATE_DEACTIVATED equ 0
-STATE_IDLE equ 1
-STATE_EXPLORING equ 2
-STATE_FOLLOW equ 3
-STATE_ACTIVATED equ 4
-STATE_INTERACTIVE equ 5
+STATE_FOLLOW equ 2
+STATE_IDLE equ 4
+STATE_EXPLORING equ 8
+STATE_ACTIVATED equ 16
+STATE_INTERACTIVE equ 32
 
 GSTATE_INTRO equ 0
 GSTATE_GAME equ 2
 GSTATE_END equ 4
 GSTATE_WIN equ 8
 
+BEEP_BEEP equ 2200
 BEEP_PICK equ 700
 BEEP_PUT equ 350
 
@@ -729,15 +728,16 @@ check_keyboard:
 
 ai_entities:
   mov si, _ENTITIES_
-  mov cx, [EntityCount]
+  mov cl, 40
   .next_entity:
     push cx
 
     cmp byte [si+_STATE_], STATE_EXPLORING
     jnz .skip_explore
-      rdtsc
-      and ax, SPEED_EXPLORE
-      cmp ax, SPEED_EXPLORE
+      mov ax, [_GAME_TICK_]
+      xor ax, 0xf
+      test ax, 0x7
+      
       jnz .skip_explore
 
       .explore:
@@ -843,8 +843,7 @@ ai_entities:
 sort_entities:
   xor ax, ax
 
-  mov cx, [EntityCount]
-  dec cx  ; We'll do n-1 passes
+  mov cx, MAX_ENTITIES-1  ; We'll do n-1 passes
 
   .outer_loop:
     push cx
@@ -894,7 +893,7 @@ sort_entities:
 
 draw_entities:
   mov si, _ENTITIES_
-  mov cx, [EntityCount]
+  mov cl, MAX_ENTITIES
   .next:
     push cx
     push si
@@ -1158,13 +1157,11 @@ check_friends:
   xor bx, bx
   mov ax, cx
 
-  mov cx, [EntityCount]
+  mov cl, MAX_ENTITIES
   mov si, _ENTITIES_
   .next_entity:
-    cmp byte [si+_STATE_], STATE_DEACTIVATED
-    jz .skip_this_entity
     cmp byte [si+_STATE_], STATE_FOLLOW
-    jz .skip_this_entity
+    jle .skip_this_entity
     cmp word [si+_POS_], ax
     jnz .skip_this_entity
     inc bx
@@ -1172,6 +1169,7 @@ check_friends:
     add si, ENTITY_SIZE
   loop .next_entity
 
+  .done:
   pop cx
   pop si
   cmp bx,0x1 

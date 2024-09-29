@@ -53,19 +53,21 @@ Game is developed on Debian (ThinkPad X220), tested in QEMU and IBM PC (Intel Ce
 
 Main features:
 - 16-bit Assembly, FLAT assembler
-- no operating system game, runs on bare-metal x86 BIOS (i486+)
+- no operating system game, runs on bare-metal x86 BIOS
+- Pentium 60MHz+ Processor
 - 512 bytes for bootloader, 2048 bytes for game code
 - custom bootloader with game title + description (short!)
 - keyboard input support
-- PC speaker support
 - VGA graphics, 320x200
 - double-buffering and v-sync
 - 2-bit, 4 color sprites (with transparency), custom palettes (GameBoy Color style)
 - tiles and meta-tiles for levels
-- entities system with simple behaviours
+- entities system (64 max) with simple behaviours
 - simple compression of entities data (grouped by ID)
-- z-sorting for all entities (you can hide behind tree)
+- z-sorting for all entities (you can hide behind a tree)
 - player entitie can interact with other entities, move objects
-- simple AI for entities, randome move at the moment
+- simple AI for entities, random move at the moment
 - super primitice sound effects at the moment
-- supprorting game tools (HTML5): [sprite editor](), [level editor](https://smol.p1x.in/metaleveleditor/)
+- supprorting game tools (HTML5):
+    - [2-bit Paint](https://smol.p1x.in/2bitpaint/)
+    - [Meta-Tiles Level Editor](https://smol.p1x.in/metaleveleditor/)
