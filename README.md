@@ -53,25 +53,25 @@ Game is developed on Debian (ThinkPad X220), tested in QEMU and IBM PC (Intel Ce
 
 #### Main features
 - 16-bit Assembly, FLAT assembler
-- no operating system need, runs on bare-metal x86 BIOS
-- Pentium 60MHz+ Processor
+- no operating system need, runs on bare-metal x86 IBM compatible:
+    - 486 DX2 66MHz, 1MB RAM
 - 512 bytes for custom bootloader with game instructions
 - 2048 bytes for game code, four floppy sectors
 - custom bootloader with game title + description (short!)
 - keyboard input support
-- VGA graphics
+- VGA graphics:
     - 320x200
     - 256 colors
     - double-buffering
     - v-sync
-- sprites/tiles
+- sprites/tiles:
     - 2-bit, 4 color sprites (with transparency)
     - custom palettes (GameBoy Color style)
-- map
+- map:
     - made of 16x8 meta-tiles
     - meta-tile made of 2x2 tiles
     - 32x16 gameplay grid
-- entities system
+- entities system:
     - 64 max
     - simple interactions (building bridge using rock)
     - simple AI, random move at the moment

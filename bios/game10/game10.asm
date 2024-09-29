@@ -560,7 +560,7 @@ spawn_entities:
 
       cmp bl, ID_PALM
       jnz .skip_palm
-        rdtsc
+        call rng
         and al, 0x01
         mov byte [di+_MIRROR_], al ; Save basic state
       .skip_palm: 
@@ -1158,24 +1158,28 @@ ret
 ; Return: CX - updated pos
 
 random_move:
-  rdtsc
+  call rng
+  mov bx, ax
   and ax, 0x2
   dec ax
-  mov bx, [_GAME_TICK_]
-  add bx, cx
-  and bx, 0x8
-  cmp bx, 0x2
-  jl .move_x
-  cmp bx, 0x5
-  jg .move_y
+
+  test bx, 0x1
+  jz .move_x
+  add ch, al
 ret
   .move_x:
   add cl, al
-ret
-  .move_y:
-  add ch, al
+  .done:
 ret
 
+rng:
+  push cx
+  mov ah, 0x0
+  int 0x1a
+  mov ax, dx
+  pop cx
+  xor ax, cx
+ret
 
 ; =========================================== CHECK BOUNDS =====================
 ; Expects: CX - Position YY/XX (CH: Y coordinate, CL: X coordinate)
