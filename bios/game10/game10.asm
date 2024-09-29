@@ -488,10 +488,9 @@ ID_GOLD equ 7
 
 STATE_DEACTIVATED equ 0
 STATE_FOLLOW equ 2
-STATE_IDLE equ 4
+STATE_STATIC equ 4
 STATE_EXPLORING equ 8
-STATE_ACTIVATED equ 16
-STATE_INTERACTIVE equ 32
+STATE_INTERACTIVE equ 16
 
 GSTATE_INTRO equ 0
 GSTATE_GAME equ 2
@@ -552,7 +551,7 @@ spawn_entities:
       mov ax, [si]          ; Get position
       mov [di+_POS_], ax          ; Save position
       mov byte [di+_MIRROR_], 0x0 ;  Save mirror (none)
-      mov byte [di+_STATE_], STATE_IDLE ; Save basic state
+      mov byte [di+_STATE_], STATE_STATIC ; Save basic state
       
       cmp bl, ID_SNAKE
       jnz .skip_snake
@@ -729,6 +728,8 @@ check_keyboard:
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
+    cmp ch, 0x0
+    jz .invalid_move
     dec ch
     jmp .check_move
 
@@ -741,6 +742,8 @@ check_keyboard:
   .check_left:
   cmp ah, 4Bh         ; Compare scan code with left arrow
   jne .check_right
+    ; cmp cl, 0x0
+    ; jz .invalid_move
     dec cl
     mov byte [si+_MIRROR_], 0x1
     jmp .check_move
@@ -766,13 +769,14 @@ check_keyboard:
     mov word [_REQUEST_POSITION_], cx
 
   .no_key_press:
+  .invalid_move:
 
 
 ; =========================================== AI ENITIES ===============
 
 ai_entities:
   mov si, _ENTITIES_
-  mov cl, 40
+  mov cl, MAX_ENTITIES
   .next_entity:
     push cx
 
@@ -1153,10 +1157,6 @@ ret
 ; Return: CX - updated pos
 
 random_move:
-  rdtsc
-  and ax, 0x0f
-  jz .skip_move
-
 .move_x:
 rdtsc
   test ax, 0x2
@@ -1165,7 +1165,8 @@ rdtsc
     test ax, 0x10
     jz .skip_move
     add cl, 2
-ret
+    ret
+
 .move_y:
   dec ch
   rdtsc
@@ -1178,19 +1179,19 @@ ret
 
 
 ; =========================================== CHECK BOUNDS =====================
-; Expects: CX - Position YY/XX
-; Return: AX - Zero if hit bound, 1 if no bounds at this location
+; Expects: CX - Position YY/XX (CH: Y coordinate, CL: X coordinate)
+; Returns: AX - Zero if hit bound, 1 if no bounds at this location
 
 check_bounds:
   xor ax, ax                                ; Assume bound hit (AX = 0)
   cmp ch, 0x0f
   ja .return
-  cmp cl, 0x20
+  cmp cl, 0x1f
   ja .return
   inc ax                                    ; No bound hit (AX = 1)
 .return:
-  test ax, 0x1
-ret
+  test ax, 1             ; Set flags based on AX
+  ret
 
 ; =========================================== CHECK FRIEDS =====================
 ; Expects: CX - Position YY/XX
@@ -1208,7 +1209,7 @@ check_friends:
     jle .skip_this_entity
     cmp word [si+_POS_], ax
     jnz .skip_this_entity
-    inc bx
+      inc bx
     .skip_this_entity:
     add si, ENTITY_SIZE
   loop .next_entity
