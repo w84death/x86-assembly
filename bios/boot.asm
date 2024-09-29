@@ -56,14 +56,14 @@ start:
   call print_string
 
   .display_payload:
-    mov dx, 0x0612
+    mov dx, 0x0608
     call set_cursor
     mov bl, 0x1B
     call color_line
     mov si, game_title_msg
     call print_string
 
-    mov dx, 0x0908
+    add dh, 0x04
     call set_cursor
     mov si, game_line1_msg
     call print_string
@@ -75,13 +75,12 @@ start:
     add dh, 0xa
     call set_cursor
 
-    mov bl, 0xe0
+    mov bl, 0x2f
     call color_line
     
     mov si, game_line3_msg
     call print_string
 
-    
     inc dh
     call set_cursor
 
@@ -132,10 +131,10 @@ loading_msg db  'Loading... ',0x0
 error_msg db    'Err',0x0
 done_msg db     'OK!',0x0
 wait_msg db     'Press any key to start...',0x0
-game_title_msg db '*** MYSTERIES OF THE FORGOTTEN ISLES ***',0x0
+game_title_msg db '**************  MYSTERIES OF THE FORGOTTEN ISLES  **************',0x0
 game_line1_msg db 'Explore the islands. Find all gold and bring it to the chest.',0x0
 game_line2_msg db 'Use rocks to build bridges on shallow water. Avoid wildlife.',0x0
-game_line3_msg db 'Use Arrows to move, Spacebar to drop items, Escape to reset.',0x0
+game_line3_msg db 'Use Arrows to move, Spacebar to drop item, Escape to reset game.',0x0
 
 times 507 - ($ - $$) db 0   ; Pad to 510 bytes
 db "P1X"                    ; Use HEX viewer to see P1X at the end of binary
