@@ -24,7 +24,7 @@ start:
 
 .clear_screen:
     mov ah, 0x06          ; Clear entire screen
-    mov bh, 0x70          ; Background color
+    mov bh, 0x1e          ; Background color
     mov dx, 0x184F        ; Lower right corner
     int 0x10
 
@@ -58,28 +58,34 @@ start:
   .display_payload:
     mov dx, 0x0612
     call set_cursor
+    mov bl, 0x1B
+    call color_line
     mov si, game_title_msg
     call print_string
 
-    mov dx, 0x0808
+    mov dx, 0x0908
     call set_cursor
     mov si, game_line1_msg
     call print_string
-
     inc dh
     call set_cursor
     mov si, game_line2_msg
     call print_string
 
-    inc dh
+    add dh, 0xa
     call set_cursor
+
+    mov bl, 0xe0
+    call color_line
+    
     mov si, game_line3_msg
     call print_string
 
-
-    add dh, 0x4
+    
+    inc dh
     call set_cursor
-  mov si, wait_msg
+
+    mov si, wait_msg
   call print_string
   
   xor ax, ax
@@ -98,8 +104,14 @@ disk_error:
   call print_string
   hlt                     ; Halt the system
 
+color_line:
+  mov ah, 0x09
+  mov cx, 64
+  int 0x10
+ret
+
 print_string:
-  mov ah, 0x0E            ; BIOS teletype output function
+  mov ah, 0x0e            ; BIOS teletype output function
 .next_char:
   lodsb                   ; Load next character from SI into AL
   cmp al, 0
