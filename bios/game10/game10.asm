@@ -560,7 +560,7 @@ spawn_entities:
 
       cmp bl, ID_PALM
       jnz .skip_palm
-        call rng
+        xor al, ah
         and al, 0x01
         mov byte [di+_MIRROR_], al ; Save basic state
       .skip_palm: 
@@ -782,10 +782,8 @@ ai_entities:
     cmp byte [si+_STATE_], STATE_EXPLORING
     jnz .skip_explore
       mov ax, [_GAME_TICK_]
-      xor ax, 0xf
-      test ax, 0x7
-      
-      jnz .skip_explore
+      test ax, 0x2
+      jz .skip_explore
 
       .explore:
         mov cx, [si+_POS_]
@@ -810,8 +808,7 @@ ai_entities:
         .check_if_player:
           cmp cx, [_REQUEST_POSITION_]
           jnz .no_bite
-            ; mov bx, BEEP_LOSE
-            ; call beep
+            call beep
             cmp byte [_HOLDING_ID_], 0x0
             jnz .continue_game
               mov byte [_GAME_STATE_], GSTATE_END
@@ -854,27 +851,24 @@ ai_entities:
         mov word [_REQUEST_POSITION_], 0x0
         mov byte cl, [si+_ID_]
         mov byte [_HOLDING_ID_], cl    
-        ; mov bx, BEEP_PICK
-        ; call beep 
-
+        call beep
     .skip_item:
 
     .put_item_back:
     cmp byte [si+_STATE_], STATE_FOLLOW
     jnz .no_follow
-      ; mov bx, BEEP_PUT
-      ; call beep
       cmp byte [_HOLDING_ID_], 0x0 
       jnz .check_kill
+        call beep
         mov byte [si+_STATE_], STATE_INTERACTIVE
         mov word [_REQUEST_POSITION_], 0x0
       .check_kill:
       cmp byte [_HOLDING_ID_], 0xff
       jnz .skip_kill
+        call beep
         mov byte [si+_STATE_], STATE_DEACTIVATED
         mov byte [_HOLDING_ID_], 0x0
       .skip_kill:
-      
     .no_follow: 
     
     add si, ENTITY_SIZE
@@ -882,14 +876,13 @@ ai_entities:
     dec cx
   jnz .next_entity
 
-
 ; =========================================== SORT ENITIES ===============
 ; Sort entities by Y position
 ; Expects: entities array
 ; Returns: sorted entities array
 
 sort_entities:
-  xor ax, ax
+  ; xor ax, ax
 
   mov cx, MAX_ENTITIES-1  ; We'll do n-1 passes
 
@@ -1056,16 +1049,10 @@ skip_game_state_game:
 test byte [_GAME_STATE_], GSTATE_END
 jz skip_game_state_end
   mov di, 320*100+154
-  xor dx, dx
   mov si, SkullBrush
   test byte [_GAME_STATE_], GSTATE_WIN
   jz .draw_icon
   mov si, GoldBrush
-  mov ax, [_GAME_TICK_]
-  and ax, 0x8
-  cmp ax, 0x4
-  jg .draw_icon
-    mov si, Gold2Brush
   .draw_icon:
   call draw_sprite
 skip_game_state_end:
@@ -1090,30 +1077,32 @@ vga_blit:
 
 ; =========================================== V-SYNC ======================
 
-wait_for_vsync:
-    mov dx, 03DAh
-    .wait1:
-        in al, dx
-        and al, 08h
-        jnz .wait1
-    .wait2:
-        in al, dx
-        and al, 08h
-        jz .wait2
+; wait_for_vsync:
+;     mov dx, 0x03DA
+;     .wait1:
+;         in al, dx
+;         and al, 0x08
+;         jnz .wait1
+;     .wait2:
+;         in al, dx
+;         and al, 0x08
+;         jz .wait2
 
 ; =========================================== GAME TICK ========================
 
-inc word [_GAME_TICK_]
-; no_beep:
-;   in al, 0x61    ; Read the PIC chip
-;   and al, 0x0FC  ; Clear bit 0 to disable the speaker
-;   out 0x61, al   ; Write the updated value back to the PIC chip
+  inc word [_GAME_TICK_]
+
+; =========================================== BEEP STOP ========================
+
+  in al, 0x61    ; Read the PIC chip
+  and al, 0x0FC  ; Clear bit 0 to disable the speaker
+  out 0x61, al   ; Write the updated value back to the PIC chip
 
 ; =========================================== ESC OR LOOP ======================
 
-    in al,0x60                  ; Read keyboard
-    dec al                      ; Decrement AL (esc is 1, after decrement is 0)
-    jnz game_loop               ; If not zero, loop again
+  in al,0x60                  ; Read keyboard
+  dec al                      ; Decrement AL (esc is 1, after decrement is 0)
+  jnz game_loop               ; If not zero, loop again
 
 ; =========================================== TERMINATE PROGRAM ================
 
@@ -1125,17 +1114,17 @@ inc word [_GAME_TICK_]
 ; Expects: BX - frequency value
 ; Return: -
 
-; beep:
-;   mov al, 0x0B6  ; Command to set the speaker frequency
-;   out 0x43, al   ; Write the command to the PIT chip
-;   mov ax, bx  ; Frequency value 
-;   out 0x42, al   ; Write the low byte of the frequency value
-;   mov al, ah
-;   out 0x42, al   ; Write the high byte of the frequency value
-;   in al, 0x61    ; Read the PIC chip
-;   or al, 0x03    ; Set bit 0 to enable the speaker
-;   out 0x61, al   ; Write the updated value back to the PIC chip
-; ret
+beep:
+  mov al, 0xB6  ; Command to set the speaker frequency
+  out 0x43, al   ; Write the command to the PIT chip
+  mov ax, BEEP_BEEP  ; Frequency value 
+  out 0x42, al   ; Write the low byte of the frequency value
+  mov al, ah
+  out 0x42, al   ; Write the high byte of the frequency value
+  in al, 0x61    ; Read the PIC chip
+  or al, 0x03    ; Set bit 0 to enable the speaker
+  out 0x61, al   ; Write the updated value back to the PIC chip
+ret
 
 ; =========================================== CNVERT XY TO MEM =================
 ; Expects: CX - position YY/XX
@@ -1172,13 +1161,18 @@ ret
   .done:
 ret
 
+; =========================================== RANDOM NUMBER GENERATOR -=========
+; Expects: -
+; Returns: AX - pseudo random number
+
 rng:
   push cx
-  mov ah, 0x0
+  xor ax, ax
   int 0x1a
-  mov ax, dx
+  mov al, dl
   pop cx
   xor ax, cx
+  add byte al, [_GAME_TICK_]
 ret
 
 ; =========================================== CHECK BOUNDS =====================
@@ -1199,6 +1193,7 @@ check_bounds:
 ; =========================================== CHECK FRIEDS =====================
 ; Expects: CX - Position YY/XX
 ; Return: AX - Zero if hit entity, 1 if clear
+
 check_friends:
   push si
   push cx
