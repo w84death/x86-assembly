@@ -181,6 +181,16 @@ dw 0010111110100100b
 dw 0000101110010000b
 dw 0000001001000000b
 
+SkullBrush:
+db 0x8, 0x0a
+dw 0000010101010000b
+dw 0001010101010100b
+dw 0001110111010100b
+dw 0001010101010100b
+dw 0000010101010000b
+dw 0100010101010001b
+dw 0001000101000100b
+dw 0100000000000001b
 
 ; =========================================== TERRAIN TILES DATA ===============
 ; 8x8 tiles for terrain
@@ -275,12 +285,14 @@ MetaTiles:
 db 00000000b, 00000000b, 00000000b, 00000000b
 db 00000010b, 00000010b, 00000101b, 00000101b
 db 00000001b, 00000101b, 00000001b, 00000101b
-db 00000011b, 00000010b, 00000001b, 00000101b
+db 00000011b, 00000010b, 00000001b, 00110110b
 db 00000101b, 00000110b, 00010110b, 00000101b
 db 00000110b, 00000111b, 00000111b, 00000111b
-db 00000100b, 00110101b, 00100101b, 00000110b
-db 00000100b, 00010110b, 00000110b, 00110100b
+db 00000100b, 00110101b, 00100101b, 00000111b
+db 00000100b, 00100110b, 00010111b, 00110100b
 db 00001000b, 00001000b, 00001000b, 00001000b
+db 00000100b, 00010100b, 00000110b, 00000111b
+db 00000100b, 00000111b, 00100100b, 00010111b
 
 ; =========================================== LEVEL DATA =======================
 ; 16x8 level data
@@ -291,92 +303,130 @@ LevelData:
 db 01000011b, 01000001b, 01010011b, 00000000b
 db 00000000b, 01000011b, 01000001b, 01010011b
 db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
+db 00000000b, 00000000b, 01000011b, 01010011b
 db 01000010b, 01100101b, 01010010b, 01001000b
 db 01000011b, 01000110b, 01110110b, 01110011b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
+db 01001000b, 01000011b, 01010011b, 00000000b
+db 00000000b, 01000011b, 01000111b, 01110011b
 db 01100011b, 01100001b, 01110011b, 00000000b
-db 01100011b, 01000101b, 01110011b, 00000000b
+db 01100011b, 01101001b, 01110011b, 00000000b
+db 00000000b, 01100011b, 01010111b, 01010011b
+db 00000000b, 01100011b, 01110011b, 01001000b
 db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 01000011b, 01110101b, 01010011b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 01100011b, 01100001b, 01010111b, 01010011b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 01100011b, 01110011b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 00000000b, 00000000b
+db 01000011b, 01001001b, 01010011b, 01000011b
+db 01010011b, 00000000b, 01100011b, 01010111b
+db 01010011b, 00000000b, 01001000b, 00000000b
+db 01000011b, 01010011b, 00000000b, 00000000b
+db 01100011b, 01100110b, 01011010b, 01100001b
+db 01110011b, 00000000b, 00000000b, 01100011b
+db 01010111b, 01010011b, 01000011b, 01010011b
+db 01000010b, 01010110b, 01010011b, 00000000b
+db 00000000b, 01100011b, 01110011b, 00000000b
+db 00000000b, 01000011b, 01010011b, 01001000b
+db 01000010b, 01010110b, 01000110b, 01010010b
+db 01100011b, 01100001b, 01010111b, 01000001b
+db 01010011b, 00000000b, 00000000b, 01000011b
+db 01000001b, 01000110b, 01010010b, 00000000b
+db 01100011b, 01100001b, 01100110b, 01010010b
+db 00000000b, 01001000b, 01100011b, 01100001b
+db 01110011b, 01001000b, 01001000b, 01100011b
+db 01100001b, 01100001b, 01110011b, 00000000b
+db 00000000b, 01001000b, 01100011b, 01110011b
 
 EntityCount:
-dw 0x001a
+dw 0x003f
 
 EntityData:
 db 1, 1
 dw 0x0302
-db 2, 15
-dw 0x000b
-dw 0x000d
+db 2, 27
 dw 0x0103
-dw 0x010f
-dw 0x0209
 dw 0x020a
 dw 0x030a
-dw 0x030c
-dw 0x0409
+dw 0x040a
 dw 0x0509
-dw 0x050c
 dw 0x050d
+dw 0x051a
+dw 0x051b
 dw 0x060a
 dw 0x060c
-dw 0x090d
-db 3, 1
+dw 0x070d
+dw 0x080e
+dw 0x081a
+dw 0x0910
+dw 0x0916
+dw 0x091a
+dw 0x0a0d
+dw 0x0a14
+dw 0x0a15
+dw 0x0a1b
+dw 0x0b0c
+dw 0x0c01
+dw 0x0c08
+dw 0x0c09
+dw 0x0c0f
+dw 0x0d02
+dw 0x0d0e
+db 3, 5
 dw 0x000c
-db 4, 3
+dw 0x081e
+dw 0x0c04
+dw 0x0e07
+dw 0x0e11
+db 4, 9
 dw 0x0104
+dw 0x031a
+dw 0x031e
 dw 0x0404
+dw 0x0417
+dw 0x041a
 dw 0x060b
-db 6, 2
+dw 0x0710
+dw 0x0c1e
+db 6, 15
 dw 0x0207
+dw 0x0211
 dw 0x0307
+dw 0x0310
+dw 0x061c
+dw 0x061d
+dw 0x071c
+dw 0x071d
+dw 0x0b16
+dw 0x0b17
+dw 0x0e0a
+dw 0x0e0b
+dw 0x0e0d
+dw 0x0f0a
+dw 0x0f0d
 db 7, 1
 dw 0x0301
-db 8, 3
+db 8, 5
 dw 0x010b
-dw 0x020e
-dw 0x0a0e
+dw 0x011d
+dw 0x011e
+dw 0x080b
+dw 0x0a01
 db 0x0 ; End of entities
 
 ; =========================================== MEMORY ADDRESSES =================
 
-_VGA_MEMORY_ equ 0xA000
-_DBUFFER_MEMORY_ equ 0x2000
-_ENTITIES_ equ 0x1000
-_PLAYER_ENTITY_ID_ equ 0x1800
-_REQUEST_POSITION_ equ 0x1802
-_HOLDING_ID_ equ 0x1804
-_SCORE_ equ 0x1805
-_SCORE_TARGET_ equ 0x1806
-_GAME_TICK_ equ 0x1807
-_GAME_STATE_ equ 0x1809
+_ENTITIES_ equ 0x1000         ; 5 bytes / entity
+_PLAYER_ENTITY_ID_ equ 0x1800 ; 2 bytes - word
+_REQUEST_POSITION_ equ 0x1802 ; 2 bytes - word
+_HOLDING_ID_ equ 0x1804       ; 1 byte
+_SCORE_ equ 0x1805            ; 1 byte
+_SCORE_TARGET_ equ 0x1806     ; 1 byte
+_GAME_TICK_ equ 0x1807        ; 2 bytes - word
+_GAME_STATE_ equ 0x1809       ; 1 byte
 
-_ID_ equ 0  ; 1 byte
-_POS_ equ 1 ; 2 bytes / word
+_DBUFFER_MEMORY_ equ 0x2000   ; 64 kilo bytes
+_VGA_MEMORY_ equ 0xA000       ; 64 kilo bytes
+
+_ID_ equ 0      ; 1 byte
+_POS_ equ 1     ; 2 bytes - word
 _MIRROR_ equ 3  ; 1 byte
-_STATE_ equ 4 ; 1 bytes
+_STATE_ equ 4   ; 1 bytes
 
 ; =========================================== MAGIC NUMBERS ====================
 
@@ -390,7 +440,7 @@ ID_PLAYER equ 0
 ID_PALM equ 1
 ID_SNAKE equ 2
 ID_ROCK equ 3
-; ID_TRIGGER equ 4
+ID_UNUSED equ 4    ; Unused
 ID_BRIDGE equ 5
 ID_CHEST equ 6
 ID_GOLD equ 7
@@ -403,15 +453,12 @@ STATE_ACTIVATED equ 4
 STATE_INTERACTIVE equ 5
 
 GSTATE_INTRO equ 0
-GSTATE_GAME equ 1
-GSTATE_END equ 2
+GSTATE_GAME equ 2
+GSTATE_END equ 4
+GSTATE_WIN equ 8
 
-BEEP_MOVE equ 220
-BEEP_ALERT equ 1200
-BEEP_BRIDGE equ 140
-BEEP_PICK equ 500
-BEEP_PUT equ 600
-BEEP_GOLD equ 3000
+BEEP_PICK equ 700
+BEEP_PUT equ 350
 
 ; =========================================== INITIALIZATION ===================
 
@@ -496,8 +543,8 @@ spawn_entities:
   .done:
 
 mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
-mov byte [_HOLDING_ID_], 0x0      
-mov byte [_SCORE_], 0x0
+; mov byte [_HOLDING_ID_], 0x0      
+; mov byte [_SCORE_], 0x0
 
 ; =========================================== GAME LOGIC =======================
 
@@ -527,8 +574,8 @@ draw_ocean:
   rep stosw
 
 
-cmp byte [_GAME_STATE_], GSTATE_GAME
-jnz skip_game_state_game
+test byte [_GAME_STATE_], GSTATE_GAME
+jz skip_game_state_game
 
 ; =========================================== DRAWING LEVEL ====================
 
@@ -639,7 +686,7 @@ check_keyboard:
   cmp ah, 39h         ; Compare scan code with spacebar
   jne .check_up
     mov byte [_HOLDING_ID_], 0x0
-    mov word [_REQUEST_POSITION_], 0x0
+    ; mov word [_REQUEST_POSITION_], 0x0
     jmp .no_key_press
 
   .check_up:
@@ -720,13 +767,17 @@ ai_entities:
         .can_not_move:
         .check_if_player:
           cmp cx, [_REQUEST_POSITION_]
-          jnz .no_player
-            mov word [_REQUEST_POSITION_], 0x0
-            mov byte [_HOLDING_ID_], 0x00
-            mov bx, BEEP_ALERT
-            call beep
-            jmp .skip_item
-          .no_player:
+          jnz .no_bite
+            ; mov bx, BEEP_LOSE
+            ; call beep
+            cmp byte [_HOLDING_ID_], 0x0
+            jnz .continue_game
+              mov byte [_GAME_STATE_], GSTATE_END
+            .continue_game:
+            jz .no_bite
+              mov byte [_HOLDING_ID_], 0x00
+              jmp .skip_item
+          .no_bite:
     .skip_explore:
 
     cmp byte [si+_STATE_], STATE_INTERACTIVE
@@ -744,15 +795,12 @@ ai_entities:
         cmp byte [_HOLDING_ID_], ID_GOLD
         jnz .skip_item
         inc byte [_SCORE_]
-        mov bx, BEEP_GOLD
-        call beep
         jmp .clear_item
       .check_bridge:
         cmp byte [_HOLDING_ID_], ID_ROCK
         jnz .skip_item
         mov byte [si+_STATE_], STATE_DEACTIVATED
       .clear_item:          
-          mov word [_REQUEST_POSITION_], 0
           mov byte [_HOLDING_ID_], 0xff
           jmp .skip_item
       .skip_check_interactions:
@@ -761,20 +809,23 @@ ai_entities:
       jnz .skip_item
       .pick_item:
         mov byte [si+_STATE_], STATE_FOLLOW
-        mov word [_REQUEST_POSITION_], 0
+        mov word [_REQUEST_POSITION_], 0x0
         mov byte cl, [si+_ID_]
         mov byte [_HOLDING_ID_], cl    
-        mov bx, BEEP_PICK
-        call beep 
+        ; mov bx, BEEP_PICK
+        ; call beep 
 
     .skip_item:
 
     .put_item_back:
     cmp byte [si+_STATE_], STATE_FOLLOW
     jnz .no_follow
+      ; mov bx, BEEP_PUT
+      ; call beep
       cmp byte [_HOLDING_ID_], 0x0 
       jnz .check_kill
         mov byte [si+_STATE_], STATE_INTERACTIVE
+        mov word [_REQUEST_POSITION_], 0x0
       .check_kill:
       cmp byte [_HOLDING_ID_], 0xff
       jnz .skip_kill
@@ -845,7 +896,6 @@ sort_entities:
     pop cx
     loop .outer_loop
 
-
 ; =========================================== DRAW ENITIES ===============
 
 draw_entities:
@@ -871,7 +921,6 @@ draw_entities:
       call conv_pos2mem       ; Convert position to memory
       sub di, 320*12          ; Move above player
     .skip_follow:
-
 
     mov byte al, [si]       ; Get brush id in AL
     mov ah, al              ; Save a copy in AH
@@ -922,7 +971,7 @@ draw_entities:
         sub di, 320*6
         mov ax, [_GAME_TICK_]
         and ax, 0x1
-        imul ax, 320
+        imul ax, 320*2
         add di, ax
         call draw_sprite
     .skip_chest:
@@ -942,7 +991,9 @@ draw_score:
   mov al, [_SCORE_TARGET_]
   mov ah, [_SCORE_]
   cmp al, ah
-  jle .game_over
+  jg .continue_game
+    mov byte [_GAME_STATE_], GSTATE_END+GSTATE_WIN
+  .continue_game:
   xor cl, cl
   .draw_spot:
       mov si, SlotBrush
@@ -956,25 +1007,23 @@ draw_score:
     inc cl
     cmp al, cl
   jnz .draw_spot
-  jmp .game_on
-
-  .game_over:
-    mov byte [_GAME_STATE_], GSTATE_END
-  .game_on:
 
 skip_game_state_game:
 
-
-cmp byte [_GAME_STATE_], GSTATE_END
-jnz skip_game_state_end
+test byte [_GAME_STATE_], GSTATE_END
+jz skip_game_state_end
   mov di, 320*100+154
+  xor dx, dx
+  mov si, SkullBrush
+  test byte [_GAME_STATE_], GSTATE_WIN
+  jz .draw_icon
   mov si, GoldBrush
   mov ax, [_GAME_TICK_]
   and ax, 0x8
   cmp ax, 0x4
-  jg .skip_frame
+  jg .draw_icon
     mov si, Gold2Brush
-  .skip_frame:
+  .draw_icon:
   call draw_sprite
 skip_game_state_end:
 
@@ -1012,7 +1061,10 @@ wait_for_vsync:
 ; =========================================== GAME TICK ========================
 
 inc word [_GAME_TICK_]
-call no_beep
+; no_beep:
+;   in al, 0x61    ; Read the PIC chip
+;   and al, 0x0FC  ; Clear bit 0 to disable the speaker
+;   out 0x61, al   ; Write the updated value back to the PIC chip
 
 ; =========================================== ESC OR LOOP ======================
 
@@ -1030,23 +1082,17 @@ call no_beep
 ; Expects: BX - frequency value
 ; Return: -
 
-beep:
-  mov al, 0x0B6  ; Command to set the speaker frequency
-  out 0x43, al   ; Write the command to the PIT chip
-  mov ax, bx  ; Frequency value 
-  out 0x42, al   ; Write the low byte of the frequency value
-  mov al, ah
-  out 0x42, al   ; Write the high byte of the frequency value
-  in al, 0x61    ; Read the PIC chip
-  or al, 0x03    ; Set bit 0 to enable the speaker
-  out 0x61, al   ; Write the updated value back to the PIC chip
-ret
-
-no_beep:
-  in al, 0x61    ; Read the PIC chip
-  and al, 0x0FC  ; Clear bit 0 to disable the speaker
-  out 0x61, al   ; Write the updated value back to the PIC chip
-ret
+; beep:
+;   mov al, 0x0B6  ; Command to set the speaker frequency
+;   out 0x43, al   ; Write the command to the PIT chip
+;   mov ax, bx  ; Frequency value 
+;   out 0x42, al   ; Write the low byte of the frequency value
+;   mov al, ah
+;   out 0x42, al   ; Write the high byte of the frequency value
+;   in al, 0x61    ; Read the PIC chip
+;   or al, 0x03    ; Set bit 0 to enable the speaker
+;   out 0x61, al   ; Write the updated value back to the PIC chip
+; ret
 
 ; =========================================== CNVERT XY TO MEM =================
 ; Expects: CX - position YY/XX
