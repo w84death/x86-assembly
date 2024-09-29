@@ -41,7 +41,7 @@ dw IndieTopBrush, -320*6
 dw PalmBrush, -320*10
 dw SnakeBrush, -320*2
 dw RockBrush, 0
-dw 0, 0
+dw SkullBrush, 0
 dw BridgeBrush, 0
 dw ChestBrush, 0
 dw Gold2Brush, 320
@@ -303,7 +303,7 @@ LevelData:
 db 01000011b, 01000001b, 01010011b, 00000000b
 db 00000000b, 01000011b, 01000001b, 01010011b
 db 00000000b, 00000000b, 00000000b, 00000000b
-db 00000000b, 00000000b, 01000011b, 01010011b
+db 01001000b, 01001000b, 01000011b, 01010011b
 db 01000010b, 01100101b, 01010010b, 01001000b
 db 01000011b, 01000110b, 01110110b, 01110011b
 db 01001000b, 01000011b, 01010011b, 00000000b
@@ -316,7 +316,7 @@ db 00000000b, 00000000b, 00000000b, 00000000b
 db 01000011b, 01001001b, 01010011b, 01000011b
 db 01010011b, 00000000b, 01100011b, 01010111b
 db 01010011b, 00000000b, 01001000b, 00000000b
-db 01000011b, 01010011b, 00000000b, 00000000b
+db 01000011b, 01010011b, 01001000b, 00000000b
 db 01100011b, 01100110b, 01011010b, 01100001b
 db 01110011b, 00000000b, 00000000b, 01100011b
 db 01010111b, 01010011b, 01000011b, 01010011b
@@ -334,12 +334,12 @@ db 01100001b, 01100001b, 01110011b, 00000000b
 db 00000000b, 01001000b, 01100011b, 01110011b
 
 EntityCount:
-dw 0x003f
+dw 0x003e
 
 EntityData:
 db 1, 1
-dw 0x0302
-db 2, 27
+dw 0x0301
+db 2, 26
 dw 0x0103
 dw 0x020a
 dw 0x030a
@@ -362,10 +362,9 @@ dw 0x0a15
 dw 0x0a1b
 dw 0x0b0c
 dw 0x0c01
-dw 0x0c08
-dw 0x0c09
 dw 0x0c0f
 dw 0x0d02
+dw 0x0d08
 dw 0x0d0e
 db 3, 5
 dw 0x000c
@@ -373,18 +372,18 @@ dw 0x081e
 dw 0x0c04
 dw 0x0e07
 dw 0x0e11
-db 4, 9
-dw 0x0104
+db 4, 8
+dw 0x021b
 dw 0x031a
 dw 0x031e
 dw 0x0404
-dw 0x0417
-dw 0x041a
 dw 0x060b
-dw 0x0710
+dw 0x0616
+dw 0x090e
 dw 0x0c1e
-db 6, 15
+db 6, 16
 dw 0x0207
+dw 0x0210
 dw 0x0211
 dw 0x0307
 dw 0x0310
@@ -400,13 +399,13 @@ dw 0x0e0d
 dw 0x0f0a
 dw 0x0f0d
 db 7, 1
-dw 0x0301
+dw 0x0300
 db 8, 5
+dw 0x0104
 dw 0x010b
-dw 0x011d
-dw 0x011e
-dw 0x080b
+dw 0x0710
 dw 0x0a01
+dw 0x0d13
 db 0x0 ; End of entities
 
 ; =========================================== MEMORY ADDRESSES =================
@@ -440,7 +439,7 @@ ID_PLAYER equ 0
 ID_PALM equ 1
 ID_SNAKE equ 2
 ID_ROCK equ 3
-ID_UNUSED equ 4    ; Unused
+ID_SKULL equ 4
 ID_BRIDGE equ 5
 ID_CHEST equ 6
 ID_GOLD equ 7
@@ -479,6 +478,7 @@ set_keyboard_rate:
 restart_game:
 
 mov byte [_GAME_STATE_], GSTATE_GAME
+mov byte [_SCORE_], 0x0
 
 ; =========================================== SPAWN ENTITIES ==================
 ; Expects: entities array from level data
@@ -543,8 +543,6 @@ spawn_entities:
   .done:
 
 mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
-; mov byte [_HOLDING_ID_], 0x0      
-; mov byte [_SCORE_], 0x0
 
 ; =========================================== GAME LOGIC =======================
 
@@ -556,23 +554,19 @@ game_loop:
 
 draw_bg:
   mov ax, COLOR_SKY               ; Set starting sky color
-  mov cl, 0xa                  ; 10 bars to draw
+  mov dl, 0xa                  ; 10 bars to draw
   .draw_sky:
-     push cx
-
-     mov cx, 320*3           ; 3 pixels high
-     rep stosw               ; Write to the doublebuffer
-     inc ax                  ; Increment color index for next bar
-     xchg al, ah             ; Swap colors
-
-     pop cx                  ; Decrement bar counter
-     loop .draw_sky
+    mov cx, 320*3           ; 3 pixels high
+    rep stosw               ; Write to the doublebuffer
+    inc ax                  ; Increment color index for next bar
+    xchg al, ah             ; Swap colors
+    dec dl
+    jnz .draw_sky
 
 draw_ocean:
-  mov cx, 320*70              ; 70 lines of ocean
   mov ax, COLOR_WATER
+  mov cx, 320*70              ; 70 lines of ocean
   rep stosw
-
 
 test byte [_GAME_STATE_], GSTATE_GAME
 jz skip_game_state_game
@@ -936,13 +930,14 @@ draw_entities:
     mov bx, BrushRefs       ; Get brush reference table
     add bl, al              ; Shift to ref (id*2 bytes)
     mov dx, [bx]            ; Get brush data address
-    push dx
+    push dx                 ; Save address for SI
 
     add al, 0x2               ; offest is at next byte (+2)
     movzx bx, al              ; Get address to BX
     add di, [BrushRefs + bx]  ; Get shift and apply to destination position
     mov dl, [si+_MIRROR_]     ; Get brush mirror flag
-    pop si
+    
+    pop si                  ; Get address
     call draw_sprite
 
     cmp ah, ID_PLAYER
