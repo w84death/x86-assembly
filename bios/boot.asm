@@ -34,7 +34,6 @@ start:
     int 0x10
 
 .load_code:
-
     mov si, title_msg
     call print_string
 
@@ -53,57 +52,78 @@ start:
     jc disk_error          ; Jump if carry flag set (error)
 
 .display_wait_msg:
-    mov si, done_msg
+  mov si, done_msg
+  call print_string
+
+  .display_payload:
+    mov dx, 0x0612
+    call set_cursor
+    mov si, game_title_msg
     call print_string
 
-    .display_payload:
-        mov si, payload_msg
-        call print_string
-
-    mov si, wait_msg
+    mov dx, 0x0808
+    call set_cursor
+    mov si, game_line1_msg
     call print_string
-    
-    xor ax, ax
-    int 0x16               ; BIOS keyboard interrupt (wait for keypress)
 
-    mov ax, 0x7E0          ; Segment where code is loaded
-    mov ds, ax
-    mov es, ax
-    mov ss, ax
-    mov sp, 0x7C00         ; Initialize stack pointer  
+    inc dh
+    call set_cursor
+    mov si, game_line2_msg
+    call print_string
 
-    jmp 0x7E0:0x0100        ; Jump to the loaded code; run the game!
+    inc dh
+    call set_cursor
+    mov si, game_line3_msg
+    call print_string
+
+
+    add dh, 0x4
+    call set_cursor
+  mov si, wait_msg
+  call print_string
+  
+  xor ax, ax
+  int 0x16               ; BIOS keyboard interrupt (wait for keypress)
+
+  mov ax, 0x7E0          ; Segment where code is loaded
+  mov ds, ax
+  mov es, ax
+  mov ss, ax
+  mov sp, 0x7C00         ; Initialize stack pointer  
+
+  jmp 0x7E0:0x0100        ; Jump to the loaded code; run the game!
 
 disk_error:
-    mov si, error_msg
-    call print_string
-    hlt                     ; Halt the system
+  mov si, error_msg
+  call print_string
+  hlt                     ; Halt the system
 
 print_string:
-    mov ah, 0x0E            ; BIOS teletype output function
+  mov ah, 0x0E            ; BIOS teletype output function
 .next_char:
-    lodsb                   ; Load next character from SI into AL
-    cmp al, 0
-    je .done
-    int 0x10                ; BIOS video interrupt
-    jmp .next_char
+  lodsb                   ; Load next character from SI into AL
+  cmp al, 0
+  je .done
+  int 0x10                ; BIOS video interrupt
+  jmp .next_char
 .done:
-    ret
+  ret
 
-title_msg db    'P1X Bootloader V1.3',0x0A,0x0D,0x0
+set_cursor:
+  mov ah, 0x02            ; BIOS set cursor position function
+  mov bh, 0               ; Page number
+  int 0x10                ; BIOS video interrupt
+ret
+
+title_msg db    'P1X Bootloader V1.4',0x0A,0x0D,0x0
 loading_msg db  'Loading... ',0x0
 error_msg db    'Err',0x0
-done_msg db     'OK!',0x0A,0x0A,0x0A,0x0D,0x0
+done_msg db     'OK!',0x0
 wait_msg db     'Press any key to start...',0x0
-payload_msg:
-db '*** MYSTERIES OF THE FORGOTTEN ISLES ***',0x0A,0x0D
-db 0x0A
-db 'Explore the islands. Find all gold and bring it to the chest.',0x0A,0x0D
-db 'Use rocks to build bridges on shallow water. Avoid wildlife.',0x0A,0x0D
-db 0x0A
-db 'Use Arrows to move, Spacebar to drop items, Escape to reset.',0x0A,0x0D
-db 0x0A
-db 0x0
+game_title_msg db '*** MYSTERIES OF THE FORGOTTEN ISLES ***',0x0
+game_line1_msg db 'Explore the islands. Find all gold and bring it to the chest.',0x0
+game_line2_msg db 'Use rocks to build bridges on shallow water. Avoid wildlife.',0x0
+game_line3_msg db 'Use Arrows to move, Spacebar to drop items, Escape to reset.',0x0
 
 times 507 - ($ - $$) db 0   ; Pad to 510 bytes
 db "P1X"                    ; Use HEX viewer to see P1X at the end of binary

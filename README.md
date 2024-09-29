@@ -45,7 +45,7 @@ Mouse driver may be required.
 ![Game 10 bootloader](media/game10-bootloader.png)
 
 ### The Game - 2048b/four sectors
-![Game 10 gameplay](media/game10-alpha.png)
+![Game 10 gameplay](media/game10-gameplay.png)
 
 Game10 is my current state-of-the-art engine. Includes all the features of previous games, all the tricks, and prooven solutions. 
 
