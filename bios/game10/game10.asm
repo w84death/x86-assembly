@@ -1077,16 +1077,16 @@ vga_blit:
 
 ; =========================================== V-SYNC ======================
 
-; wait_for_vsync:
-;     mov dx, 0x03DA
-;     .wait1:
-;         in al, dx
-;         and al, 0x08
-;         jnz .wait1
-;     .wait2:
-;         in al, dx
-;         and al, 0x08
-;         jz .wait2
+wait_for_vsync:
+    mov dx, 0x03DA
+    .wait1:
+        in al, dx
+        and al, 0x08
+        jnz .wait1
+    .wait2:
+        in al, dx
+        and al, 0x08
+        jz .wait2
 
 ; =========================================== GAME TICK ========================
 
@@ -1147,7 +1147,7 @@ ret
 ; Return: CX - updated pos
 
 random_move:
-  call rng
+  in ax, 0x40
   mov bx, ax
   and ax, 0x2
   dec ax
@@ -1159,20 +1159,6 @@ ret
   .move_x:
   add cl, al
   .done:
-ret
-
-; =========================================== RANDOM NUMBER GENERATOR -=========
-; Expects: -
-; Returns: AX - pseudo random number
-
-rng:
-  push cx
-  xor ax, ax
-  int 0x1a
-  mov al, dl
-  pop cx
-  xor ax, cx
-  add byte ah, [_GAME_TICK_]
 ret
 
 ; =========================================== CHECK BOUNDS =====================
