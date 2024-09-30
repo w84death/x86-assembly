@@ -1080,10 +1080,11 @@ vga_blit:
 
 ; =========================================== V-SYNC ======================
 ; Wait for 16,667 microseconds (16.67 ms)
-mov ah, 0x86
-mov cx, 0          ; High word of microseconds
-mov dx, 16667      ; Low word of microseconds
-int 0x15
+
+  mov ah, 0x86
+  xor cx, cx          ; High word of microseconds
+  mov dx, 0x411b      ; Low word of microseconds
+  int 0x15
 
 ; =========================================== GAME TICK ========================
 
