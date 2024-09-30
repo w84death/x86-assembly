@@ -452,17 +452,18 @@ db 0x0 ; End of entities
 
 ; =========================================== MEMORY ADDRESSES =================
 
-_ENTITIES_ equ 0x1000         ; 5 bytes / entity
-_PLAYER_ENTITY_ID_ equ 0x1800 ; 2 bytes - word
-_REQUEST_POSITION_ equ 0x1802 ; 2 bytes - word
+_ENTITIES_ equ 0x1000         ; 5 bytes per entity, 64 entites cap, 320 bytes
+_PLAYER_ENTITY_ID_ equ 0x1800 ; 2 bytes
+_REQUEST_POSITION_ equ 0x1802 ; 2 bytes
 _HOLDING_ID_ equ 0x1804       ; 1 byte
 _SCORE_ equ 0x1805            ; 1 byte
 _SCORE_TARGET_ equ 0x1806     ; 1 byte
-_GAME_TICK_ equ 0x1807        ; 2 bytes - word
+_GAME_TICK_ equ 0x1807        ; 2 bytes
 _GAME_STATE_ equ 0x1809       ; 1 byte
 
-_DBUFFER_MEMORY_ equ 0x2000   ; 64 kilo bytes
-_VGA_MEMORY_ equ 0xA000       ; 64 kilo bytes
+_DBUFFER_MEMORY_ equ 0x2000   ; 64k bytes
+_VGA_MEMORY_ equ 0xA000       ; 64k bytes
+_VSYNC_ equ 0x1A00           ; VGA vertical sync
 
 _ID_ equ 0      ; 1 byte
 _POS_ equ 1     ; 2 bytes - word
@@ -521,6 +522,7 @@ restart_game:
 
 mov byte [_GAME_STATE_], GSTATE_GAME
 mov byte [_SCORE_], 0x0
+mov byte [_HOLDING_ID_], 0x0
 
 ; =========================================== SPAWN ENTITIES ==================
 ; Expects: entities array from level data
@@ -1076,17 +1078,11 @@ vga_blit:
     pop es
 
 ; =========================================== V-SYNC ======================
-
 wait_for_vsync:
-    mov dx, 0x03DA
-    .wait1:
-        in al, dx
-        and al, 0x08
-        jnz .wait1
-    .wait2:
-        in al, dx
-        and al, 0x08
-        jz .wait2
+  mov ax, _VSYNC_  ; BIOS function to get vertical retrace status
+  int 0x10        ; Call BIOS interrupt
+  test al, 0x08   ; Check if in vertical retrace
+  jz wait_for_vsync  ; If not, wait until it is
 
 ; =========================================== GAME TICK ========================
 
