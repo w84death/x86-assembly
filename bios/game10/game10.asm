@@ -784,7 +784,8 @@ ai_entities:
     cmp byte [si+_STATE_], STATE_EXPLORING
     jnz .skip_explore
       mov ax, [_GAME_TICK_]
-      test ax, 0x2
+      add ax, cx
+      test ax, 0x4
       jz .skip_explore
 
       .explore:
