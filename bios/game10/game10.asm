@@ -1079,11 +1079,11 @@ vga_blit:
     pop es
 
 ; =========================================== V-SYNC ======================
-wait_for_vsync:
-  mov ax, _VSYNC_  ; BIOS function to get vertical retrace status
-  int 0x10        ; Call BIOS interrupt
-  test al, 0x08   ; Check if in vertical retrace
-  jz wait_for_vsync  ; If not, wait until it is
+; Wait for 16,667 microseconds (16.67 ms)
+mov ah, 0x86
+mov cx, 0          ; High word of microseconds
+mov dx, 16667      ; Low word of microseconds
+int 0x15
 
 ; =========================================== GAME TICK ========================
 
