@@ -513,7 +513,7 @@ start:
 
 set_keyboard_rate:
     xor ax, ax
-    xor bx, bx
+    ; xor bx, bx
     mov ah, 03h         ; BIOS function to set typematic rate and delay
     mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
     int 16h
@@ -1081,7 +1081,7 @@ vga_blit:
 ; =========================================== V-SYNC ======================
 ; Wait for 16,667 microseconds (16.67 ms)
 
-  mov ah, 0x86
+  mov ax, 0x8600      ; 
   xor cx, cx          ; High word of microseconds
   mov dx, 0x411b      ; Low word of microseconds
   int 0x15
