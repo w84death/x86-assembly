@@ -461,9 +461,11 @@ _SCORE_TARGET_ equ 0x1806     ; 1 byte
 _GAME_TICK_ equ 0x1807        ; 2 bytes
 _GAME_STATE_ equ 0x1809       ; 1 byte
 
+_LAST_TICK_ equ 0x180a
+
 _DBUFFER_MEMORY_ equ 0x2000   ; 64k bytes
 _VGA_MEMORY_ equ 0xA000       ; 64k bytes
-_VSYNC_ equ 0x1A00           ; VGA vertical sync
+_VSYNC_ equ 0x03DA            ; VGA vertical sync
 
 _ID_ equ 0      ; 1 byte
 _POS_ equ 1     ; 2 bytes - word
@@ -511,12 +513,12 @@ start:
     push _DBUFFER_MEMORY_                 ; Set doublebuffer memory
     pop es                                  ; as target
 
-set_keyboard_rate:
-    xor ax, ax
-    ; xor bx, bx
-    mov ah, 03h         ; BIOS function to set typematic rate and delay
-    mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
-    int 16h
+; set_keyboard_rate:
+;     xor ax, ax
+;     ; xor bx, bx
+;     mov ah, 03h         ; BIOS function to set typematic rate and delay
+;     mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
+;     int 16h
 
 restart_game:
 
@@ -1078,18 +1080,16 @@ vga_blit:
     pop ds
     pop es
 
-; =========================================== V-SYNC ======================
-; Wait for 16,667 microseconds (16.67 ms)
-
-  mov ax, 0x8600      ; 
-  xor cx, cx          ; High word of microseconds
-  mov dx, 0x411b      ; Low word of microseconds
-  int 0x15
 
 ; =========================================== GAME TICK ========================
 
-  inc word [_GAME_TICK_]
-
+  mov ah, 00h
+  int 1Ah
+  mov ax, dx
+  sub ax, [_LAST_TICK_] ; Calculate elapsed ticks
+  mov [_GAME_TICK_], ax
+  mov [_LAST_TICK_], dx ; Update last tick count
+ 
 ; =========================================== BEEP STOP ========================
 
   in al, 0x61    ; Read the PIC chip
