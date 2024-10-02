@@ -465,7 +465,7 @@ _LAST_TICK_ equ 0x180a
 
 _DBUFFER_MEMORY_ equ 0x2000   ; 64k bytes
 _VGA_MEMORY_ equ 0xA000       ; 64k bytes
-_VSYNC_ equ 0x03DA            ; VGA vertical sync
+_TICK_ equ 1Ah                ; BIOS tick
 
 _ID_ equ 0      ; 1 byte
 _POS_ equ 1     ; 2 bytes - word
@@ -514,11 +514,11 @@ start:
     pop es                                  ; as target
 
 ; set_keyboard_rate:
-;     xor ax, ax
-;     ; xor bx, bx
-    mov ah, 03h         ; BIOS function to set typematic rate and delay
-    mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
-    int 16h
+    ; xor ax, ax
+;     xor bx, bx
+    ; mov ah, 03h         ; BIOS function to set typematic rate and delay
+    ; mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
+    ; int 16h
 
 restart_game:
 
@@ -1084,14 +1084,13 @@ vga_blit:
 ; =========================================== GAME TICK ========================
 
 wait_for_tick:
-    mov ah, 00h        ; Function 00h: Read system timer counter
-    int 1Ah            ; Returns tick count in CX:DX
+    xor ax, ax        ; Function 00h: Read system timer counter
+    int _TICK_            ; Returns tick count in CX:DX
     mov bx, dx         ; Store the current tick count
 .wait_loop:
-    int 1Ah            ; Read the tick count again
+    int _TICK_            ; Read the tick count again
     cmp dx, bx
     je .wait_loop      ; Loop until the tick count changes
-    ; Proceed with the game loop
 
 inc word [_GAME_TICK_]
  
@@ -1151,6 +1150,7 @@ ret
 
 random_move:
   in ax, 0x40
+  xor ax, 0xb00b
   mov bx, ax
   and ax, 0x2
   dec ax
