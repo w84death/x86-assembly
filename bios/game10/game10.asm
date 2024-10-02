@@ -516,9 +516,9 @@ start:
 ; set_keyboard_rate:
 ;     xor ax, ax
 ;     ; xor bx, bx
-;     mov ah, 03h         ; BIOS function to set typematic rate and delay
-;     mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
-;     int 16h
+    mov ah, 03h         ; BIOS function to set typematic rate and delay
+    mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
+    int 16h
 
 restart_game:
 
@@ -1083,12 +1083,17 @@ vga_blit:
 
 ; =========================================== GAME TICK ========================
 
-  mov ah, 00h
-  int 1Ah
-  mov ax, dx
-  sub ax, [_LAST_TICK_] ; Calculate elapsed ticks
-  mov [_GAME_TICK_], ax
-  mov [_LAST_TICK_], dx ; Update last tick count
+wait_for_tick:
+    mov ah, 00h        ; Function 00h: Read system timer counter
+    int 1Ah            ; Returns tick count in CX:DX
+    mov bx, dx         ; Store the current tick count
+.wait_loop:
+    int 1Ah            ; Read the tick count again
+    cmp dx, bx
+    je .wait_loop      ; Loop until the tick count changes
+    ; Proceed with the game loop
+
+inc word [_GAME_TICK_]
  
 ; =========================================== BEEP STOP ========================
 
