@@ -1084,15 +1084,15 @@ vga_blit:
 ; =========================================== GAME TICK ========================
 
 wait_for_tick:
-    xor ax, ax        ; Function 00h: Read system timer counter
-    int _TICK_            ; Returns tick count in CX:DX
-    mov bx, dx         ; Store the current tick count
+    xor ax, ax          ; Function 00h: Read system timer counter
+    int _TICK_          ; Returns tick count in CX:DX
+    mov bx, dx          ; Store the current tick count
 .wait_loop:
-    int _TICK_            ; Read the tick count again
+    int _TICK_          ; Read the tick count again
     cmp dx, bx
-    je .wait_loop      ; Loop until the tick count changes
+    je .wait_loop       ; Loop until the tick count changes
 
-inc word [_GAME_TICK_]
+inc word [_GAME_TICK_]  ; Increment game tick
  
 ; =========================================== BEEP STOP ========================
 
@@ -1149,18 +1149,18 @@ ret
 ; Return: CX - updated pos
 
 random_move:
-  in ax, 0x40
-  xor ax, 0xb00b
-  mov bx, ax
-  and ax, 0x2
-  dec ax
+  in ax, 0x40       ; Read the timer
+  xor ax, 0xb00b    ; XOR with magic number
+  mov bx, ax        ; Save a copy
+  and ax, 0x2       ; Check if we should move X
+  dec ax            ; Convert 2 to 1 and 0 to -1 = -1, 0, 1
 
-  test bx, 0x1
-  jz .move_x
-  add ch, al
-ret
+  test bx, 0x1      ; Check if we should move Y
+  jz .move_x        ; Jump if not
+  add ch, al        ; Move Y
+ret 
   .move_x:
-  add cl, al
+  add cl, al        ; Move X
   .done:
 ret
 
@@ -1169,12 +1169,12 @@ ret
 ; Returns: AX - Zero if hit bound, 1 if no bounds at this location
 
 check_bounds:
-  xor ax, ax                                ; Assume bound hit (AX = 0)
+  xor ax, ax             ; Assume bound hit (AX = 0)
   cmp ch, 0x0f
   ja .return
   cmp cl, 0x1f
   ja .return
-  inc ax                                    ; No bound hit (AX = 1)
+  inc ax                 ; No bound hit (AX = 1)
 .return:
   test ax, 1             ; Set flags based on AX
   ret
