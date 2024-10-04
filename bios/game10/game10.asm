@@ -500,9 +500,9 @@ GSTATE_GAME equ 2
 GSTATE_END equ 4
 GSTATE_WIN equ 8
 
-BEEP_BEEP equ 2200
-BEEP_PICK equ 700
-BEEP_PUT equ 350
+BEEP_BITE equ 250
+BEEP_PICK equ 15
+BEEP_PUT equ 90
 
 ; =========================================== INITIALIZATION ===================
 
@@ -513,12 +513,12 @@ start:
     push _DBUFFER_MEMORY_                 ; Set doublebuffer memory
     pop es                                  ; as target
 
-; set_keyboard_rate:
-    ; xor ax, ax
-;     xor bx, bx
-    ; mov ah, 03h         ; BIOS function to set typematic rate and delay
-    ; mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
-    ; int 16h
+  ; set_keyboard_rate:
+  ; xor ax, ax
+  ; xor bx, bx
+  ; mov ah, 03h         ; BIOS function to set typematic rate and delay
+  ; mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
+  ; int 16h
 
 restart_game:
 
@@ -813,9 +813,10 @@ ai_entities:
         .check_if_player:
           cmp cx, [_REQUEST_POSITION_]
           jnz .no_bite
-            call beep
             cmp byte [_HOLDING_ID_], 0x0
             jnz .continue_game
+              mov bl, BEEP_BITE
+              call beep
               mov byte [_GAME_STATE_], GSTATE_END
             .continue_game:
             jz .no_bite
@@ -855,25 +856,29 @@ ai_entities:
         mov byte [si+_STATE_], STATE_FOLLOW
         mov word [_REQUEST_POSITION_], 0x0
         mov byte cl, [si+_ID_]
-        mov byte [_HOLDING_ID_], cl    
+        mov byte [_HOLDING_ID_], cl  
+        mov bl, BEEP_PICK  
         call beep
     .skip_item:
 
     .put_item_back:
     cmp byte [si+_STATE_], STATE_FOLLOW
     jnz .no_follow
+      
       cmp byte [_HOLDING_ID_], 0x0 
       jnz .check_kill
-        call beep
         mov byte [si+_STATE_], STATE_INTERACTIVE
         mov word [_REQUEST_POSITION_], 0x0
+        jmp .beep
       .check_kill:
       cmp byte [_HOLDING_ID_], 0xff
       jnz .skip_kill
-        call beep
         mov byte [si+_STATE_], STATE_DEACTIVATED
-        mov byte [_HOLDING_ID_], 0x0
-      .skip_kill:
+        inc byte [_HOLDING_ID_] ;, 0x0
+      .beep:
+      mov bl, BEEP_PUT
+      call beep
+    .skip_kill:
     .no_follow: 
     
     add si, ENTITY_SIZE
@@ -887,10 +892,7 @@ ai_entities:
 ; Returns: sorted entities array
 
 sort_entities:
-  ; xor ax, ax
-
-  mov cx, MAX_ENTITIES-1  ; We'll do n-1 passes
-
+  mov cl, MAX_ENTITIES-1  ; We'll do n-1 passes
   .outer_loop:
     push cx
     mov si, _ENTITIES_
@@ -917,7 +919,7 @@ sort_entities:
           mov [_PLAYER_ENTITY_ID_], si
         .swap_entities:
 
-        mov cx, ENTITY_SIZE       ; 6 bytes per entity, so we move 3 words
+        mov cx, ENTITY_SIZE
         .swap_loop:
           mov al, [si]
           xchg al, [di]
@@ -925,10 +927,10 @@ sort_entities:
           inc si
           inc di
           loop .swap_loop
-        sub si, ENTITY_SIZE       ; Reset SI to start of current entity
+        sub si, ENTITY_SIZE
 
       .no_swap:
-      add si, ENTITY_SIZE       ; Move to next entity
+      add si, ENTITY_SIZE
       pop cx
       loop .inner_loop
 
@@ -1117,9 +1119,11 @@ inc word [_GAME_TICK_]  ; Increment game tick
 ; Return: -
 
 beep:
+  ; xor bh, bh
+  ; shl bx, 6
   mov al, 0xB6  ; Command to set the speaker frequency
   out 0x43, al   ; Write the command to the PIT chip
-  mov ax, BEEP_BEEP  ; Frequency value 
+  mov ah, bl    ; Frequency value 
   out 0x42, al   ; Write the low byte of the frequency value
   mov al, ah
   out 0x42, al   ; Write the high byte of the frequency value
