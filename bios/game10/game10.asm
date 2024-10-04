@@ -474,7 +474,7 @@ _STATE_ equ 4   ; 1 bytes
 
 ; =========================================== MAGIC NUMBERS ====================
 
-ENTITY_SIZE  equ 5
+ENTITY_SIZE  equ 8
 MAX_ENTITIES equ 64
 LEVEL_START_POSITION equ 320*68+32
 COLOR_SKY equ 0x3b3b
@@ -764,7 +764,7 @@ check_keyboard:
     call check_water_tile
     jz .no_move
     call check_bounds
-    jz .no_move
+   jz .no_move
 
     .move:
     mov word [si+_POS_], cx      
@@ -996,8 +996,8 @@ draw_entities:
     jnz .skip_gold_draw
       mov ax, [_GAME_TICK_]
       add ax, cx
-      and ax, 0x8
-      cmp ax, 0x4
+      and ax, 0x4
+      cmp ax, 0x2
       jl .skip_gold_draw
       xor dl, dl ; no mirror
       mov si, GoldBrush
@@ -1204,7 +1204,7 @@ check_friends:
   .done:
   pop cx
   pop si
-  cmp bx, 0x1 
+  cmp bx, 0x1
 ret
 
 ; =========================================== CHECK WATER TILE ================
