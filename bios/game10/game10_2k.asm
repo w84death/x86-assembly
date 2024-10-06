@@ -5,7 +5,7 @@
 ; Logic 2D game in VGA graphics, w PC Speaker sound.
 ; 
 ;
-; Size category: 4096 bytes / 24KB
+; Size category: 2048 bytes / 2KB
 ; Bootloader: 512 bytes
 ; Author: Krzysztof Krystian Jankowski
 ; Web: smol.p1x.in/assembly/#forgotten-isles
@@ -24,7 +24,7 @@ db 0x00, 0x34, 0x17, 0x1b   ; 0x0 Grays
 db 0x00, 0x06, 0x27, 0x43   ; 0x1 Indie top
 db 0x00, 0x7f, 0x13, 0x15   ; 0x2 Indie bottom
 db 0x35, 0x34, 0x19, 0x1a   ; 0x3 Bridge
-db 0x00, 0x71, 0x06, 0x2a   ; 0x4 Chest
+db 0x00, 0x06, 0x42, 0x43   ; 0x4 Chest
 db 0x00, 0x46, 0x5a, 0x5c   ; 0x5 Terrain 1 - shore
 db 0x47, 0x46, 0x45, 0x54   ; 0x6 Terrain 2 - in  land
 db 0x00, 0x06, 0x77, 0x2e   ; 0x7 Palm
@@ -92,17 +92,14 @@ dw 0000010001010100b
 dw 0000110101010000b
 
 ChestBrush:
-db 0xb, 0x4
-dw 0000101010100000b
-dw 0010111111111000b
-dw 1011111111111110b
-dw 1110111111111011b
-dw 1011010101011110b
-dw 1101101010100111b
+db 0x8, 0x4
+dw 0011111111111100b
+dw 1111101010101111b
+dw 1110101010101011b
+dw 1110101010101011b
 dw 0111111111111101b
-dw 1001011111010110b
-dw 1001010101010110b
-dw 0110101010101001b
+dw 0101010101010101b
+dw 0101011111010101b
 dw 0001010101010100b
 
 PalmBrush:
@@ -427,10 +424,9 @@ _VGA_MEMORY_ equ 0xA000       ; 64k bytes
 _TICK_ equ 1Ah                ; BIOS tick
 
 _ID_ equ 0      ; 1 byte
-_POS_ equ 1     ; 2 bytes
-_SCREEN_POS equ 3 ; 2 bytes
-_MIRROR_ equ 5  ; 1 byte
-_STATE_ equ 6   ; 1 bytes
+_POS_ equ 1     ; 2 bytes - word
+_MIRROR_ equ 3  ; 1 byte
+_STATE_ equ 4   ; 1 bytes
 
 ; =========================================== MAGIC NUMBERS ====================
 
@@ -970,9 +966,6 @@ draw_entities:
     jnz .skip_chest
       cmp byte [_HOLDING_ID_], ID_GOLD
       jnz .skip_chest
-
-        ; open chest
-
         mov si, ArrowBrush
         sub di, 320*6
         mov ax, [_GAME_TICK_]

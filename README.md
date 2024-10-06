@@ -51,6 +51,9 @@ Game10 is my current state-of-the-art engine. Includes all the features of previ
 
 Game is developed on Debian (ThinkPad X220), tested in QEMU and IBM PC (Intel Celeron M, 1GHz, 2GB RAM), booted from a floppy.
 
+### Enchanced Edition - 4096b/eight sectors
+
+
 #### Main features
 - 16-bit Assembly, FLAT assembler
 - no operating system need, runs on bare-metal x86 IBM compatible:
