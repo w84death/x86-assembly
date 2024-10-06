@@ -31,6 +31,7 @@ db 0x00, 0x06, 0x77, 0x2e   ; 0x7 Palm
 db 0x00, 0x27, 0x2a, 0x2b   ; 0x8 Snake
 db 0x00, 0x2b, 0x2c, 0x5b   ; 0x9 Gold Coin
 db 0x00, 0x15, 0x19, 0x1a   ; 0xa Rock
+db 0x00, 0x1b, 0x1d, 0x1e   ; 0xb Sail
 
 ; =========================================== BRUSH REFERENCES =================
 ; Brush data offset table
@@ -92,7 +93,20 @@ dw 0000010001010100b
 dw 0000110101010000b
 
 ChestBrush:
-db 0xb, 0x4
+db 0xa, 0x4
+dw 0001010000010100b
+dw 1011110101111101b
+dw 1001011010010111b
+dw 1101010101010111b
+dw 1101010101010111b
+dw 1011110101111110b
+dw 1001011111010110b
+dw 1001010101010110b
+dw 0110101010101001b
+dw 0001010101010100b
+
+ChestCloseBrush:
+db 0x8, 0x4
 dw 0000101010100000b
 dw 0010111111111000b
 dw 1011111111111110b
@@ -101,9 +115,19 @@ dw 1011010101011110b
 dw 1101101010100111b
 dw 0111111111111101b
 dw 1001011111010110b
-dw 1001010101010110b
-dw 0110101010101001b
-dw 0001010101010100b
+
+ChestTopBrush:
+db 0x9, 0x4
+dw 0000011111000000b
+dw 0001111010111000b
+dw 0001111001101011b
+dw 0001111001010110b
+dw 0001111001010101b
+dw 0001011110010101b
+dw 0000100101111001b
+dw 0000001010010111b
+dw 0000000000101001b
+
 
 PalmBrush:
 db 0x10, 0x7
@@ -193,6 +217,55 @@ dw 0001010101010100b
 dw 0100010101010001b
 dw 0001010101010100b
 dw 0100000101000001b
+
+ShipBackBrush:
+db 0xc, 0x4
+dw 0000011111110000b
+dw 0111110101011100b
+dw 1101010101011101b
+dw 0111110101011011b
+dw 1001011111101011b
+dw 0110100110110110b
+dw 0101101001111010b
+dw 0001011010101101b
+dw 0110100110101110b
+dw 0001101001010101b
+dw 0000010110100110b
+dw 0000000001010101b
+
+ShipMiddleBrush:
+db 0x8, 0x4
+dw 0000000010110000b
+dw 1111111110111111b
+dw 0110010110110101b
+dw 1001010101010110b
+dw 1111111010111011b
+dw 0101010101010101b
+dw 0111100101111001b
+dw 0101010101010101b
+
+ShipFrontBrush:
+db 0x8, 0x4
+dw 0001111111110100b
+dw 1111100101011111b
+dw 1010011111111010b
+dw 0111110101100100b
+dw 1101011010010000b
+dw 0110101001000000b
+dw 1010100100000000b
+dw 0101000000000000b
+
+ShipSailBrush:
+db 0x8, 0xb
+dw 0000000011101100b
+dw 0000111010111111b
+dw 1110111011111010b
+dw 1010111111101001b
+dw 0111101010010100b
+dw 0111100101000000b
+dw 1010010000000000b
+dw 0101000000000000b
+
 
 ; =========================================== TERRAIN TILES DATA ===============
 ; 8x8 tiles for terrain
@@ -668,6 +741,40 @@ draw_level:
     cmp cx, 0x80           ; 128 = 16*8
   jl .next_meta_tile
 
+; = DRAW SHIP
+
+draw_ship:
+    xor dx, dx
+    mov di, 320*55+32
+    mov ax, [_GAME_TICK_]
+    and ax, 0xf
+    cmp ax, 0x7
+    jl .skip_wave
+      sub di, 320
+    .skip_wave:
+    mov si, ShipBackBrush
+    call draw_sprite
+    add di, 8 + 320*4
+    mov si, ShipMiddleBrush
+    call draw_sprite
+    add di, 8
+    mov si, ShipMiddleBrush
+    call draw_sprite
+    add di, 8
+    mov si, ShipFrontBrush
+    call draw_sprite
+
+    mov si, ShipSailBrush
+    sub di, 12 + 320*5
+    call draw_sprite
+    add di, 320*2 - 4
+    call draw_sprite
+    sub di, 320*7 - 3
+    call draw_sprite
+    add di, 320*2 - 4
+    call draw_sprite
+    sub di, 320*6 - 1
+    call draw_sprite
 
 ; =========================================== KEYBOARD INPUT ==================
 
@@ -969,17 +1076,26 @@ draw_entities:
     cmp ah, ID_CHEST
     jnz .skip_chest
       cmp byte [_HOLDING_ID_], ID_GOLD
-      jnz .skip_chest
+      jnz .skip_open_chest
 
         ; open chest
 
+        mov si, ChestTopBrush
+        sub di, 320*3+8
+        call draw_sprite
+
         mov si, ArrowBrush
-        sub di, 320*6
+        sub di, 320*8-8
         mov ax, [_GAME_TICK_]
         and ax, 0x1
         imul ax, 320*2
         add di, ax
         call draw_sprite
+        jmp .skip_chest
+        .skip_open_chest:
+            mov si, ChestCloseBrush
+            sub di, 320
+            call draw_sprite
     .skip_chest:
 
     .skip_entity:
