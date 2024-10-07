@@ -20,17 +20,17 @@ jmp start
 ; Set of four colors per palette. 0x00 is transparency; use 0x10 for black.
 
 PaletteSets:
-db 0x00, 0x34, 0x17, 0x1b   ; 0x0 Grays
+db 0x00, 0x34, 0x16, 0x1a   ; 0x0 Grays
 db 0x00, 0x06, 0x27, 0x43   ; 0x1 Indie top
 db 0x00, 0x7f, 0x13, 0x15   ; 0x2 Indie bottom
-db 0x35, 0x34, 0x19, 0x1a   ; 0x3 Bridge
+db 0x35, 0x34, 0x00, 0x00   ; 0x3 Bridge
 db 0x00, 0x71, 0x06, 0x2a   ; 0x4 Chest
 db 0x00, 0x46, 0x5a, 0x5c   ; 0x5 Terrain 1 - shore
 db 0x47, 0x46, 0x45, 0x54   ; 0x6 Terrain 2 - in  land
 db 0x00, 0x06, 0x77, 0x2e   ; 0x7 Palm
 db 0x00, 0x27, 0x2a, 0x2b   ; 0x8 Snake
 db 0x00, 0x2b, 0x2c, 0x5b   ; 0x9 Gold Coin
-db 0x00, 0x15, 0x19, 0x1a   ; 0xa Rock
+db 0x00, 0x16, 0x17, 0x19   ; 0xa Rock
 db 0x00, 0x1b, 0x1d, 0x1e   ; 0xb Sail
 
 ; =========================================== BRUSH REFERENCES =================
@@ -161,14 +161,14 @@ dw 0000010100000101b
 
 RockBrush:
 db 0x8, 0xa
-dw 0000111111110000b
-dw 0011111110101100b
-dw 1111101111111111b
-dw 1110111110101111b
-dw 1011111010111001b
-dw 0111111011111101b
-dw 0101111110110101b
-dw 0001010101010100b
+dw 0000101111100000b
+dw 0010111111111000b
+dw 0010111110101110b
+dw 1011101010011010b
+dw 1010100101010110b
+dw 1010010101010110b
+dw 0110100101011001b
+dw 0001101010100100b
 
 GoldBrush:
 db 0x6, 0x9
@@ -512,6 +512,7 @@ MAX_ENTITIES equ 64
 LEVEL_START_POSITION equ 320*68+32
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3535
+SCORE_POSITION equ 320*24+32
 
 ID_PLAYER equ 0
 ID_PALM equ 1
@@ -774,6 +775,11 @@ draw_ship:
     add di, 320*2 - 4
     call draw_sprite
     sub di, 320*6 - 1
+    call draw_sprite
+
+    add di, 320*10 + 10
+    call draw_sprite
+    sub di, 320*4 + 2
     call draw_sprite
 
 ; =========================================== KEYBOARD INPUT ==================
@@ -1109,7 +1115,7 @@ draw_entities:
 ; =========================================== DRAW UI ==========================
 
 draw_score:
-  mov di, 320*8+32
+  mov di, SCORE_POSITION
   mov al, [_SCORE_TARGET_]
   mov ah, [_SCORE_]
   cmp al, ah
