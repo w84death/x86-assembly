@@ -25,8 +25,8 @@ db 0x00, 0x06, 0x27, 0x43   ; 0x1 Indie top
 db 0x00, 0x7f, 0x13, 0x15   ; 0x2 Indie bottom
 db 0x35, 0x34, 0x00, 0x00   ; 0x3 Bridge
 db 0x00, 0x71, 0x06, 0x2a   ; 0x4 Chest
-db 0x00, 0x46, 0x5a, 0x5c   ; 0x5 Terrain 1 - shore
-db 0x47, 0x46, 0x45, 0x54   ; 0x6 Terrain 2 - in  land
+db 0x00, 0x45, 0x2d, 0x2e   ; 0x5 Terrain 1 - shore
+db 0x3a, 0x2d, 0x2e, 0x2f   ; 0x6 Terrain 2 - in  land
 db 0x00, 0x06, 0x77, 0x2e   ; 0x7 Palm
 db 0x00, 0x27, 0x2a, 0x2b   ; 0x8 Snake
 db 0x00, 0x2b, 0x2c, 0x5b   ; 0x9 Gold Coin
@@ -273,74 +273,74 @@ dw 0101000000000000b
 
 TerrainTiles:
 db 0x8, 0x05          ; 0x1 Shore left bank
-dw 0010111101010101b
-dw 0010111111010101b
-dw 0010101111010101b
-dw 0000101111010101b
-dw 0000101111010101b
-dw 0010101111010101b
-dw 0010111101010101b
-dw 0010111111010101b
+dw 0101011010111111b
+dw 0001010110111111b
+dw 0000010110101111b
+dw 0000010110101111b
+dw 0000010110101111b
+dw 0000010110101111b
+dw 0001010110111111b
+dw 0101011010111111b
 
 db 0x8, 0x05          ; 0x2 Shore top bank
-dw 0000000000000000b
-dw 1010100000101010b
+dw 0100000000000001b
+dw 0101000000000101b
+dw 0101010101010101b
+dw 1001010101010110b
+dw 1010101010101010b
 dw 1111101010101111b
 dw 1111111111111111b
-dw 0111111111111101b
-dw 0101010101010101b
-dw 0101010101010101b
-dw 0101010101010101b
+dw 1111111111111111b
 
 db 0x8, 0x5          ; 0x3 Shore corner outside
-dw 0000101010101010b
-dw 0010101111111110b
-dw 1010111111111111b
-dw 1011111111111111b
-dw 1011111101010111b
-dw 1011110101010101b
-dw 1011110101010101b
-dw 1011110101010101b
+dw 0000000001010101b
+dw 0000010101010101b
+dw 0001010101101001b
+dw 0001011010101010b
+dw 0101011010101010b
+dw 0101101010101111b
+dw 0101101010111111b
+dw 0101011010111111b
 
 db 0x8, 0x5          ; 0x4 Shore corner filler inside
-dw 1010111101010101b
-dw 1011110101010101b
-dw 1111010101010101b
-dw 1101010101010101b
-dw 0101010101010101b
-dw 0101010101010101b
-dw 0101010101010101b
-dw 0101010101010101b
+dw 0101011010111111b
+dw 0101011011111111b
+dw 0101101011111111b
+dw 1010101111111111b
+dw 1011111111111111b
+dw 1111111111111111b
+dw 1111111111111111b
+dw 1111111111111111b
 
 db 0x8, 0x6          ; 0x5 Ground light
-dw 0110010101011001b
-dw 1001011001010110b
-dw 0101100101101001b
-dw 0101010101010110b
-dw 1001010110100101b
-dw 0110100101010101b
-dw 1001010110100110b
-dw 0110010101011001b
+dw 1010101010101010b
+dw 1010101010011010b
+dw 1010011010111010b
+dw 1010111010101010b
+dw 1010101010101010b
+dw 1010101001101010b
+dw 1010101011101010b
+dw 1010101010101010b
 
 db 0x8, 0x6           ; 0x6 Ground medium
-dw 0110001001001001b
-dw 1001010100100001b
-dw 0100100101000110b
-dw 0101010001101001b
-dw 0101001000010101b
-dw 1001010001100100b
-dw 0101100101010110b
-dw 0101010101010010b
+dw 1010101010101010b
+dw 1010101010011010b
+dw 1010011010011010b
+dw 0110011010111010b
+dw 0110111001101010b
+dw 1101101001101010b
+dw 1011101011100110b
+dw 1010101010101110b
 
 db 0x8, 0x6           ; 0x7 Ground dense
-dw 1011001001001001b
-dw 1110110100110001b
-dw 0011000101000111b
-dw 0101101110101001b
-dw 0101111011101101b
-dw 1001001100111011b
-dw 0111100101001100b
-dw 1001011001010101b
+dw 1010101010101010b
+dw 0110100110001010b
+dw 0110101110011010b
+dw 1110001010011010b
+dw 1010011000111000b
+dw 1010111001101001b
+dw 1001101011101001b
+dw 1011101010101011b
 
 db 0x8, 0x0           ; 0x8 Bridge Movable
 dw 0001010000000000b
@@ -888,9 +888,16 @@ ai_entities:
           jnz .no_bite
             cmp byte [_HOLDING_ID_], 0x0
             jnz .continue_game
+            
+              cmp byte [_HOLDING_ID_], ID_GOLD
+              jnz .no_gold
+                ;dec byte [_SCORE_TARGET_]
+                mov byte [_HOLDING_ID_], 0xff
+              .no_gold:
               mov bl, BEEP_BITE
               call beep
               mov byte [_GAME_STATE_], GSTATE_END
+              jmp .skip_item
             .continue_game:
             jz .no_bite
               mov byte [_HOLDING_ID_], 0x00
@@ -1189,14 +1196,16 @@ inc word [_GAME_TICK_]  ; Increment game tick
 
 ; =========================================== ESC OR LOOP ======================
 
-  in al,0x60                  ; Read keyboard
+  in al, 0x60                  ; Read keyboard
   dec al                      ; Decrement AL (esc is 1, after decrement is 0)
   jnz game_loop               ; If not zero, loop again
 
 ; =========================================== TERMINATE PROGRAM ================
 
   exit:
-    ret                       ; Return to BIOS
+    mov ax, 0x4c00
+    int 0x21
+    ret                       ; Return to BIOS/DOS
 
 ; =========================================== BEEP PC SPEAKER ==================
 ; Set the speaker frequency

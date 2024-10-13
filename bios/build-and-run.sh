@@ -26,6 +26,11 @@ if ! fasm "${filename}/${filename}.asm" "game.bin"; then
     exit 1
 fi
 
+if ! fasm "${filename}/${filename}.asm" "game.com"; then
+    echo "Failed to assemble ${filename}/${filename}.asm"
+    exit 1
+fi
+
 echo ""
 echo "=========================="
 echo "GAME CODE SIZE: $(stat -c %s game.bin) bytes"
