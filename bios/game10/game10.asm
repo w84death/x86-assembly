@@ -32,6 +32,7 @@ db 0x00, 0x27, 0x2a, 0x2b   ; 0x8 Snake
 db 0x00, 0x2b, 0x2c, 0x5b   ; 0x9 Gold Coin
 db 0x00, 0x16, 0x17, 0x19   ; 0xa Rock
 db 0x00, 0x1b, 0x1d, 0x1e   ; 0xb Sail
+db 0x00, 0x12, 0x15, 0x1f   ; 0xc Spider
 
 ; =========================================== BRUSH REFERENCES =================
 ; Brush data offset table
@@ -48,6 +49,7 @@ dw ChestBrush, 0
 dw Gold2Brush, 320
 dw GoldBrush, 320
 dw IndieTop2Brush, -320*5
+dw SpiderBrush, 320
 
 ; =========================================== BRUSHES DATA =====================
 ; Set of 8xY brushes for entities
@@ -91,6 +93,15 @@ dw 0011000010101100b
 dw 0000100001101000b
 dw 0000010001010100b
 dw 0000110101010000b
+
+SpiderBrush:
+db 0x6, 0xc
+dw 1001010110000000b
+dw 0101010101010110b
+dw 0101010101111011b
+dw 0101010101010101b
+dw 0010100010001000b
+dw 0001000001000001b
 
 ChestBrush:
 db 0xa, 0x4
@@ -440,10 +451,11 @@ dw 0x0d08
 dw 0x0d0e
 dw 0x0e06
 dw 0x0f07
-db 3, 5
+db 3, 3
 dw 0x000c
 dw 0x081e
 dw 0x0c04
+db 11, 2
 dw 0x0e07
 dw 0x0e11
 db 4, 8
@@ -522,6 +534,7 @@ ID_SKULL equ 4
 ID_BRIDGE equ 5
 ID_CHEST equ 6
 ID_GOLD equ 7
+ID_SPIDER equ 10
 
 STATE_DEACTIVATED equ 0
 STATE_FOLLOW equ 2
@@ -595,6 +608,11 @@ spawn_entities:
       jnz .skip_snake
         mov byte [di+_STATE_], STATE_EXPLORING ; Save basic state
       .skip_snake:
+
+      cmp bl, ID_SPIDER
+      jnz .skip_spider
+        mov byte [di+_STATE_], STATE_EXPLORING ; Save basic state
+      .skip_spider:
 
       cmp bl, ID_PALM
       jnz .skip_palm
