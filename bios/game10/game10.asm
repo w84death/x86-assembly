@@ -565,10 +565,10 @@ STATE_STATIC equ 4
 STATE_EXPLORING equ 8
 STATE_INTERACTIVE equ 16
 
-GSTATE_INTRO equ 0
-GSTATE_GAME equ 2
-GSTATE_END equ 4
-GSTATE_WIN equ 8
+GSTATE_INTRO equ 2
+GSTATE_GAME equ 4
+GSTATE_END equ 8
+GSTATE_WIN equ 16
 
 WEB_LOCK equ 2
 
@@ -594,10 +594,12 @@ start:
 
 restart_game:
 
-mov byte [_GAME_STATE_], GSTATE_GAME
+mov word [_GAME_TICK_], 0x0
+mov byte [_GAME_STATE_], GSTATE_INTRO
 mov byte [_SCORE_], 0x0
 mov byte [_HOLDING_ID_], 0x0
-cmp byte [_WEB_LOCKED_], 0x0
+mov byte [_WEB_LOCKED_], 0x0
+
 
 ; =========================================== SPAWN ENTITIES ==================
 ; Expects: entities array from level data
@@ -725,6 +727,25 @@ draw_more_ocean:
   loop .draw_line
 
 
+test byte [_GAME_STATE_], GSTATE_INTRO
+jz skip_game_state_intro
+
+mov di, 320*120
+mov ax, [_GAME_TICK_]
+shr ax, 1
+add di, ax
+cmp ax, 240
+jg .start_game
+call draw_ship
+
+ mov ah, 01h         ; BIOS keyboard status function
+  int 16h             ; Call BIOS interrupt
+  jz .no_key_press
+  .start_game:
+  mov byte [_GAME_STATE_], GSTATE_GAME
+  .no_key_press:
+
+skip_game_state_intro:
 
 test byte [_GAME_STATE_], GSTATE_GAME
 jz skip_game_state_game
@@ -822,43 +843,9 @@ draw_level:
 
 ; = DRAW SHIP
 
-draw_ship:
-    xor dx, dx
-    mov di, 320*55+32
-    mov ax, [_GAME_TICK_]
-    and ax, 0xf
-    cmp ax, 0x7
-    jl .skip_wave
-      sub di, 320
-    .skip_wave:
-    mov si, ShipBackBrush
-    call draw_sprite
-    add di, 8 + 320*4
-    mov si, ShipMiddleBrush
-    call draw_sprite
-    add di, 8
-    mov si, ShipMiddleBrush
-    call draw_sprite
-    add di, 8
-    mov si, ShipFrontBrush
-    call draw_sprite
+mov di, 320*55+32
+call draw_ship
 
-    mov si, ShipSailBrush
-    sub di, 12 + 320*5
-    call draw_sprite
-    add di, 320*2 - 4
-    call draw_sprite
-    sub di, 320*7 - 3
-    call draw_sprite
-    add di, 320*2 - 4
-    call draw_sprite
-    sub di, 320*6 - 1
-    call draw_sprite
-
-    add di, 320*10 + 10
-    call draw_sprite
-    sub di, 320*4 + 2
-    call draw_sprite
 
 ; =========================================== KEYBOARD INPUT ==================
 
@@ -1420,6 +1407,46 @@ check_water_tile:
   add bx, LevelData
   mov al, [bx]    ; Read tile
   test al, 0x40   ; Check if movable (7th bit set)
+ret
+
+
+draw_ship:
+  xor dx, dx
+  
+  mov ax, [_GAME_TICK_]
+  and ax, 0xf
+  cmp ax, 0x7
+  jl .skip_wave
+    sub di, 320
+  .skip_wave:
+  mov si, ShipBackBrush
+  call draw_sprite
+  add di, 8 + 320*4
+  mov si, ShipMiddleBrush
+  call draw_sprite
+  add di, 8
+  mov si, ShipMiddleBrush
+  call draw_sprite
+  add di, 8
+  mov si, ShipFrontBrush
+  call draw_sprite
+
+  mov si, ShipSailBrush
+  sub di, 12 + 320*5
+  call draw_sprite
+  add di, 320*2 - 4
+  call draw_sprite
+  sub di, 320*7 - 3
+  call draw_sprite
+  add di, 320*2 - 4
+  call draw_sprite
+  sub di, 320*6 - 1
+  call draw_sprite
+
+  add di, 320*10 + 10
+  call draw_sprite
+  sub di, 320*4 + 2
+  call draw_sprite
 ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
