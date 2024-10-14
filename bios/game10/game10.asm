@@ -516,8 +516,8 @@ _SCORE_ equ 0x1805            ; 1 byte
 _SCORE_TARGET_ equ 0x1806     ; 1 byte
 _GAME_TICK_ equ 0x1807        ; 2 bytes
 _GAME_STATE_ equ 0x1809       ; 1 byte
-
-_LAST_TICK_ equ 0x180a
+_WEB_LOCKED_ equ 0x180a        ; 1 byte
+_LAST_TICK_ equ 0x180b        ; 2 bytes
 
 _DBUFFER_MEMORY_ equ 0x2000   ; 64k bytes
 _VGA_MEMORY_ equ 0xA000       ; 64k bytes
@@ -553,12 +553,13 @@ STATE_FOLLOW equ 2
 STATE_STATIC equ 4
 STATE_EXPLORING equ 8
 STATE_INTERACTIVE equ 16
-STATE_WEB equ 32
 
 GSTATE_INTRO equ 0
 GSTATE_GAME equ 2
 GSTATE_END equ 4
 GSTATE_WIN equ 8
+
+WEB_LOCK equ 2
 
 BEEP_BITE equ 250
 BEEP_PICK equ 15
@@ -585,6 +586,7 @@ restart_game:
 mov byte [_GAME_STATE_], GSTATE_GAME
 mov byte [_SCORE_], 0x0
 mov byte [_HOLDING_ID_], 0x0
+cmp byte [_WEB_LOCKED_], 0x0
 
 ; =========================================== SPAWN ENTITIES ==================
 ; Expects: entities array from level data
@@ -873,6 +875,11 @@ check_keyboard:
    jz .no_move
 
     .move:
+    cmp byte [_WEB_LOCKED_], 0
+    jz .skip_web_check
+      dec byte [_WEB_LOCKED_]
+      jmp .no_move
+    .skip_web_check:
     mov word [si+_POS_], cx      
     .no_move:
     mov word [_REQUEST_POSITION_], cx
@@ -941,10 +948,7 @@ ai_entities:
               jmp .skip_item
 
               .spider_web:                ; Spider
-                  push di
-                  mov di, [_PLAYER_ENTITY_ID_]
-                  mov byte [di+_STATE_] , STATE_WEB
-                  pop di
+                  mov byte [_WEB_LOCKED_] , WEB_LOCK
               jmp .continue_game
 
             .continue_game:
@@ -1120,6 +1124,12 @@ draw_entities:
       mov si, IndieBottomBrush
       add di, 320*7
       call draw_sprite
+      cmp byte [_WEB_LOCKED_], 0
+      jz .skip_web_draw
+        mov si, WebBrush
+        sub di, 320*6
+        call draw_sprite
+      .skip_web_draw:
     .skip_player_draw:
 
     cmp ah, ID_GOLD
