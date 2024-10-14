@@ -33,6 +33,7 @@ db 0x00, 0x2b, 0x2c, 0x5b   ; 0x9 Gold Coin
 db 0x00, 0x16, 0x17, 0x19   ; 0xa Rock
 db 0x00, 0x1b, 0x1d, 0x1e   ; 0xb Sail
 db 0x00, 0x12, 0x15, 0x1f   ; 0xc Spider
+db 0x00, 0x1c, 0x1e, 0x1f   ; 0xd Web
 
 ; =========================================== BRUSH REFERENCES =================
 ; Brush data offset table
@@ -102,6 +103,17 @@ dw 0101010101111011b
 dw 0101010101010101b
 dw 0010100010001000b
 dw 0001000001000001b
+
+WebBrush:
+db 0x8, 0xd
+dw 0000001100000000b
+dw 0100111011000100b
+dw 0010001000100000b
+dw 1100011101001000b
+dw 0101110010010110b
+dw 1000011001001100b
+dw 0010000100100000b
+dw 0100110110000100b
 
 ChestBrush:
 db 0xa, 0x4
@@ -541,6 +553,7 @@ STATE_FOLLOW equ 2
 STATE_STATIC equ 4
 STATE_EXPLORING equ 8
 STATE_INTERACTIVE equ 16
+STATE_WEB equ 32
 
 GSTATE_INTRO equ 0
 GSTATE_GAME equ 2
@@ -605,14 +618,13 @@ spawn_entities:
       mov byte [di+_STATE_], STATE_STATIC ; Save basic state
       
       cmp bl, ID_SNAKE
-      jnz .skip_snake
-        mov byte [di+_STATE_], STATE_EXPLORING ; Save basic state
-      .skip_snake:
-
+      jz .set_explore
       cmp bl, ID_SPIDER
-      jnz .skip_spider
+      jz .set_explore
+      jmp .skip_explore
+      .set_explore:
         mov byte [di+_STATE_], STATE_EXPLORING ; Save basic state
-      .skip_spider:
+      .skip_explore:
 
       cmp bl, ID_PALM
       jnz .skip_palm
@@ -665,6 +677,9 @@ draw_ocean:
   mov ax, COLOR_WATER
   mov cx, 320*70              ; 70 lines of ocean
   rep stosw
+
+
+
 
 test byte [_GAME_STATE_], GSTATE_GAME
 jz skip_game_state_game
@@ -907,17 +922,32 @@ ai_entities:
             cmp byte [_HOLDING_ID_], 0x0
             jnz .continue_game
             
-              cmp byte [_HOLDING_ID_], ID_GOLD
-              jnz .no_gold
+              ; cmp byte [_HOLDING_ID_], ID_GOLD
+              ; jnz .no_gold
                 ;dec byte [_SCORE_TARGET_]
                 mov byte [_HOLDING_ID_], 0xff
-              .no_gold:
+              ; .no_gold:
               mov bl, BEEP_BITE
               call beep
+
+              cmp byte [si+_ID_], ID_SNAKE
+              jz .snake_bite
+              cmp byte [si+_ID_], ID_SPIDER
+              jz .spider_web
+              jmp .continue_game
+
+              .snake_bite:                ; Snake
               mov byte [_GAME_STATE_], GSTATE_END
               jmp .skip_item
+
+              .spider_web:                ; Spider
+                  push di
+                  mov di, [_PLAYER_ENTITY_ID_]
+                  mov byte [di+_STATE_] , STATE_WEB
+                  pop di
+              jmp .continue_game
+
             .continue_game:
-            jz .no_bite
               mov byte [_HOLDING_ID_], 0x00
               jmp .skip_item
           .no_bite:
