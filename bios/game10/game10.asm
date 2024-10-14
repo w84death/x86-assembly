@@ -292,16 +292,14 @@ dw 0101000000000000b
 
 Ocean1Brush:
 db 0x3, 0xe
-dw 0000000101010000b
-dw 0000000000000000b
-dw 0001010100000000b
+dw 0000010101000000b
+dw 0101000000010100b
+dw 0000000000000001b
 
 Ocean2Brush:
-db 0x4, 0xe
-dw 0001010000010000b
-dw 0000000000000000b
-dw 0000000001010100b
-dw 0001010000000000b
+db 0x2, 0xe
+dw 0000000101000000b
+dw 0001010000010100b
 
 ; =========================================== TERRAIN TILES DATA ===============
 ; 8x8 tiles for terrain
@@ -704,7 +702,7 @@ draw_more_ocean:
     mov cx, 40
     .draw_next_tile:
       
-      test ax, 0x7
+      test ax, 0x4
       jz .skip_tile
 
       mov si, Ocean1Brush
@@ -714,8 +712,10 @@ draw_more_ocean:
       .skip_brush_swap:
       
       call draw_sprite
+
       .skip_tile:
       add di, 8
+      add ax, 0x2
       .skip_new_line:
     
     loop .draw_next_tile
