@@ -34,6 +34,7 @@ db 0x00, 0x16, 0x17, 0x19   ; 0xa Rock
 db 0x00, 0x1b, 0x1d, 0x1e   ; 0xb Sail
 db 0x00, 0x12, 0x15, 0x1f   ; 0xc Spider
 db 0x00, 0x1c, 0x1e, 0x1f   ; 0xd Web
+db 0x35, 0x34, 0xff, 0xff   ; 0xe Ocean
 
 ; =========================================== BRUSH REFERENCES =================
 ; Brush data offset table
@@ -289,6 +290,18 @@ dw 0111100101000000b
 dw 1010010000000000b
 dw 0101000000000000b
 
+Ocean1Brush:
+db 0x3, 0xe
+dw 0000000101010000b
+dw 0000000000000000b
+dw 0001010100000000b
+
+Ocean2Brush:
+db 0x4, 0xe
+dw 0001010000010000b
+dw 0000000000000000b
+dw 0000000001010100b
+dw 0001010000000000b
 
 ; =========================================== TERRAIN TILES DATA ===============
 ; 8x8 tiles for terrain
@@ -463,11 +476,11 @@ dw 0x0d08
 dw 0x0d0e
 dw 0x0e06
 dw 0x0f07
-db 3, 3
-dw 0x000c
+db 3, 2
 dw 0x081e
 dw 0x0c04
-db 11, 2
+db 11, 3
+dw 0x000c
 dw 0x0e07
 dw 0x0e11
 db 4, 8
@@ -680,6 +693,29 @@ draw_ocean:
   mov cx, 320*70              ; 70 lines of ocean
   rep stosw
 
+draw_more_ocean:
+  mov si, Ocean1Brush
+  mov di, 320*70
+ mov ax, [_GAME_TICK_]
+  mov cx, 14
+  .draw_line:
+  push cx
+
+  mov cx, 16
+  .draw_next_tile:
+     
+    test ax, 0x8
+    jz .skip_tile
+    call draw_sprite
+    .skip_tile:
+    add di, 8
+    .skip_new_line:
+  loop .draw_next_tile
+    add di, 320*8
+    
+    inc ax
+    pop cx
+    loop .draw_line
 
 
 
