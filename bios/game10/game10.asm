@@ -695,24 +695,30 @@ draw_ocean:
 
 draw_more_ocean:
   mov si, Ocean1Brush
-  mov di, 320*70
+  mov di, 320*62
  mov ax, [_GAME_TICK_]
-  mov cx, 14
+  mov cx, 16
   .draw_line:
   push cx
 
-  mov cx, 16
+  mov cx, 40
   .draw_next_tile:
      
-    test ax, 0x8
+    test ax, 0x4
     jz .skip_tile
+
+    test ax, 0x2
+    jz .skip_brush_swap
+    mov si, Ocean2Brush
+    .skip_brush_swap:
+
     call draw_sprite
     .skip_tile:
     add di, 8
     .skip_new_line:
   loop .draw_next_tile
     add di, 320*8
-    
+    mov si, Ocean1Brush
     inc ax
     pop cx
     loop .draw_line
