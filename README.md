@@ -86,5 +86,11 @@ Game is developed on Debian (ThinkPad X220), tested in QEMU and IBM PC (Intel Ce
 
 ### Enchanced Edition - 4096b/eight sectors
 
-This version will include more maps, enchanced sprites, animations.
+This version will include more maps, intro/outro, enchanced sprites, animations, better sound effects, more enemies.
+
+#### Already added features:
+
+- spider entitie - catches user in a web, slowing down movement
+- ship sprite
+- intro with moving ship
 
