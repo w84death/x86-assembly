@@ -517,20 +517,24 @@ dw 0x0a01
 dw 0x0d12
 db 0x0 ; End of entities
 
-
 tune_intro:
-
 db 10,  12,  13,  12, 10,  9,   10,  7
 db 10,  12,  13,  12, 10,  9,   10,  5
 db 8,   10,  12,  10, 13,  12,  10,  9
 db 5,   8,   10,  9,  8,   7,   6,   5
-
 db 10,  12,  13,  12, 10,  9,  10,  7
 db 10,  12,  13,  12, 10,  9,   10,  5
 db 8,   10,  12,  10, 13,  12,  10,  9
 db 5,   8,   10,  9,  8,   7,   6,   5
+db 0
 
-db 0, 0
+tune_end:
+db 2,   2,   3,  3,  2,   2,  2,  4
+db 0
+
+tune_win:
+db 10,  12,  13,  12, 10,  9,   10,  5
+db 0
 
 ; =========================================== MEMORY ADDRESSES =================
 
@@ -591,9 +595,10 @@ GSTATE_WIN equ 16
 
 WEB_LOCK equ 2
 
-BEEP_BITE equ 250
+BEEP_BITE equ 3
 BEEP_PICK equ 15
-BEEP_PUT equ 90
+BEEP_PUT equ 20
+BEEP_GOLD equ 5
 
 ; =========================================== INITIALIZATION ===================
 
@@ -750,32 +755,12 @@ draw_more_ocean:
 
 
 
+; =========================================== INTRO ====================
 
-; === INTRO ===
 test byte [_GAME_STATE_], GSTATE_INTRO
 jz skip_game_state_intro
 
-.play_music:
-  cmp byte [_NOTE_TIMER_], 0x0
-  jz .new_note
-    dec byte [_NOTE_TIMER_]
-    jmp .done
-  .new_note:
-    add word [_CURRENT_TUNE_], 0x1
-    mov si, [_CURRENT_TUNE_]
-    mov bl, [si]
-    cmp bl, 0
-    jnz .skip_loop
-      mov ax, [_NEXT_TUNE_]
-      mov word [_CURRENT_TUNE_], ax     ; Loop to begining of the tune
-      mov si, ax
-      mov bl, [si]
-    .skip_loop:
-    ;mov al, [si+1]
-    mov byte [_NOTE_TIMER_], 4;al
-    call beep
-  .done:
-
+call play_tune
 
 ; ship moving
 
@@ -796,15 +781,16 @@ call draw_ship
 
 skip_game_state_intro:
 
+; =========================================== GAME ====================
+
 test byte [_GAME_STATE_], GSTATE_GAME
 jz skip_game_state_game
 
-
+; =========================================== STOP SOUND ====================
 
   in al, 0x61    ; Read the PIC chip
   and al, 0x0FC  ; Clear bit 0 to disable the speaker
   out 0x61, al   ; Write the updated value back to the PIC chip
-
 
 ; =========================================== DRAWING LEVEL ====================
 
@@ -1031,6 +1017,9 @@ ai_entities:
 
               .snake_bite:                ; Snake
               mov byte [_GAME_STATE_], GSTATE_END
+              mov word [_CURRENT_TUNE_], tune_end
+              mov word [_NEXT_TUNE_], tune_end
+              mov byte [_NOTE_TIMER_], 0x0
               jmp .skip_item
 
               .spider_web:                ; Spider
@@ -1058,6 +1047,8 @@ ai_entities:
         cmp byte [_HOLDING_ID_], ID_GOLD
         jnz .skip_item
         inc byte [_SCORE_]
+        mov bl, BEEP_GOLD
+        call beep
         jmp .clear_item
       .check_bridge:
         cmp byte [_HOLDING_ID_], ID_ROCK
@@ -1272,6 +1263,9 @@ draw_score:
   cmp al, ah
   jg .continue_game
     mov byte [_GAME_STATE_], GSTATE_END+GSTATE_WIN
+    mov word [_CURRENT_TUNE_], tune_win
+    mov word [_NEXT_TUNE_], tune_win
+    mov byte [_NOTE_TIMER_], 0x0
   .continue_game:
   xor cl, cl
   .draw_spot:
@@ -1289,8 +1283,11 @@ draw_score:
 
 skip_game_state_game:
 
+; game end
+
 test byte [_GAME_STATE_], GSTATE_END
 jz skip_game_state_end
+  call play_tune
   mov di, 320*100+154
   mov si, SkullBrush
   test byte [_GAME_STATE_], GSTATE_WIN
@@ -1466,6 +1463,27 @@ check_water_tile:
   add bx, LevelData
   mov al, [bx]    ; Read tile
   test al, 0x40   ; Check if movable (7th bit set)
+ret
+
+play_tune:
+  cmp byte [_NOTE_TIMER_], 0x0
+  jz .new_note
+    dec byte [_NOTE_TIMER_]
+    jmp .done
+  .new_note:
+    inc word [_CURRENT_TUNE_]
+    mov si, [_CURRENT_TUNE_]
+    mov bl, [si]
+    cmp bl, 0
+    jnz .skip_loop
+      mov ax, [_NEXT_TUNE_]
+      mov word [_CURRENT_TUNE_], ax     ; Loop to begining of the tune
+      mov si, ax
+      mov bl, [si]
+    .skip_loop:
+    mov byte [_NOTE_TIMER_], 4 ; note length
+    call beep
+  .done:
 ret
 
 
