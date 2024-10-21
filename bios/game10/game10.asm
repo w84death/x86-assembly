@@ -519,23 +519,16 @@ db 0x0 ; End of entities
 
 
 tune_intro:
-db 5, 8
-db 6, 16
-db 5, 8
 
-db 5, 4
-db 4, 4
-db 5, 4
-db 6, 4
+db 10,  12,  13,  12, 10,  9,   10,  7
+db 10,  12,  13,  12, 10,  9,   10,  5
+db 8,   10,  12,  10, 13,  12,  10,  9
+db 5,   8,   10,  9,  8,   7,   6,   5
 
-db 7, 8
-db 5, 16
-db 8, 8
-
-db 6, 4
-db 5, 4
-db 6, 4
-db 7, 4
+db 10,  12,  13,  12, 10,  9,  10,  7
+db 10,  12,  13,  12, 10,  9,   10,  5
+db 8,   10,  12,  10, 13,  12,  10,  9
+db 5,   8,   10,  9,  8,   7,   6,   5
 
 db 0, 0
 
@@ -768,7 +761,7 @@ jz skip_game_state_intro
     dec byte [_NOTE_TIMER_]
     jmp .done
   .new_note:
-    add word [_CURRENT_TUNE_], 0x2
+    add word [_CURRENT_TUNE_], 0x1
     mov si, [_CURRENT_TUNE_]
     mov bl, [si]
     cmp bl, 0
@@ -778,8 +771,8 @@ jz skip_game_state_intro
       mov si, ax
       mov bl, [si]
     .skip_loop:
-    mov al, [si+1]
-    mov byte [_NOTE_TIMER_], al
+    ;mov al, [si+1]
+    mov byte [_NOTE_TIMER_], 4;al
     call beep
   .done:
 
