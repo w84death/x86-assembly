@@ -3,9 +3,9 @@
 ;
 ; Description:
 ; Logic 2D game in VGA graphics, w PC Speaker sound.
-; 
 ;
-; Size category: 4096 bytes / 24KB
+;
+; Size category: 4096 bytes / 4KB
 ; Bootloader: 512 bytes
 ; Author: Krzysztof Krystian Jankowski
 ; Web: smol.p1x.in/assembly/#forgotten-isles
@@ -517,6 +517,28 @@ dw 0x0a01
 dw 0x0d12
 db 0x0 ; End of entities
 
+
+tune_intro:
+db 5, 8
+db 6, 16
+db 5, 8
+
+db 5, 4
+db 4, 4
+db 5, 4
+db 6, 4
+
+db 7, 8
+db 5, 16
+db 8, 8
+
+db 6, 4
+db 5, 4
+db 6, 4
+db 7, 4
+
+db 0, 0
+
 ; =========================================== MEMORY ADDRESSES =================
 
 _ENTITIES_ equ 0x1000         ; 5 bytes per entity, 64 entites cap, 320 bytes
@@ -527,8 +549,12 @@ _SCORE_ equ 0x1805            ; 1 byte
 _SCORE_TARGET_ equ 0x1806     ; 1 byte
 _GAME_TICK_ equ 0x1807        ; 2 bytes
 _GAME_STATE_ equ 0x1809       ; 1 byte
-_WEB_LOCKED_ equ 0x180a        ; 1 byte
+_WEB_LOCKED_ equ 0x180a       ; 1 byte
 _LAST_TICK_ equ 0x180b        ; 2 bytes
+_CURRENT_TUNE_ equ 0x180d     ; 2 bytes
+_NEXT_TUNE_ equ 0x180f        ; 2 bytes
+_NOTE_TIMER_ equ 0x1811       ; 1 byte
+
 
 _DBUFFER_MEMORY_ equ 0x2000   ; 64k bytes
 _VGA_MEMORY_ equ 0xA000       ; 64k bytes
@@ -585,12 +611,12 @@ start:
     push _DBUFFER_MEMORY_                 ; Set doublebuffer memory
     pop es                                  ; as target
 
-  ; set_keyboard_rate:
-  ; xor ax, ax
-  ; xor bx, bx
-  ; mov ah, 03h         ; BIOS function to set typematic rate and delay
-  ; mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
-  ; int 16h
+  set_keyboard_rate:
+  xor ax, ax
+  xor bx, bx
+  mov ah, 03h         ; BIOS function to set typematic rate and delay
+  mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
+  int 16h
 
 restart_game:
 
@@ -599,6 +625,9 @@ mov byte [_GAME_STATE_], GSTATE_INTRO
 mov byte [_SCORE_], 0x0
 mov byte [_HOLDING_ID_], 0x0
 mov byte [_WEB_LOCKED_], 0x0
+mov word [_CURRENT_TUNE_], tune_intro
+mov word [_NEXT_TUNE_], tune_intro
+mov byte [_NOTE_TIMER_], 0x0
 
 
 ; =========================================== SPAWN ENTITIES ==================
@@ -613,7 +642,7 @@ spawn_entities:
     mov bl, [si]
     cmp bl, 0x0
     jz .done
-    
+
     dec bl             ; Conv level id to game id
 
     inc si
@@ -631,7 +660,7 @@ spawn_entities:
       mov [di+_POS_], ax          ; Save position
       mov byte [di+_MIRROR_], 0x0 ;  Save mirror (none)
       mov byte [di+_STATE_], STATE_STATIC ; Save basic state
-      
+
       cmp bl, ID_SNAKE
       jz .set_explore
       cmp bl, ID_SPIDER
@@ -646,7 +675,7 @@ spawn_entities:
         xor al, ah
         and al, 0x01
         mov byte [di+_MIRROR_], al ; Save basic state
-      .skip_palm: 
+      .skip_palm:
 
       cmp bl, ID_BRIDGE
       jz .set_interactive
@@ -660,7 +689,7 @@ spawn_entities:
       .set_interactive:
         mov byte [di+_STATE_], STATE_INTERACTIVE
       .skip_interactive:
-      
+
       add si, 0x02                  ; Move to the next entity in code
       add di, ENTITY_SIZE           ; Move to the next entity in memory
     loop .next_in_group
@@ -703,7 +732,7 @@ draw_more_ocean:
 
     mov cx, 40
     .draw_next_tile:
-      
+
       test ax, 0x4
       jz .skip_tile
 
@@ -712,14 +741,14 @@ draw_more_ocean:
       jz .skip_brush_swap
         mov si, Ocean2Brush
       .skip_brush_swap:
-      
+
       call draw_sprite
 
       .skip_tile:
       add di, 8
       add ax, 0x2
       .skip_new_line:
-    
+
     loop .draw_next_tile
     add di, 320*8
     inc ax
@@ -727,8 +756,35 @@ draw_more_ocean:
   loop .draw_line
 
 
+
+
+; === INTRO ===
 test byte [_GAME_STATE_], GSTATE_INTRO
 jz skip_game_state_intro
+
+.play_music:
+  cmp byte [_NOTE_TIMER_], 0x0
+  jz .new_note
+    dec byte [_NOTE_TIMER_]
+    jmp .done
+  .new_note:
+    add word [_CURRENT_TUNE_], 0x2
+    mov si, [_CURRENT_TUNE_]
+    mov bl, [si]
+    cmp bl, 0
+    jnz .skip_loop
+      mov ax, [_NEXT_TUNE_]
+      mov word [_CURRENT_TUNE_], ax     ; Loop to begining of the tune
+      mov si, ax
+      mov bl, [si]
+    .skip_loop:
+    mov al, [si+1]
+    mov byte [_NOTE_TIMER_], al
+    call beep
+  .done:
+
+
+; ship moving
 
 mov di, 320*120
 mov ax, [_GAME_TICK_]
@@ -749,6 +805,13 @@ skip_game_state_intro:
 
 test byte [_GAME_STATE_], GSTATE_GAME
 jz skip_game_state_game
+
+
+
+  in al, 0x61    ; Read the PIC chip
+  and al, 0x0FC  ; Clear bit 0 to disable the speaker
+  out 0x61, al   ; Write the updated value back to the PIC chip
+
 
 ; =========================================== DRAWING LEVEL ====================
 
@@ -910,7 +973,7 @@ check_keyboard:
       dec byte [_WEB_LOCKED_]
       jmp .no_move
     .skip_web_check:
-    mov word [si+_POS_], cx      
+    mov word [si+_POS_], cx
     .no_move:
     mov word [_REQUEST_POSITION_], cx
 
@@ -958,7 +1021,7 @@ ai_entities:
           jnz .no_bite
             cmp byte [_HOLDING_ID_], 0x0
             jnz .continue_game
-            
+
               ; cmp byte [_HOLDING_ID_], ID_GOLD
               ; jnz .no_gold
                 ;dec byte [_SCORE_TARGET_]
@@ -992,12 +1055,12 @@ ai_entities:
       mov cx, [si+_POS_]
       cmp cx, [_REQUEST_POSITION_]
       jnz .skip_item
-        
+
       cmp byte [si+_ID_], ID_BRIDGE
       jz .check_bridge
       cmp byte [si+_ID_], ID_CHEST
       jnz .skip_check_interactions
-      
+
       .check_interactions:
         cmp byte [_HOLDING_ID_], ID_GOLD
         jnz .skip_item
@@ -1007,7 +1070,7 @@ ai_entities:
         cmp byte [_HOLDING_ID_], ID_ROCK
         jnz .skip_item
         mov byte [si+_STATE_], STATE_DEACTIVATED
-      .clear_item:          
+      .clear_item:
           mov byte [_HOLDING_ID_], 0xff
           jmp .skip_item
       .skip_check_interactions:
@@ -1018,16 +1081,16 @@ ai_entities:
         mov byte [si+_STATE_], STATE_FOLLOW
         mov word [_REQUEST_POSITION_], 0x0
         mov byte cl, [si+_ID_]
-        mov byte [_HOLDING_ID_], cl  
-        mov bl, BEEP_PICK  
+        mov byte [_HOLDING_ID_], cl
+        mov bl, BEEP_PICK
         call beep
     .skip_item:
 
     .put_item_back:
     cmp byte [si+_STATE_], STATE_FOLLOW
     jnz .no_follow
-      
-      cmp byte [_HOLDING_ID_], 0x0 
+
+      cmp byte [_HOLDING_ID_], 0x0
       jnz .check_kill
         mov byte [si+_STATE_], STATE_INTERACTIVE
         mov word [_REQUEST_POSITION_], 0x0
@@ -1041,8 +1104,8 @@ ai_entities:
       mov bl, BEEP_PUT
       call beep
     .skip_kill:
-    .no_follow: 
-    
+    .no_follow:
+
     add si, ENTITY_SIZE
     pop cx
     dec cx
@@ -1113,7 +1176,7 @@ draw_entities:
 
     mov cx, [si+_POS_]
     call conv_pos2mem       ; Convert position to memory
-    
+
     cmp byte [si+_STATE_], STATE_FOLLOW
     jnz .skip_follow
       push si
@@ -1145,7 +1208,7 @@ draw_entities:
     movzx bx, al              ; Get address to BX
     add di, [BrushRefs + bx]  ; Get shift and apply to destination position
     mov dl, [si+_MIRROR_]     ; Get brush mirror flag
-    
+
     pop si                  ; Get address
     call draw_sprite
 
@@ -1224,7 +1287,7 @@ draw_score:
       cmp cl, ah
       jge .skip_gold_draw
         mov si, GoldBrush
-        call draw_sprite 
+        call draw_sprite
       .skip_gold_draw:
     add di, 0xa
     inc cl
@@ -1243,6 +1306,7 @@ jz skip_game_state_end
   .draw_icon:
   call draw_sprite
 skip_game_state_end:
+
 
 ; =========================================== VGA BLIT PROCEDURE ===============
 
@@ -1275,12 +1339,7 @@ wait_for_tick:
     je .wait_loop       ; Loop until the tick count changes
 
 inc word [_GAME_TICK_]  ; Increment game tick
- 
-; =========================================== BEEP STOP ========================
 
-  in al, 0x61    ; Read the PIC chip
-  and al, 0x0FC  ; Clear bit 0 to disable the speaker
-  out 0x61, al   ; Write the updated value back to the PIC chip
 
 ; =========================================== ESC OR LOOP ======================
 
@@ -1291,6 +1350,13 @@ inc word [_GAME_TICK_]  ; Increment game tick
 ; =========================================== TERMINATE PROGRAM ================
 
   exit:
+
+; =========================================== BEEP STOP ========================
+
+  in al, 0x61    ; Read the PIC chip
+  and al, 0x0FC  ; Clear bit 0 to disable the speaker
+  out 0x61, al   ; Write the updated value back to the PIC chip
+
     mov ax, 0x4c00
     int 0x21
     ret                       ; Return to BIOS/DOS
@@ -1302,10 +1368,10 @@ inc word [_GAME_TICK_]  ; Increment game tick
 
 beep:
   ; xor bh, bh
-  ; shl bx, 6
+  ;shl bx, 2
   mov al, 0xB6  ; Command to set the speaker frequency
   out 0x43, al   ; Write the command to the PIT chip
-  mov ah, bl    ; Frequency value 
+  mov ah, bl    ; Frequency value
   out 0x42, al   ; Write the low byte of the frequency value
   mov al, ah
   out 0x42, al   ; Write the high byte of the frequency value
@@ -1344,7 +1410,7 @@ random_move:
   test bx, 0x1      ; Check if we should move Y
   jz .move_x        ; Jump if not
   add ch, al        ; Move Y
-ret 
+ret
   .move_x:
   add cl, al        ; Move X
   .done:
@@ -1412,7 +1478,7 @@ ret
 
 draw_ship:
   xor dx, dx
-  
+
   mov ax, [_GAME_TICK_]
   and ax, 0xf
   cmp ax, 0x7
@@ -1493,7 +1559,7 @@ draw_sprite:
           rol ax, 2
           mov bx, ax
           and bx, 0x3
-          
+
           mov si, bp      ; Palette Set
           add si, bx      ; Palette color
           mov byte bl, [si] ; Get color from the palette
@@ -1537,7 +1603,7 @@ draw_sprite:
   popa
 ret
 
-; ========================================== SAFETY CHECK ====================== 
+; ========================================== SAFETY CHECK ======================
 
 ; times 0x7FD - ($ - $$) db 0x0   ; Pad to 2048 bytes
 
