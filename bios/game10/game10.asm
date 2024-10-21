@@ -1275,7 +1275,7 @@ draw_entities:
 
 draw_score:
   mov di, SCORE_POSITION
-  mov al,1 ;DEBUG [_SCORE_TARGET_]
+  mov al, [_SCORE_TARGET_]
   mov ah, [_SCORE_]
   cmp al, ah
   jg .continue_game
