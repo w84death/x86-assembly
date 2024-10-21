@@ -32,7 +32,7 @@ db 0x00, 0x27, 0x2a, 0x2b   ; 0x8 Snake
 db 0x00, 0x2b, 0x2c, 0x5b   ; 0x9 Gold Coin
 db 0x00, 0x16, 0x17, 0x19   ; 0xa Rock
 db 0x00, 0x1b, 0x1d, 0x1e   ; 0xb Sail
-db 0x00, 0x12, 0x15, 0x1f   ; 0xc Spider
+db 0x00, 0x14, 0x16, 0x1f   ; 0xc Spider
 db 0x00, 0x1c, 0x1e, 0x1f   ; 0xd Web
 db 0x35, 0x34, 0xff, 0xff   ; 0xe Ocean
 
@@ -97,12 +97,14 @@ dw 0000010001010100b
 dw 0000110101010000b
 
 SpiderBrush:
-db 0x6, 0xc
+db 0x8, 0xc
 dw 1001010110000000b
 dw 0101010101010110b
 dw 0101010101111011b
 dw 0101010101010101b
 dw 0010100010001000b
+dw 0001000001000001b
+dw 0001000001000001b
 dw 0001000001000001b
 
 WebBrush:
@@ -518,22 +520,34 @@ dw 0x0d12
 db 0x0 ; End of entities
 
 tune_intro:
-db 10,  12,  13,  12, 10,  9,   10,  7
-db 10,  12,  13,  12, 10,  9,   10,  5
-db 8,   10,  12,  10, 13,  12,  10,  9
-db 5,   8,   10,  9,  8,   7,   6,   5
-db 10,  12,  13,  12, 10,  9,  10,  7
-db 10,  12,  13,  12, 10,  9,   10,  5
-db 8,   10,  12,  10, 13,  12,  10,  9
-db 5,   8,   10,  9,  8,   7,   6,   5
+db 8   ,10  ,12  ,10 ,8   ,9   ,10  ,7  ,5   ,8   ,10  ,8  ,7   ,6   ,5   ,6
+db 8   ,10  ,12  ,10 ,8   ,9   ,10  ,12 ,13  ,12  ,10  ,9  ,10  ,8   ,7   ,5
+db 13  ,15  ,17  ,15 ,13  ,12  ,13  ,10 ,12  ,14  ,15  ,12 ,10  ,9   ,10  ,8
+db 12  ,14  ,16  ,14 ,13  ,15  ,13  ,12 ,15  ,14  ,12  ,10 ,8   ,10  ,12  ,9
+db 5   ,7   ,9   ,7  ,5   ,6   ,8   ,5  ,6   ,7   ,9   ,7  ,6   ,5   ,3   ,5
+db 8   ,10  ,12  ,10 ,8   ,9   ,10  ,7  ,5   ,7   ,9   ,8  ,7   ,6   ,5   ,6
+db 13  ,15  ,17  ,15 ,13  ,12  ,13  ,10 ,12  ,14  ,15  ,12 ,10  ,9   ,10  ,8
+db 12  ,14  ,16  ,14 ,13  ,15  ,13  ,12 ,15  ,14  ,12  ,10 ,8   ,10  ,12  ,9
 db 0
 
 tune_end:
-db 2,   2,   3,  3,  2,   2,  2,  4
+db 12, 10, 8,  10, 7,  6 , 5,  6
+db 8 , 7 , 5,  4 , 3,  5 , 6,  4
+db 6 , 5 , 4,  3 , 2,  3 , 5,  2
+db 5 , 4 , 3,  2 , 1,  2 , 1,  1
+db 12, 10, 8,  10, 7,  6 , 5,  6
+db 8 , 7 , 5,  4 , 3,  5 , 6,  4
 db 0
 
 tune_win:
-db 10,  12,  13,  12, 10,  9,   10,  5
+db 13, 15, 17, 15, 13, 12, 10,  12
+db 13, 15, 17, 15, 13, 19, 17,  15
+db 12, 14, 16, 14, 12, 15, 13,  12
+db 10, 12, 14, 12, 10, 9 , 8 ,  10
+db 13, 15, 17, 15, 13, 12, 10,  12
+db 13, 15, 17, 15, 13, 19, 17,  15
+db 12, 14, 16, 14, 12, 15, 13,  12
+db 10, 12, 14, 12, 10, 9 , 8 ,  10
 db 0
 
 ; =========================================== MEMORY ADDRESSES =================
@@ -551,7 +565,7 @@ _LAST_TICK_ equ 0x180b        ; 2 bytes
 _CURRENT_TUNE_ equ 0x180d     ; 2 bytes
 _NEXT_TUNE_ equ 0x180f        ; 2 bytes
 _NOTE_TIMER_ equ 0x1811       ; 1 byte
-
+_NOTE_TEMPO_ equ 0x1812       ; 1 byte
 
 _DBUFFER_MEMORY_ equ 0x2000   ; 64k bytes
 _VGA_MEMORY_ equ 0xA000       ; 64k bytes
@@ -760,6 +774,7 @@ draw_more_ocean:
 test byte [_GAME_STATE_], GSTATE_INTRO
 jz skip_game_state_intro
 
+mov byte [_NOTE_TEMPO_], 3
 call play_tune
 
 ; ship moving
@@ -931,6 +946,7 @@ check_keyboard:
     mov byte [si+_MIRROR_], 0x1
     jmp .check_move
 
+
   .check_right:
   cmp ah, 4Dh         ; Compare scan code with right arrow
   jne .no_key_press
@@ -1020,6 +1036,7 @@ ai_entities:
               mov word [_CURRENT_TUNE_], tune_end
               mov word [_NEXT_TUNE_], tune_end
               mov byte [_NOTE_TIMER_], 0x0
+              mov byte [_NOTE_TEMPO_], 0xa
               jmp .skip_item
 
               .spider_web:                ; Spider
@@ -1258,7 +1275,7 @@ draw_entities:
 
 draw_score:
   mov di, SCORE_POSITION
-  mov al, [_SCORE_TARGET_]
+  mov al,1 ;DEBUG [_SCORE_TARGET_]
   mov ah, [_SCORE_]
   cmp al, ah
   jg .continue_game
@@ -1266,6 +1283,7 @@ draw_score:
     mov word [_CURRENT_TUNE_], tune_win
     mov word [_NEXT_TUNE_], tune_win
     mov byte [_NOTE_TIMER_], 0x0
+    mov byte [_NOTE_TEMPO_], 0x2
   .continue_game:
   xor cl, cl
   .draw_spot:
@@ -1481,7 +1499,8 @@ play_tune:
       mov si, ax
       mov bl, [si]
     .skip_loop:
-    mov byte [_NOTE_TIMER_], 4 ; note length
+    mov byte al, [_NOTE_TEMPO_]
+    mov byte [_NOTE_TIMER_], al
     call beep
   .done:
 ret
