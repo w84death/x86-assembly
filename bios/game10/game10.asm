@@ -607,7 +607,7 @@ _DIR_ equ 7     ; 1 byte
 
 ; =========================================== MAGIC NUMBERS ====================
 
-ENTITY_SIZE  equ 9
+ENTITY_SIZE  equ 10
 MAX_ENTITIES equ 64
 LEVEL_START_POSITION equ 320*68+32
 COLOR_SKY equ 0x3b3b
@@ -930,11 +930,11 @@ draw_level:
     cmp cx, 0x80           ; 128 = 16*8
   jl .next_meta_tile
 
-; = DRAW SHIP
+
+; =========================================== DRAW SHIP =======================
 
 mov di, 320*55+32
 call draw_ship
-
 
 ; =========================================== KEYBOARD INPUT ==================
 
@@ -1019,25 +1019,37 @@ ai_entities:
     cmp byte [si+_STATE_], STATE_EXPLORING
     jnz .skip_explore
       mov ax, [_GAME_TICK_]
-      add ax, cx
-      test ax, 0x4
+
+      ;add ax, cx
+      test ax, 0x2
       jz .skip_explore
 
       .explore:
         mov cx, [si+_POS_]
 
-        cmp byte [si+_ID_], ID_CRAB
-        jnz .move_random
-          cmp byte [si+_DIR_], 1
-          jz .go_left
-             add cl, 1
-             jmp .check_mirror
-          .go_left:
-             sub cl, 1
-             jmp .check_mirror
 
-        .move_random:
-        call random_move
+        .check_horizontal:
+        cmp byte [si+_DIR_], 0
+        jnz .go_left
+        .go_right:
+           add cl, 1
+        .go_left:
+         cmp byte [si+_DIR_], 1
+         jnz .check_vertical
+           sub cl, 1
+
+        .check_vertical:
+        cmp byte [si+_ID_], ID_CRAB
+        jz .check_mirror
+
+        cmp byte [si+_DIR_], 2
+        jnz .go_up
+        .go_down:
+          add ch, 1
+        .go_up:
+         cmp byte [si+_DIR_], 3
+         jnz .check_mirror
+           sub ch, 1
 
         .check_mirror:
           mov byte [si+_MIRROR_], 0x0
@@ -1064,8 +1076,16 @@ ai_entities:
         .check_if_crab:
         cmp byte [si+_ID_], ID_CRAB
         jnz .not_a_crab
-           xor byte [si+_DIR_], 1
+          xor byte [si+_DIR_], 1
+          jmp .skip_random_bounce
         .not_a_crab:
+
+        .random_bounce:
+           in ax, 0x40
+           and ax, 0x3
+           mov byte [si+_DIR_], al
+
+        .skip_random_bounce:
 
         .check_if_player:
           cmp cx, [_REQUEST_POSITION_]
@@ -1167,6 +1187,12 @@ ai_entities:
     dec cx
   jnz .next_entity
 
+
+reset_request_position:
+  mov si, [_PLAYER_ENTITY_ID_]
+  mov ax, [si+_POS_]
+  mov word [_REQUEST_POSITION_], ax
+
 ; =========================================== SORT ENITIES ===============
 ; Sort entities by Y position
 ; Expects: entities array
@@ -1184,7 +1210,7 @@ sort_entities:
       mov dx, [si+ENTITY_SIZE+_POS_]  ; Get Y of next entity
 
       cmp bh, dh      ; Compare Y values
-      jl .no_swap
+      jle .no_swap
 
         mov di, si
         add di, ENTITY_SIZE
@@ -1441,8 +1467,8 @@ inc word [_GAME_TICK_]  ; Increment game tick
 ; Return: -
 
 beep:
-  ; xor bh, bh
-  ;shl bx, 2
+  xor bh, bh
+  shl bx, 1
   mov al, 0xB6  ; Command to set the speaker frequency
   out 0x43, al   ; Write the command to the PIT chip
   mov ah, bl    ; Frequency value
@@ -1468,26 +1494,6 @@ conv_pos2mem:
   shl dx, 3                ; DX = X * 8
   add ax, dx               ; AX = Y * 2560 + X * 8
   add di, ax               ; Move result to DI
-ret
-
-; =========================================== RANDOM MOVE  =====================
-; Expects: CX - position YY/XX
-; Return: CX - updated pos
-
-random_move:
-  in ax, 0x40       ; Read the timer
-  xor ax, 0xb00b    ; XOR with magic number
-  mov bx, ax        ; Save a copy
-  and ax, 0x2       ; 0-2
-  dec ax            ; Convert 2 to 1 and 0 to -1 = -1, 0, 1
-
-  test bx, 0x1      ; Check if we should move Y
-  jz .move_x        ; Jump if not
-  add ch, al        ; Move Y
-ret
-  .move_x:
-  add cl, al        ; Move X
-  .done:
 ret
 
 ; =========================================== CHECK BOUNDS =====================
