@@ -603,10 +603,11 @@ _POS_ equ 1     ; 2 bytes
 _SCREEN_POS equ 3 ; 2 bytes
 _MIRROR_ equ 5  ; 1 byte
 _STATE_ equ 6   ; 1 bytes
+_DIR_ equ 7     ; 1 byte
 
 ; =========================================== MAGIC NUMBERS ====================
 
-ENTITY_SIZE  equ 8
+ENTITY_SIZE  equ 9
 MAX_ENTITIES equ 64
 LEVEL_START_POSITION equ 320*68+32
 COLOR_SKY equ 0x3b3b
@@ -700,6 +701,7 @@ spawn_entities:
       mov [di+_POS_], ax          ; Save position
       mov byte [di+_MIRROR_], 0x0 ;  Save mirror (none)
       mov byte [di+_STATE_], STATE_STATIC ; Save basic state
+      mov byte [di+_DIR_], 0x0 ; Save basic state
 
       cmp bl, ID_SNAKE
       jz .set_explore
@@ -1023,7 +1025,21 @@ ai_entities:
 
       .explore:
         mov cx, [si+_POS_]
+
+        cmp byte [si+_ID_], ID_CRAB
+        jnz .move_random
+          cmp byte [si+_DIR_], 1
+          jz .go_left
+             add cl, 1
+             jmp .check_mirror
+          .go_left:
+             sub cl, 1
+             jmp .check_mirror
+
+        .move_random:
         call random_move
+
+        .check_mirror:
           mov byte [si+_MIRROR_], 0x0
           cmp byte cl, [si+_POS_]
           jg .skip_mirror_x
@@ -1038,20 +1054,25 @@ ai_entities:
 
         call check_water_tile
         jz .can_not_move
+
         .move_to_new_pos:
           mov word [si+_POS_], cx
+          jmp .after_move
+
         .can_not_move:
+
+        .check_if_crab:
+        cmp byte [si+_ID_], ID_CRAB
+        jnz .not_a_crab
+           xor byte [si+_DIR_], 1
+        .not_a_crab:
+
         .check_if_player:
           cmp cx, [_REQUEST_POSITION_]
           jnz .no_bite
             cmp byte [_HOLDING_ID_], 0x0
             jnz .continue_game
-
-              ; cmp byte [_HOLDING_ID_], ID_GOLD
-              ; jnz .no_gold
-                ;dec byte [_SCORE_TARGET_]
-                mov byte [_HOLDING_ID_], 0xff
-              ; .no_gold:
+              mov byte [_HOLDING_ID_], 0xff
               mov bl, BEEP_BITE
               call beep
 
@@ -1063,7 +1084,7 @@ ai_entities:
               jz .crab_bite
               jmp .continue_game
 
-              .crab_bite:               ; Crab
+              .crab_bite:                 ; Crab
               .snake_bite:                ; Snake
               mov byte [_GAME_STATE_], GSTATE_END
               mov word [_CURRENT_TUNE_], tune_end
@@ -1080,6 +1101,7 @@ ai_entities:
               mov byte [_HOLDING_ID_], 0x00
               jmp .skip_item
           .no_bite:
+          .after_move:
     .skip_explore:
 
     cmp byte [si+_STATE_], STATE_INTERACTIVE
@@ -1456,7 +1478,7 @@ random_move:
   in ax, 0x40       ; Read the timer
   xor ax, 0xb00b    ; XOR with magic number
   mov bx, ax        ; Save a copy
-  and ax, 0x2       ; Check if we should move X
+  and ax, 0x2       ; 0-2
   dec ax            ; Convert 2 to 1 and 0 to -1 = -1, 0, 1
 
   test bx, 0x1      ; Check if we should move Y
