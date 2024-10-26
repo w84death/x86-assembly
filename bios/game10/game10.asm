@@ -35,6 +35,7 @@ db 0x00, 0x1b, 0x1d, 0x1e   ; 0xb Sail
 db 0x00, 0x14, 0x16, 0x1f   ; 0xc Spider
 db 0x00, 0x1c, 0x1e, 0x1f   ; 0xd Web
 db 0x35, 0x34, 0xff, 0xff   ; 0xe Ocean
+db 0x00, 0x04, 0x0c, 0x1f   ; 0xf Crab
 
 ; =========================================== BRUSH REFERENCES =================
 ; Brush data offset table
@@ -51,7 +52,8 @@ dw ChestBrush, 0
 dw Gold2Brush, 320
 dw GoldBrush, 320
 dw IndieTop2Brush, -320*5
-dw SpiderBrush, 320
+dw SpiderBrush, -320*3
+dw CrabBrush, 0
 
 ; =========================================== BRUSHES DATA =====================
 ; Set of 8xY brushes for entities
@@ -96,16 +98,19 @@ dw 0000100001101000b
 dw 0000010001010100b
 dw 0000110101010000b
 
+
 SpiderBrush:
-db 0x8, 0xc
-dw 1001010110000000b
-dw 0101010101010110b
-dw 0101010101111011b
-dw 0101010101010101b
-dw 0010100010001000b
-dw 0001000001000001b
-dw 0001000001000001b
-dw 0001000001000001b
+db 0xa, 0xc
+dw 0010101000000000b
+dw 1001010101000000b
+dw 0101011010100100b
+dw 0101110101011101b
+dw 1001101101111001b
+dw 0001010110010100b
+dw 0010100101011000b
+dw 0100010001000100b
+dw 1000100001000010b
+dw 0100010010000001b
 
 WebBrush:
 db 0x8, 0xd
@@ -303,6 +308,27 @@ db 0x2, 0xe
 dw 0000000101000000b
 dw 0001010000010100b
 
+CrabBrush:
+db 0x8, 0x0f
+dw 0000000000101110b
+dw 0000101110000100b
+dw 0000000100000100b
+dw 0000010000010000b
+dw 0010011010011000b
+dw 1010100101101001b
+dw 1001010101010110b
+dw 0100010000010000b
+
+CrabClawBrush:
+db 0x6, 0x0f
+dw 0000100100000000b
+dw 0010010000100000b
+dw 0001010110100000b
+dw 0001011010100000b
+dw 0001010101000000b
+dw 0101000000000000b
+
+
 ; =========================================== TERRAIN TILES DATA ===============
 ; 8x8 tiles for terrain
 ; Data: number of lines, palettDefaulte id, lines (8 pixels) of palette color id
@@ -479,9 +505,10 @@ dw 0x0f07
 db 3, 2
 dw 0x081e
 dw 0x0c04
-db 11, 3
+db 11, 2
 dw 0x000c
 dw 0x0e07
+db 12, 1
 dw 0x0e11
 db 4, 8
 dw 0x021b
@@ -595,6 +622,7 @@ ID_BRIDGE equ 5
 ID_CHEST equ 6
 ID_GOLD equ 7
 ID_SPIDER equ 10
+ID_CRAB equ 11
 
 STATE_DEACTIVATED equ 0
 STATE_FOLLOW equ 2
@@ -674,6 +702,8 @@ spawn_entities:
       mov byte [di+_STATE_], STATE_STATIC ; Save basic state
 
       cmp bl, ID_SNAKE
+      jz .set_explore
+      cmp bl, ID_CRAB
       jz .set_explore
       cmp bl, ID_SPIDER
       jz .set_explore
@@ -1029,8 +1059,11 @@ ai_entities:
               jz .snake_bite
               cmp byte [si+_ID_], ID_SPIDER
               jz .spider_web
+              cmp byte [si+_ID_], ID_CRAB
+              jz .crab_bite
               jmp .continue_game
 
+              .crab_bite:               ; Crab
               .snake_bite:                ; Snake
               mov byte [_GAME_STATE_], GSTATE_END
               mov word [_CURRENT_TUNE_], tune_end
@@ -1237,6 +1270,17 @@ draw_entities:
       mov si, GoldBrush
       call draw_sprite
     .skip_gold_draw:
+
+    cmp ah, ID_CRAB
+    jnz .skip_crab
+      mov dl, 0
+      mov si, CrabClawBrush
+      add di, 8
+      call draw_sprite
+      mov dl, 1
+      sub di, 320+16
+      call draw_sprite
+    .skip_crab:
 
     cmp ah, ID_CHEST
     jnz .skip_chest
