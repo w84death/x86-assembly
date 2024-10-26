@@ -806,20 +806,20 @@ draw_more_ocean:
 test byte [_GAME_STATE_], GSTATE_INTRO
 jz skip_game_state_intro
 
-mov byte [_NOTE_TEMPO_], 3
-call play_tune
+  mov byte [_NOTE_TEMPO_], 3
+  call play_tune
 
 ; ship moving
 
-mov di, 320*120
-mov ax, [_GAME_TICK_]
-shr ax, 1
-add di, ax
-cmp ax, 240
-jg .start_game
-call draw_ship
+  mov di, 320*120
+  mov ax, [_GAME_TICK_]
+  shr ax, 1
+  add di, ax
+  cmp ax, 240
+  jg .start_game
+  call draw_ship
 
- mov ah, 01h         ; BIOS keyboard status function
+  mov ah, 01h         ; BIOS keyboard status function
   int 16h             ; Call BIOS interrupt
   jz .no_key_press
   .start_game:
@@ -1007,7 +1007,6 @@ check_keyboard:
   .no_key_press:
   .invalid_move:
 
-
 ; =========================================== AI ENITIES ===============
 
 ai_entities:
@@ -1026,7 +1025,6 @@ ai_entities:
 
       .explore:
         mov cx, [si+_POS_]
-
 
         .check_horizontal:
         cmp byte [si+_DIR_], 0
