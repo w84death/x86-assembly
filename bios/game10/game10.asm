@@ -25,8 +25,8 @@ db 0x00, 0x06, 0x27, 0x43   ; 0x1 Indie top
 db 0x00, 0x7f, 0x13, 0x15   ; 0x2 Indie bottom
 db 0x35, 0x34, 0x00, 0x00   ; 0x3 Bridge
 db 0x00, 0x71, 0x06, 0x2a   ; 0x4 Chest
-db 0x00, 0x45, 0x2d, 0x2e   ; 0x5 Terrain 1 - shore
-db 0x2b, 0x2d, 0x2e, 0x2f   ; 0x6 Terrain 2 - in  land
+db 0x00, 0x4a, 0x45, 0x2e   ; 0x5 Terrain 1 - shore
+db 0x4a, 0x2f, 0x2e, 0x45   ; 0x6 Terrain 2 - in  land
 db 0x00, 0x06, 0x77, 0x2e   ; 0x7 Palm
 db 0x00, 0x27, 0x2a, 0x2b   ; 0x8 Snake
 db 0x00, 0x2b, 0x2c, 0x5b   ; 0x9 Gold Coin
@@ -952,9 +952,13 @@ check_keyboard:
   .check_spacebar:
   cmp ah, 39h         ; Compare scan code with spacebar
   jne .check_up
+    cmp byte [_HOLDING_ID_], 0x0
+    jz .set_request_position_to_player
     mov byte [_HOLDING_ID_], 0x0
     jmp .no_key_press
-
+    .set_request_position_to_player:
+      mov word [_REQUEST_POSITION_], cx
+    jmp .no_key_press
   .check_up:
   cmp ah, 48h         ; Compare scan code with up arrow
   jne .check_down
@@ -1186,10 +1190,6 @@ ai_entities:
   jnz .next_entity
 
 
-reset_request_position:
-  mov si, [_PLAYER_ENTITY_ID_]
-  mov ax, [si+_POS_]
-  mov word [_REQUEST_POSITION_], ax
 
 ; =========================================== SORT ENITIES ===============
 ; Sort entities by Y position
