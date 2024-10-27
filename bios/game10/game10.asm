@@ -24,18 +24,19 @@ db 0x00, 0x34, 0x16, 0x1a   ; 0x0 Grays
 db 0x00, 0x06, 0x27, 0x43   ; 0x1 Indie top
 db 0x00, 0x7f, 0x13, 0x15   ; 0x2 Indie bottom
 db 0x35, 0x34, 0x00, 0x00   ; 0x3 Bridge
-db 0x00, 0x71, 0x06, 0x2a   ; 0x4 Chest
-db 0x00, 0x4a, 0x45, 0x2e   ; 0x5 Terrain 1 - shore
-db 0x4a, 0x2f, 0x2e, 0x45   ; 0x6 Terrain 2 - in  land
-db 0x00, 0x06, 0x77, 0x2e   ; 0x7 Palm
+db 0x00, 0xd1, 0x73, 0x06   ; 0x4 Chest
+db 0x00, 0x4a, 0x45, 0x47   ; 0x5 Terrain 1 - shore
+db 0x4a, 0x2f, 0x47, 0x45   ; 0x6 Terrain 2 - in  land
+db 0x00, 0x74, 0x02, 0x2e   ; 0x7 Palm & Bush
 db 0x00, 0x27, 0x2a, 0x2b   ; 0x8 Snake
 db 0x00, 0x2b, 0x2c, 0x5b   ; 0x9 Gold Coin
 db 0x00, 0x16, 0x17, 0x19   ; 0xa Rock
 db 0x00, 0x1b, 0x1d, 0x1e   ; 0xb Sail
 db 0x00, 0x14, 0x16, 0x1f   ; 0xc Spider
 db 0x00, 0x1c, 0x1e, 0x1f   ; 0xd Web
-db 0x35, 0x34, 0xff, 0xff   ; 0xe Ocean
-db 0x00, 0x04, 0x0c, 0x1f   ; 0xf Crab
+db 0x35, 0x4e, 0xff, 0xff   ; 0xe Ocean
+db 0x00, 0x04, 0x0c, 0x1f   ; 0x0f Crab
+db 0x00, 0x71, 0x06, 0x2a   ; 0x10 Chest
 
 ; =========================================== BRUSH REFERENCES =================
 ; Brush data offset table
@@ -54,6 +55,7 @@ dw GoldBrush, 320
 dw IndieTop2Brush, -320*5
 dw SpiderBrush, -320*3
 dw CrabBrush, 0
+dw BushBrush, -320
 
 ; =========================================== BRUSHES DATA =====================
 ; Set of 8xY brushes for entities
@@ -124,7 +126,7 @@ dw 0010000100100000b
 dw 0100110110000100b
 
 ChestBrush:
-db 0xa, 0x4
+db 0xa, 0x10
 dw 0001010000010100b
 dw 1011110101111101b
 dw 1001011010010111b
@@ -137,7 +139,7 @@ dw 0110101010101001b
 dw 0001010101010100b
 
 ChestCloseBrush:
-db 0x8, 0x4
+db 0x8, 0x10
 dw 0000101010100000b
 dw 0010111111111000b
 dw 1011111111111110b
@@ -148,7 +150,7 @@ dw 0111111111111101b
 dw 1001011111010110b
 
 ChestTopBrush:
-db 0x9, 0x4
+db 0x9, 0x10
 dw 0000011111000000b
 dw 0001111010111000b
 dw 0001111001101011b
@@ -178,6 +180,17 @@ dw 1110110111101110b
 dw 0010110101111011b
 dw 1011101101101100b
 dw 0011101011101100b
+
+BushBrush:
+db 0x8, 0x7
+dw 0000001000000000b
+dw 0000101110000000b
+dw 1100101011100011b
+dw 1011111011101110b
+dw 1110111110111011b
+dw 0111101110111101b
+dw 1110011011011011b
+dw 0011100101101100b
 
 BridgeBrush:
 db 0x8, 0x3             ; Non movable - bridge spot
@@ -297,16 +310,23 @@ dw 0111100101000000b
 dw 1010010000000000b
 dw 0101000000000000b
 
+WioslaBrush:
+db 0x4, 0x4
+dw 1100110011000000b
+dw 1000100010000000b
+dw 0010001000100000b
+dw 0001000100010000b
+
 Ocean1Brush:
 db 0x3, 0xe
 dw 0000010101000000b
 dw 0101000000010100b
-dw 0000000000000001b
+dw 0000000000000101b
 
 Ocean2Brush:
 db 0x2, 0xe
-dw 0000000101000000b
-dw 0001010000010100b
+dw 0101000000010100b
+dw 0000010101000000b
 
 CrabBrush:
 db 0x8, 0x0f
@@ -327,7 +347,6 @@ dw 0001010110100000b
 dw 0001011010100000b
 dw 0001010101000000b
 dw 0101000000000000b
-
 
 ; =========================================== TERRAIN TILES DATA ===============
 ; 8x8 tiles for terrain
@@ -473,7 +492,7 @@ db 00000000b, 01001000b, 01100011b, 01110011b
 EntityData:
 db 1, 1
 dw 0x0301
-db 2, 28
+db 2, 14
 dw 0x0103
 dw 0x020a
 dw 0x030a
@@ -488,6 +507,7 @@ dw 0x070d
 dw 0x080e
 dw 0x081a
 dw 0x0910
+db 13, 14
 dw 0x0916
 dw 0x091a
 dw 0x0a0d
@@ -766,10 +786,12 @@ draw_ocean:
   mov cx, 320*70              ; 70 lines of ocean
   rep stosw
 
+;jmp skip_more_ocean
 draw_more_ocean:
   mov si, Ocean1Brush
   mov di, 320*62
- mov ax, [_GAME_TICK_]
+  mov ax, [_GAME_TICK_]
+  shr ax, 2
   mov cx, 16
   .draw_line:
     push cx
@@ -798,7 +820,7 @@ draw_more_ocean:
     inc ax
     pop cx
   loop .draw_line
-
+skip_more_ocean:
 
 
 ; =========================================== INTRO ====================
@@ -817,6 +839,7 @@ jz skip_game_state_intro
   add di, ax
   cmp ax, 240
   jg .start_game
+  mov bx, 0x1
   call draw_ship
 
   mov ah, 01h         ; BIOS keyboard status function
@@ -933,7 +956,7 @@ draw_level:
 
 ; =========================================== DRAW SHIP =======================
 
-mov di, 320*55+32
+mov di, 320*52+32
 call draw_ship
 
 ; =========================================== KEYBOARD INPUT ==================
@@ -1360,10 +1383,9 @@ draw_entities:
     dec cx
   jg .next
 
+; =========================================== CHECK SCORE =======================
 
-; =========================================== DRAW UI ==========================
-
-draw_score:
+check_score:
   mov di, SCORE_POSITION
   mov al, [_SCORE_TARGET_]
   mov ah, [_SCORE_]
@@ -1375,6 +1397,10 @@ draw_score:
     mov byte [_NOTE_TIMER_], 0x0
     mov byte [_NOTE_TEMPO_], 0x2
   .continue_game:
+
+; =========================================== DRAW SCORE ========================
+
+draw_score:
   xor cl, cl
   .draw_spot:
       mov si, SlotBrush
@@ -1391,7 +1417,8 @@ draw_score:
 
 skip_game_state_game:
 
-; game end
+
+; =========================================== GAME END ==========================
 
 test byte [_GAME_STATE_], GSTATE_END
 jz skip_game_state_end
@@ -1465,8 +1492,7 @@ inc word [_GAME_TICK_]  ; Increment game tick
 ; Return: -
 
 beep:
-  xor bh, bh
-  shl bx, 1
+  ;xor bh, bh
   mov al, 0xB6  ; Command to set the speaker frequency
   out 0x43, al   ; Write the command to the PIT chip
   mov ah, bl    ; Frequency value
@@ -1576,12 +1602,15 @@ play_tune:
 ret
 
 
+; skip
+; in: bx - wiosla
+
 draw_ship:
   xor dx, dx
 
   mov ax, [_GAME_TICK_]
   and ax, 0xf
-  cmp ax, 0x7
+  cmp ax, 0x6
   jl .skip_wave
     sub di, 320
   .skip_wave:
@@ -1613,6 +1642,23 @@ draw_ship:
   call draw_sprite
   sub di, 320*4 + 2
   call draw_sprite
+
+  cmp bx, 0x1
+  jnz .skip_wiosla
+  xor dx, dx
+  mov ax, [_GAME_TICK_]
+  shr ax, 3
+  and ax, 0x1
+  add dl, al
+  sub di, ax
+  sub di, ax
+  sub di, ax
+  mov si, WioslaBrush
+  add di, 320*15-7
+  call draw_sprite
+  add di, 8
+  call draw_sprite
+  .skip_wiosla:
 ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
