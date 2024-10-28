@@ -680,6 +680,13 @@ start:
   mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
   int 16h
 
+; Initialize the PIT
+mov al, 0x36          ; Command byte: Channel 0, Access mode lobyte/hibyte, Mode 3 (square wave generator)
+out 0x43, al          ; Send command byte to PIT control port
+mov al, 0xFF          ; Set low byte of divisor (0xFFFF)
+out 0x40, al          ; Send low byte to channel 0 data port
+out 0x40, al          ; Send high byte to channel 0 data port
+
 restart_game:
 
 mov word [_GAME_TICK_], 0x0
@@ -1117,7 +1124,6 @@ ai_entities:
            in al, 0x40
            and al, 0x3
            mov byte [si+_DIR_], al
-;           and byte [si+_DIR_], 0x3
 
         .skip_random_bounce:
 
