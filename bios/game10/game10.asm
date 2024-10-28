@@ -1045,36 +1045,39 @@ ai_entities:
     cmp byte [si+_STATE_], STATE_EXPLORING
     jnz .skip_explore
       mov ax, [_GAME_TICK_]
-
-      ;add ax, cx
+      add ax, cx
       test ax, 0x2
       jz .skip_explore
 
       .explore:
         mov cx, [si+_POS_]
+        mov al, [si+_DIR_]
 
         .check_horizontal:
-        cmp byte [si+_DIR_], 0
+        cmp al, 0
         jnz .go_left
         .go_right:
-           add cl, 1
+           inc cl
+           jmp .check_mirror
         .go_left:
-         cmp byte [si+_DIR_], 1
+         cmp al, 1
          jnz .check_vertical
-           sub cl, 1
+           dec cl
+           jmp .check_mirror
 
         .check_vertical:
         cmp byte [si+_ID_], ID_CRAB
         jz .check_mirror
 
-        cmp byte [si+_DIR_], 2
+        cmp ax, 2
         jnz .go_up
         .go_down:
-          add ch, 1
+          inc ch
+          jmp .check_mirror
         .go_up:
-         cmp byte [si+_DIR_], 3
+         cmp ax, 3
          jnz .check_mirror
-           sub ch, 1
+           dec ch
 
         .check_mirror:
           mov byte [si+_MIRROR_], 0x0
