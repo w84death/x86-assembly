@@ -644,6 +644,7 @@ ID_CHEST equ 6
 ID_GOLD equ 7
 ID_SPIDER equ 10
 ID_CRAB equ 11
+ID_BUSH equ 12
 
 STATE_DEACTIVATED equ 0
 STATE_FOLLOW equ 2
@@ -735,11 +736,15 @@ spawn_entities:
       .skip_explore:
 
       cmp bl, ID_PALM
-      jnz .skip_palm
+      jz .set_rand_mirror
+      cmp bl, ID_BUSH
+      jz .set_rand_mirror
+      jnz .skip_mirror
+      .set_rand_mirror:
         xor al, ah
         and al, 0x01
         mov byte [di+_MIRROR_], al ; Save basic state
-      .skip_palm:
+      .skip_mirror:
 
       cmp bl, ID_BRIDGE
       jz .set_interactive
@@ -1069,13 +1074,13 @@ ai_entities:
         cmp byte [si+_ID_], ID_CRAB
         jz .check_mirror
 
-        cmp ax, 2
+        cmp al, 2
         jnz .go_up
         .go_down:
           inc ch
           jmp .check_mirror
         .go_up:
-         cmp ax, 3
+         cmp al, 3
          jnz .check_mirror
            dec ch
 
@@ -1109,9 +1114,10 @@ ai_entities:
         .not_a_crab:
 
         .random_bounce:
-           in ax, 0x40
-           and ax, 0x3
+           in al, 0x40
+           and al, 0x3
            mov byte [si+_DIR_], al
+;           and byte [si+_DIR_], 0x3
 
         .skip_random_bounce:
 
