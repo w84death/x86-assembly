@@ -1119,6 +1119,7 @@ ai_entities:
 
         .random_bounce:
            in al, 0x40
+           add ax, [_GAME_TICK_]
            and al, 0x3
            mov byte [si+_DIR_], al
 
