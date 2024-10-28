@@ -1078,9 +1078,6 @@ ai_entities:
            jmp .check_mirror
 
         .check_vertical:
-        cmp byte [si+_ID_], ID_CRAB
-        jz .check_mirror
-
         cmp al, 2
         jnz .go_up
         .go_down:
@@ -1568,6 +1565,7 @@ check_friends:
     cmp word [si+_POS_], ax
     jnz .skip_this_entity
       inc bx
+      jmp .done
     .skip_this_entity:
     add si, ENTITY_SIZE
   loop .next_entity
