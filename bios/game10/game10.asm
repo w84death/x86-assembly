@@ -495,7 +495,7 @@ db 00000000b, 01001000b, 01100011b, 01110011b
 
 EntityData:
 db 1, 1
-dw 0x0301
+dw 0x0001
 db 2, 14
 dw 0x0103
 dw 0x020a
@@ -571,16 +571,6 @@ dw 0x0d12
 db 0x0 ; End of entities
 
 tune_intro:
-db 8   ,10  ,12  ,10 ,8   ,9   ,10  ,7  ,5   ,8   ,10  ,8  ,7   ,6   ,5   ,6
-db 8   ,10  ,12  ,10 ,8   ,9   ,10  ,12 ,13  ,12  ,10  ,9  ,10  ,8   ,7   ,5
-db 13  ,15  ,17  ,15 ,13  ,12  ,13  ,10 ,12  ,14  ,15  ,12 ,10  ,9   ,10  ,8
-db 12  ,14  ,16  ,14 ,13  ,15  ,13  ,12 ,15  ,14  ,12  ,10 ,8   ,10  ,12  ,9
-db 5   ,7   ,9   ,7  ,5   ,6   ,8   ,5  ,6   ,7   ,9   ,7  ,6   ,5   ,3   ,5
-db 8   ,10  ,12  ,10 ,8   ,9   ,10  ,7  ,5   ,7   ,9   ,8  ,7   ,6   ,5   ,6
-db 13  ,15  ,17  ,15 ,13  ,12  ,13  ,10 ,12  ,14  ,15  ,12 ,10  ,9   ,10  ,8
-db 12  ,14  ,16  ,14 ,13  ,15  ,13  ,12 ,15  ,14  ,12  ,10 ,8   ,10  ,12  ,9
-db 0
-
 db 5   ,7   ,8   ,7  ,5   ,8   ,10  ,8  ,7   ,5   ,7   ,8  ,7   ,5   ,3   ,5
 db 8   ,10  ,12  ,10 ,8   ,7   ,8   ,10 ,12  ,10  ,8   ,7  ,8   ,5   ,3   ,5
 db 10  ,12  ,14  ,12 ,10  ,8   ,10  ,12 ,14  ,12  ,10  ,8  ,7   ,5   ,7   ,8
@@ -667,9 +657,10 @@ STATE_EXPLORING equ 8
 STATE_INTERACTIVE equ 16
 
 GSTATE_INTRO equ 2
-GSTATE_GAME equ 4
-GSTATE_END equ 8
-GSTATE_WIN equ 16
+GSTATE_PREGAME equ 4
+GSTATE_GAME equ 8
+GSTATE_END equ 16
+GSTATE_WIN equ 32
 
 WEB_LOCK equ 2
 
@@ -848,7 +839,7 @@ skip_more_ocean:
 test byte [_GAME_STATE_], GSTATE_INTRO
 jz skip_game_state_intro
 
-  mov byte [_NOTE_TEMPO_], 3
+  mov byte [_NOTE_TEMPO_], 2
   call play_tune
 
 ; ship moving
@@ -866,23 +857,65 @@ jz skip_game_state_intro
   int 16h             ; Call BIOS interrupt
   jz .no_key_press
   .start_game:
-  mov byte [_GAME_STATE_], GSTATE_GAME
+
+  mov byte [_GAME_STATE_], GSTATE_PREGAME
+  add byte [_GAME_STATE_], GSTATE_GAME
+  mov word [_GAME_TICK_], 0x0
   .no_key_press:
 
 skip_game_state_intro:
+
+
+; =========================================== PRE-GAME =======================
+
+test byte [_GAME_STATE_], GSTATE_PREGAME
+jz skip_game_state_pregame
+
+pre_game:
+    call play_tune
+
+    mov di, 320*52
+    mov ax, [_GAME_TICK_]
+    cmp ax, 64
+    jg .start_game
+    shr ax, 1
+    add di, ax
+    call draw_ship
+    jmp skip_game_state_pregame
+
+  .start_game:
+    mov byte [_GAME_STATE_], GSTATE_GAME
+    mov word [_GAME_TICK_], 0x0
+
+  .clear_kb_buffer:
+    mov ah, 0x01
+    int 0x16
+    jz .cleared
+      mov ah, 0x00
+      int 0x16
+      jmp .clear_kb_buffer
+
+   .cleared:
+
+skip_game_state_pregame:
 
 ; =========================================== GAME ====================
 
 test byte [_GAME_STATE_], GSTATE_GAME
 jz skip_game_state_game
 
+
 ; =========================================== STOP SOUND ====================
 
+test byte [_GAME_STATE_], GSTATE_PREGAME
+jnz .skip_stop_sound
   in al, 0x61    ; Read the PIC chip
   and al, 0x0FC  ; Clear bit 0 to disable the speaker
   out 0x61, al   ; Write the updated value back to the PIC chip
+.skip_stop_sound:
 
 ; =========================================== DRAWING LEVEL ====================
+
 
 draw_level:
   mov si, LevelData
@@ -974,10 +1007,14 @@ draw_level:
   jl .next_meta_tile
 
 
+test byte [_GAME_STATE_], GSTATE_PREGAME
+jnz skip_keyboard
+
 ; =========================================== DRAW SHIP =======================
 
-mov di, 320*52+32
-call draw_ship
+draw_ship_in_game:
+  mov di, 320*52+32
+  call draw_ship
 
 ; =========================================== KEYBOARD INPUT ==================
 
@@ -1053,6 +1090,8 @@ check_keyboard:
 
   .no_key_press:
   .invalid_move:
+
+skip_keyboard:
 
 ; =========================================== AI ENITIES ===============
 
@@ -1298,6 +1337,15 @@ draw_entities:
     cmp byte [si+_STATE_], STATE_DEACTIVATED
     jz .skip_entity
 
+    .hire_player:
+    test byte [_GAME_STATE_], GSTATE_PREGAME
+    jz .skip_hide_player
+      cmp byte [si+_ID_], ID_PLAYER
+      jz .skip_entity
+    .skip_hide_player:
+
+
+
     mov cx, [si+_POS_]
     call conv_pos2mem       ; Convert position to memory
 
@@ -1403,6 +1451,8 @@ draw_entities:
     pop cx
     dec cx
   jg .next
+
+skip_draw_entities:
 
 ; =========================================== CHECK SCORE =======================
 
