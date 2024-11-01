@@ -885,6 +885,7 @@ pre_game:
     jg .start_game
     shr ax, 1
     add di, ax
+    mov bx, 0x1
     call draw_ship
     jmp skip_game_state_pregame
 
@@ -1023,6 +1024,7 @@ jnz skip_keyboard
 
 draw_ship_in_game:
   mov di, 320*52+32
+  xor bx, bx
   call draw_ship
 
 ; =========================================== KEYBOARD INPUT ==================
@@ -1524,6 +1526,7 @@ draw_post_game:
   .move_ship:
   mov di, 320*52+32
   add di, ax
+  mov bx, 0x1
   call draw_ship
   call play_tune
 
