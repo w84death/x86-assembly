@@ -495,7 +495,7 @@ db 00000000b, 01001000b, 01100011b, 01110011b
 
 EntityData:
 db 1, 1
-dw 0x0001
+dw 0x0002
 db 2, 14
 dw 0x0103
 dw 0x020a
@@ -561,7 +561,7 @@ dw 0x0e0d
 dw 0x0f0a
 dw 0x0f0d
 db 7, 1
-dw 0x0300
+dw 0x0001
 db 8, 5
 dw 0x0104
 dw 0x010b
@@ -1227,6 +1227,7 @@ ai_entities:
         mov bl, BEEP_GOLD
         call beep
         jmp .clear_item
+
       .check_bridge:
         cmp byte [_HOLDING_ID_], ID_ROCK
         jnz .skip_item
@@ -1256,11 +1257,12 @@ ai_entities:
         mov byte [si+_STATE_], STATE_INTERACTIVE
         mov word [_REQUEST_POSITION_], 0x0
         jmp .beep
+
       .check_kill:
       cmp byte [_HOLDING_ID_], 0xff
       jnz .skip_kill
         mov byte [si+_STATE_], STATE_DEACTIVATED
-        inc byte [_HOLDING_ID_] ;, 0x0
+        mov byte [_HOLDING_ID_], 0x0
       .beep:
       mov bl, BEEP_PUT
       call beep
@@ -1341,6 +1343,8 @@ draw_entities:
     test byte [_GAME_STATE_], GSTATE_PREGAME
     jz .skip_hide_player
       cmp byte [si+_ID_], ID_PLAYER
+      jz .skip_entity
+      cmp byte [si+_ID_], ID_CHEST
       jz .skip_entity
     .skip_hide_player:
 
