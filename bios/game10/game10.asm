@@ -449,6 +449,10 @@ db 00000100b, 00100110b, 00010111b, 00110100b
 db 00001000b, 00001000b, 00001000b, 00001000b
 db 00000100b, 00010100b, 00000110b, 00000111b
 db 00000100b, 00000111b, 00100100b, 00010111b
+; free slot
+; free slot
+; free slot
+; free slot
 
 ; =========================================== LEVEL DATA =======================
 ; 16x8 level data
@@ -674,29 +678,21 @@ start:
     pop es                                  ; as target
 
   set_keyboard_rate:
-  xor ax, ax
-  xor bx, bx
-  mov ah, 03h         ; BIOS function to set typematic rate and delay
-  mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
-  int 16h
-
-; Initialize the PIT
-mov al, 0x36          ; Command byte: Channel 0, Access mode lobyte/hibyte, Mode 3 (square wave generator)
-out 0x43, al          ; Send command byte to PIT control port
-mov al, 0xFF          ; Set low byte of divisor (0xFFFF)
-out 0x40, al          ; Send low byte to channel 0 data port
-out 0x40, al          ; Send high byte to channel 0 data port
+    xor ax, ax
+    xor bx, bx
+    mov ah, 03h         ; BIOS function to set typematic rate and delay
+    mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
+    int 16h
 
 restart_game:
-
-mov word [_GAME_TICK_], 0x0
-mov byte [_GAME_STATE_], GSTATE_INTRO
-mov byte [_SCORE_], 0x0
-mov byte [_HOLDING_ID_], 0x0
-mov byte [_WEB_LOCKED_], 0x0
-mov word [_CURRENT_TUNE_], tune_intro
-mov word [_NEXT_TUNE_], tune_intro
-mov byte [_NOTE_TIMER_], 0x0
+  mov word [_GAME_TICK_], 0x0
+  mov byte [_GAME_STATE_], GSTATE_INTRO
+  mov byte [_SCORE_], 0x0
+  mov byte [_HOLDING_ID_], 0x0
+  mov byte [_WEB_LOCKED_], 0x0
+  mov word [_CURRENT_TUNE_], tune_intro
+  mov word [_NEXT_TUNE_], tune_intro           ; loop intro tune
+  mov byte [_NOTE_TIMER_], 0x0
 
 
 ; =========================================== SPAWN ENTITIES ==================
@@ -708,21 +704,22 @@ spawn_entities:
   mov di, _ENTITIES_
 
   .next_entitie:
-    mov bl, [si]
-    cmp bl, 0x0
+    mov bl, [si]       ; Get first word (ID)
+    cmp bl, 0x0        ; Check for last entity marker
     jz .done
 
     dec bl             ; Conv level id to game id
 
     inc si
-    mov al, [si]
-    inc si
-    mov cl, al
+    mov al, [si]       ; Get amount in group
+    inc si             ; mov to the next word (first entitie in group)
+    mov cl, al         ; Set loop
 
-    cmp bl, ID_GOLD
+    cmp bl, ID_GOLD    ; Check if gold coin
     jnz .not_gold
-    mov [_SCORE_TARGET_], cl
+    mov [_SCORE_TARGET_], cl ; Count each gold as score target
     .not_gold:
+
     .next_in_group:
       mov byte [di], bl           ; Save sprite id
       mov ax, [si]          ; Get position
@@ -731,6 +728,7 @@ spawn_entities:
       mov byte [di+_STATE_], STATE_STATIC ; Save basic state
       mov byte [di+_DIR_], 0x0 ; Save basic state
 
+
       cmp bl, ID_SNAKE
       jz .set_explore
       cmp bl, ID_CRAB
@@ -738,8 +736,8 @@ spawn_entities:
       cmp bl, ID_SPIDER
       jz .set_explore
       jmp .skip_explore
-      .set_explore:
-        mov byte [di+_STATE_], STATE_EXPLORING ; Save basic state
+      .set_explore:   ; Set explore state to alive entities
+        mov byte [di+_STATE_], STATE_EXPLORING
       .skip_explore:
 
       cmp bl, ID_PALM
@@ -747,10 +745,10 @@ spawn_entities:
       cmp bl, ID_BUSH
       jz .set_rand_mirror
       jnz .skip_mirror
-      .set_rand_mirror:
+      .set_rand_mirror:  ; Random X mirror, for foliage
         xor al, ah
         and al, 0x01
-        mov byte [di+_MIRROR_], al ; Save basic state
+        mov byte [di+_MIRROR_], al
       .skip_mirror:
 
       cmp bl, ID_BRIDGE
@@ -762,7 +760,7 @@ spawn_entities:
       cmp bl, ID_CHEST
       jz .set_interactive
       jmp .skip_interactive
-      .set_interactive:
+      .set_interactive:  ; Set interactive entities
         mov byte [di+_STATE_], STATE_INTERACTIVE
       .skip_interactive:
 
