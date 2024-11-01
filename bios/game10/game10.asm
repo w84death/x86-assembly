@@ -637,6 +637,9 @@ LEVEL_START_POSITION equ 320*68+32
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3535
 SCORE_POSITION equ 320*24+32
+INTRO_TIME equ 240
+PRE_GAME_TIME equ 64
+POST_GAME_TIME equ 32
 
 ID_PLAYER equ 0
 ID_PALM equ 1
@@ -659,8 +662,10 @@ STATE_INTERACTIVE equ 16
 GSTATE_INTRO equ 2
 GSTATE_PREGAME equ 4
 GSTATE_GAME equ 8
-GSTATE_END equ 16
-GSTATE_WIN equ 32
+GSTATE_POSTGAME equ 16
+GSTATE_END equ 32
+GSTATE_WIN equ 64
+GSTATE_OUTRO equ 128
 
 WEB_LOCK equ 2
 
@@ -848,7 +853,7 @@ jz skip_game_state_intro
   mov ax, [_GAME_TICK_]
   shr ax, 1
   add di, ax
-  cmp ax, 240
+  cmp ax, INTRO_TIME
   jg .start_game
   mov bx, 0x1
   call draw_ship
@@ -876,7 +881,7 @@ pre_game:
 
     mov di, 320*52
     mov ax, [_GAME_TICK_]
-    cmp ax, 64
+    cmp ax, PRE_GAME_TIME
     jg .start_game
     shr ax, 1
     add di, ax
@@ -906,13 +911,15 @@ jz skip_game_state_game
 
 
 ; =========================================== STOP SOUND ====================
-
-test byte [_GAME_STATE_], GSTATE_PREGAME
-jnz .skip_stop_sound
-  in al, 0x61    ; Read the PIC chip
-  and al, 0x0FC  ; Clear bit 0 to disable the speaker
-  out 0x61, al   ; Write the updated value back to the PIC chip
-.skip_stop_sound:
+stop_game_sound:
+  test byte [_GAME_STATE_], GSTATE_PREGAME
+  jnz .skip_stop_sound
+  test byte [_GAME_STATE_], GSTATE_POSTGAME
+  jnz .skip_stop_sound
+    in al, 0x61    ; Read the PIC chip
+    and al, 0x0FC  ; Clear bit 0 to disable the speaker
+    out 0x61, al   ; Write the updated value back to the PIC chip
+  .skip_stop_sound:
 
 ; =========================================== DRAWING LEVEL ====================
 
@@ -1008,6 +1015,8 @@ draw_level:
 
 
 test byte [_GAME_STATE_], GSTATE_PREGAME
+jnz skip_keyboard
+test byte [_GAME_STATE_], GSTATE_POSTGAME
 jnz skip_keyboard
 
 ; =========================================== DRAW SHIP =======================
@@ -1341,14 +1350,16 @@ draw_entities:
 
     .hire_player:
     test byte [_GAME_STATE_], GSTATE_PREGAME
-    jz .skip_hide_player
+    jnz .hide_player
+    test byte [_GAME_STATE_], GSTATE_POSTGAME
+    jnz .hide_player
+    jmp .skip_hide_player
+    .hide_player:
       cmp byte [si+_ID_], ID_PLAYER
       jz .skip_entity
       cmp byte [si+_ID_], ID_CHEST
       jz .skip_entity
     .skip_hide_player:
-
-
 
     mov cx, [si+_POS_]
     call conv_pos2mem       ; Convert position to memory
@@ -1460,13 +1471,19 @@ skip_draw_entities:
 
 ; =========================================== CHECK SCORE =======================
 
+test byte [_GAME_STATE_], GSTATE_PREGAME
+jnz skip_score
+test byte [_GAME_STATE_], GSTATE_POSTGAME
+jnz skip_score
+
 check_score:
   mov di, SCORE_POSITION
   mov al, [_SCORE_TARGET_]
   mov ah, [_SCORE_]
   cmp al, ah
   jg .continue_game
-    mov byte [_GAME_STATE_], GSTATE_END+GSTATE_WIN
+    add byte [_GAME_STATE_], GSTATE_POSTGAME
+    mov word [_GAME_TICK_], 0x0
     mov word [_CURRENT_TUNE_], tune_win
     mov word [_NEXT_TUNE_], tune_win
     mov byte [_NOTE_TIMER_], 0x0
@@ -1490,8 +1507,28 @@ draw_score:
     cmp al, cl
   jnz .draw_spot
 
+skip_score:
 skip_game_state_game:
 
+
+; =========================================== POST GAME =========================
+
+test byte [_GAME_STATE_], GSTATE_POSTGAME
+jz skip_game_state_postgame
+draw_post_game:
+  mov ax, [_GAME_TICK_]
+  shr ax, 1
+  cmp ax, POST_GAME_TIME
+  jnz .move_ship
+    mov byte [_GAME_STATE_], GSTATE_END+GSTATE_WIN
+  .move_ship:
+  mov di, 320*52+32
+  add di, ax
+  call draw_ship
+  call play_tune
+
+
+skip_game_state_postgame:
 
 ; =========================================== GAME END ==========================
 
