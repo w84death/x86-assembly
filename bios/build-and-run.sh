@@ -16,30 +16,32 @@ echo "Assembling..."
 
 dd if=/dev/zero of=floppy.img bs=1474560 count=1
 
-if ! fasm boot.asm boot.bin; then
+if ! fasm ${filename}/boot.asm temp/boot.bin; then
     echo "Failed to assemble boot.asm"
     exit 1
 fi
 
-if ! fasm "${filename}/${filename}.asm" "game.bin"; then
+if ! fasm "${filename}/${filename}.asm" "temp/game.bin"; then
     echo "Failed to assemble ${filename}/${filename}.asm"
     exit 1
 fi
 
-if ! fasm "${filename}/${filename}.asm" "game.com"; then
+if ! fasm "${filename}/${filename}.asm" "${filename}/com/game.com"; then
     echo "Failed to assemble ${filename}/${filename}.asm"
     exit 1
 fi
 
 echo ""
 echo "=========================="
-echo "GAME CODE SIZE: $(stat -c %s game.bin) bytes"
+echo "GAME CODE SIZE: $(stat -c %s temp/game.bin) bytes"
 echo "=========================="
 
 echo ""
 echo "Creating floppy image..."
-dd if=boot.bin of=floppy.img bs=512 count=1 conv=notrunc
-dd if=game.bin of=floppy.img bs=512 seek=1 conv=notrunc
+dd if=temp/boot.bin of=floppy.img bs=512 count=1 conv=notrunc
+dd if=temp/game.bin of=floppy.img bs=512 seek=1 conv=notrunc
+
+cp floppy.img "${filename}/${filename}_floppy.img"
 
 echo ""
 echo "Running..."
