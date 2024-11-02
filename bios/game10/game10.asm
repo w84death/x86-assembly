@@ -1,8 +1,8 @@
 ; GAME10 - Mysteries of the Forgotten Isles
-; 2048b VERSION, x86 BIOS, P1X BOOTLOADER in boot.asm
+; 4096b VERSION, x86 BIOS, P1X BOOTLOADER in boot.asm
 ;
 ; Description:
-; Logic 2D game in VGA graphics, w PC Speaker sound.
+; Logic 2D game in VGA graphics, with PC Speaker sounds.
 ;
 ;
 ; Size category: 4096 bytes / 4KB
