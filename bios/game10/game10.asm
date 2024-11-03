@@ -37,7 +37,7 @@ db 0x00, 0x1c, 0x1e, 0x1f   ; 0xd Web
 db 0x35, 0x4e, 0xff, 0xff   ; 0xe Ocean
 db 0x00, 0x04, 0x0c, 0x1f   ; 0x0f Crab
 db 0x00, 0x71, 0x06, 0x2a   ; 0x10 Chest
-db 0x00, 0x00, 0x2f, 0x00   ; 0x11 Shadow
+db 0x00, 0x00, 0x75, 0x00   ; 0x11 Shadow
 
 ; =========================================== BRUSH REFERENCES =================
 ; Brush data offset table
@@ -64,9 +64,10 @@ dw BushBrush, -320
 
 ShadowBrush:
 db 0x3, 0x11
-dw 0010101010100000b
+dw 0000101010101000b
 dw 1010101010101010b
 dw 0010101010101000b
+
 
 IndieTopBrush:
 db 0xa, 0x1
@@ -1396,10 +1397,17 @@ draw_entities:
     .skip_follow:
 
     .draw_shadow:
+    ; check if on other entity (bridge)
+    test byte [si+_STATE_], STATE_EXPLORING
+    jnz .skip_draw_shadow
+    cmp byte [si+_ID_], ID_PLAYER
+    jz .skip_draw_shadow
+    cmp byte [si+_ID_], ID_BRIDGE
+    jz .skip_draw_shadow
     push si
     push di
     mov si, ShadowBrush
-    add di, 320*5+1
+    add di, 320*5+2
     call draw_sprite
     pop di
     pop si
@@ -1677,6 +1685,7 @@ check_bounds:
 
 ; =========================================== CHECK FRIEDS =====================
 ; Expects: CX - Position YY/XX
+;         DL - skip check
 ; Return: AX - Zero if hit entity, 1 if clear
 
 check_friends:
@@ -1688,8 +1697,11 @@ check_friends:
   mov cl, MAX_ENTITIES
   mov si, _ENTITIES_
   .next_entity:
+    cmp byte dl, 0x1
+    jz .skip_check
     cmp byte [si+_STATE_], STATE_FOLLOW
     jle .skip_this_entity
+    .skip_check:
     cmp word [si+_POS_], ax
     jnz .skip_this_entity
       inc bx
