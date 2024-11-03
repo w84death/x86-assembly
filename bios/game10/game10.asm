@@ -25,9 +25,9 @@ db 0x00, 0xba, 0x06, 0x42   ; 0x1 Indie top
 db 0x00, 0xba, 0xbd, 0x72   ; 0x2 Indie bottom
 db 0x35, 0x34, 0x00, 0x00   ; 0x3 Bridge
 db 0x00, 0xd1, 0x73, 0x06   ; 0x4 Chest
-db 0x00, 0x4a, 0x45, 0x47   ; 0x5 Terrain 1 - shore
-db 0x4a, 0x2f, 0x47, 0x45   ; 0x6 Terrain 2 - in  land
-db 0x00, 0x74, 0x78, 0x02   ; 0x7 Palm & Bush
+db 0x00, 0x4a, 0x45, 0x2e   ; 0x5 Terrain 1 - shore
+db 0x4a, 0x48, 0x2e, 0x46   ; 0x6 Terrain 2 - in  land
+db 0x00, 0x72, 0x78, 0x02   ; 0x7 Palm & Bush
 db 0x00, 0x27, 0x2a, 0x2b   ; 0x8 Snake
 db 0x00, 0x2b, 0x2c, 0x5b   ; 0x9 Gold Coin
 db 0x00, 0x16, 0x17, 0x19   ; 0xa Rock
@@ -64,7 +64,7 @@ dw BushBrush, -320
 
 ShadowBrush:
 db 0x3, 0x11
-dw 0000101010101000b
+dw 0010101010101000b
 dw 1010101010101010b
 dw 0010101010101000b
 
@@ -179,7 +179,7 @@ dw 0000000000101001b
 
 
 PalmBrush:
-db 0x10, 0x7
+db 0x11, 0x7
 dw 0010100000101010b
 dw 1011111010111110b
 dw 1011101011101011b
@@ -188,14 +188,15 @@ dw 1011111010111110b
 dw 1011101010101110b
 dw 1110111001101110b
 dw 0011000101111011b
-dw 0000000001000000b
-dw 0000000001000000b
-dw 0000000100001000b
-dw 1011000100101100b
-dw 1110110111101110b
-dw 0010110101111011b
-dw 1011101101101100b
-dw 0011101011101100b
+dw 0000001001000000b
+dw 0000010101000000b
+dw 0000100100001100b
+dw 1100011100110000b
+dw 0010111000100011b
+dw 1110011101001000b
+dw 1001100101001000b
+dw 0100101000100100b
+dw 0000000100000000b
 
 BushBrush:
 db 0x8, 0x7
@@ -1407,7 +1408,7 @@ draw_entities:
     push si
     push di
     mov si, ShadowBrush
-    add di, 320*5+2
+    add di, 320*5+1
     call draw_sprite
     pop di
     pop si
