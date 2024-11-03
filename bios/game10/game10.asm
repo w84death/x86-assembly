@@ -21,8 +21,8 @@ jmp start
 
 PaletteSets:
 db 0x00, 0x34, 0x16, 0x1a   ; 0x0 Grays
-db 0x00, 0x06, 0x27, 0x43   ; 0x1 Indie top
-db 0x00, 0x7f, 0x13, 0x15   ; 0x2 Indie bottom
+db 0x00, 0xba, 0x06, 0x42   ; 0x1 Indie top
+db 0x00, 0xba, 0xbd, 0x72   ; 0x2 Indie bottom
 db 0x35, 0x34, 0x00, 0x00   ; 0x3 Bridge
 db 0x00, 0xd1, 0x73, 0x06   ; 0x4 Chest
 db 0x00, 0x4a, 0x45, 0x47   ; 0x5 Terrain 1 - shore
@@ -43,7 +43,7 @@ db 0x00, 0x71, 0x06, 0x2a   ; 0x10 Chest
 ; Data: offset to brush data, Y shift
 
 BrushRefs:
-dw IndieTopBrush, -320*6
+dw IndieBottomBrush, -320*4
 dw PalmBrush, -320*10
 dw SnakeBrush, -320*2
 dw RockBrush, 0
@@ -62,32 +62,40 @@ dw BushBrush, -320
 ; Data: number of lines, palettDefaulte id, lines (8 pixels) of palette color id
 
 IndieTopBrush:
-db 0x7, 0x1
-dw 0000000101010000b
+db 0xa, 0x1
+dw 0000001001010000b
 dw 0000010101010100b
-dw 0000001111110000b
-dw 0000000011110000b
-dw 0000001010000000b
-dw 0000001010100000b
-dw 0000001101010000b
+dw 0000001011110000b
+dw 0000001110110000b
+dw 0000011110100000b
+dw 0000000011000000b
+dw 0000000000000000b
+dw 0000110000000000b
+dw 0000110000000000b
+dw 0000001100000000b
 
 IndieTop2Brush:
 db 0x7, 0x1
-dw 0001000101000100b
-dw 0011010101011100b
-dw 0011001111111100b
-dw 0011000011110000b
-dw 0000111010000000b
-dw 0000001010100000b
-dw 0000001111110000b
-dw 0000000101010000b
+dw 0000100010000000b
+dw 0000110101010000b
+dw 0000110101010100b
+dw 0000111011110000b
+dw 0000001110110000b
+dw 0000000010100000b
+dw 0000010000000000b
 
 IndieBottomBrush:
-db 0x4, 0x2
-dw 0000000101010000b
-dw 0000000100010000b
-dw 0000001000100000b
-dw 0000001000100000b
+db 0xa, 0x2
+dw 0011100000000000b
+dw 1101101100000000b
+dw 0101100110000000b
+dw 0101101010000000b
+dw 0010101010000000b
+dw 0000010111000000b
+dw 0010101010000000b
+dw 0010100010000000b
+dw 0011000011000000b
+dw 0001010001010000b
 
 SnakeBrush:
 db 0x8, 0x8
@@ -1374,18 +1382,11 @@ draw_entities:
       pop si
       mov word [si+_POS_], cx ; Save new position
       call conv_pos2mem       ; Convert position to memory
-      sub di, 320*12          ; Move above player
+      sub di, 320*14          ; Move above player
     .skip_follow:
 
     mov byte al, [si]       ; Get brush id in AL
     mov ah, al              ; Save a copy in AH
-
-    cmp ah, ID_PLAYER
-    jnz .skip_player_check
-      cmp byte [_HOLDING_ID_], 0x0
-      jz .skip_player_check
-      mov al, 0x9
-    .skip_player_check:
 
     shl al, 0x2
     mov bx, BrushRefs       ; Get brush reference table
@@ -1403,8 +1404,12 @@ draw_entities:
 
     cmp ah, ID_PLAYER
     jnz .skip_player_draw
-      mov si, IndieBottomBrush
-      add di, 320*7
+      mov si, IndieTopBrush
+      sub di, 320*4
+      cmp byte [_HOLDING_ID_], 0x0
+      jz .skip_player_holding
+         mov si, IndieTop2Brush
+       .skip_player_holding:
       call draw_sprite
       cmp byte [_WEB_LOCKED_], 0
       jz .skip_web_draw
