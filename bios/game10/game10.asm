@@ -27,7 +27,7 @@ db 0x35, 0x34, 0x00, 0x00   ; 0x3 Bridge
 db 0x00, 0xd1, 0x73, 0x06   ; 0x4 Chest
 db 0x00, 0x4a, 0x45, 0x47   ; 0x5 Terrain 1 - shore
 db 0x4a, 0x2f, 0x47, 0x45   ; 0x6 Terrain 2 - in  land
-db 0x00, 0x74, 0x02, 0x2e   ; 0x7 Palm & Bush
+db 0x00, 0x74, 0x78, 0x02   ; 0x7 Palm & Bush
 db 0x00, 0x27, 0x2a, 0x2b   ; 0x8 Snake
 db 0x00, 0x2b, 0x2c, 0x5b   ; 0x9 Gold Coin
 db 0x00, 0x16, 0x17, 0x19   ; 0xa Rock
@@ -50,12 +50,12 @@ dw SnakeBrush, -320*2
 dw RockBrush, -320
 dw SkullBrush, 0
 dw BridgeBrush, 0
-dw ChestBrush, 0
+dw ChestBrush, -320*4
 dw Gold2Brush, 320
 dw GoldBrush, 320
 dw IndieTop2Brush, -320*5
 dw SpiderBrush, -320*3
-dw CrabBrush, 0
+dw CrabBrush, -320*2
 dw BushBrush, -320
 
 ; =========================================== BRUSHES DATA =====================
@@ -551,7 +551,7 @@ db 11, 2
 dw 0x000c
 dw 0x0e07
 db 12, 1
-dw 0x0e11
+dw 0x0c11
 db 4, 8
 dw 0x021b
 dw 0x031a
@@ -1474,9 +1474,6 @@ draw_entities:
     jnz .skip_chest
       cmp byte [_HOLDING_ID_], ID_GOLD
       jnz .skip_open_chest
-
-        ; open chest
-
         mov si, ChestTopBrush
         sub di, 320*3+8
         call draw_sprite
