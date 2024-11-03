@@ -1,8 +1,8 @@
 ; GAME10 - Mysteries of the Forgotten Isles
-; 4096b VERSION, x86 BIOS, P1X BOOTLOADER in boot.asm
+; 2048b VERSION, x86 BIOS, P1X BOOTLOADER in boot.asm
 ;
 ; Description:
-; Logic 2D game in VGA graphics, with PC Speaker sounds.
+; Logic 2D game in VGA graphics, w PC Speaker sound.
 ;
 ;
 ; Size category: 4096 bytes / 4KB
@@ -37,6 +37,7 @@ db 0x00, 0x1c, 0x1e, 0x1f   ; 0xd Web
 db 0x35, 0x4e, 0xff, 0xff   ; 0xe Ocean
 db 0x00, 0x04, 0x0c, 0x1f   ; 0x0f Crab
 db 0x00, 0x71, 0x06, 0x2a   ; 0x10 Chest
+db 0x00, 0x00, 0x2f, 0x00   ; 0x11 Shadow
 
 ; =========================================== BRUSH REFERENCES =================
 ; Brush data offset table
@@ -46,7 +47,7 @@ BrushRefs:
 dw IndieBottomBrush, -320*4
 dw PalmBrush, -320*10
 dw SnakeBrush, -320*2
-dw RockBrush, 0
+dw RockBrush, -320
 dw SkullBrush, 0
 dw BridgeBrush, 0
 dw ChestBrush, 0
@@ -60,6 +61,12 @@ dw BushBrush, -320
 ; =========================================== BRUSHES DATA =====================
 ; Set of 8xY brushes for entities
 ; Data: number of lines, palettDefaulte id, lines (8 pixels) of palette color id
+
+ShadowBrush:
+db 0x3, 0x11
+dw 0010101010100000b
+dw 1010101010101010b
+dw 0010101010101000b
 
 IndieTopBrush:
 db 0xa, 0x1
@@ -355,6 +362,8 @@ dw 0001010110100000b
 dw 0001011010100000b
 dw 0001010101000000b
 dw 0101000000000000b
+
+
 
 ; =========================================== TERRAIN TILES DATA ===============
 ; 8x8 tiles for terrain
@@ -1383,7 +1392,18 @@ draw_entities:
       mov word [si+_POS_], cx ; Save new position
       call conv_pos2mem       ; Convert position to memory
       sub di, 320*14          ; Move above player
+      jmp .skip_draw_shadow
     .skip_follow:
+
+    .draw_shadow:
+    push si
+    push di
+    mov si, ShadowBrush
+    add di, 320*5+1
+    call draw_sprite
+    pop di
+    pop si
+    .skip_draw_shadow:
 
     mov byte al, [si]       ; Get brush id in AL
     mov ah, al              ; Save a copy in AH
@@ -1414,7 +1434,7 @@ draw_entities:
       cmp byte [_WEB_LOCKED_], 0
       jz .skip_web_draw
         mov si, WebBrush
-        sub di, 320*6
+        add di, 320*6
         call draw_sprite
       .skip_web_draw:
     .skip_player_draw:
