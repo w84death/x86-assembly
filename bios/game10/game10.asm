@@ -45,7 +45,7 @@ db 0x00, 0x00, 0x75, 0x00   ; 0x11 Shadow
 
 BrushRefs:
 dw IndieBottomBrush, -320*4
-dw PalmBrush, -320*10
+dw Palm1Brush, -320*10
 dw SnakeBrush, -320*2
 dw RockBrush, -320
 dw SkullBrush, 0
@@ -177,12 +177,51 @@ dw 0000100101111001b
 dw 0000001010010111b
 dw 0000000000101001b
 
-
-PalmBrush:
+Palm1Brush:
 db 0x11, 0x7
-dw 0010100000101010b
-dw 1011111010111110b
+dw 0000101011101011b
+dw 0010111010111110b
 dw 1011101011101011b
+dw 1010111110111011b
+dw 1011111010111110b
+dw 1011101010101110b
+dw 1110111001101110b
+dw 0011000101111011b
+dw 0000001001000000b
+dw 0000010101000000b
+dw 0000100100001100b
+dw 1100011100110000b
+dw 0010111000100011b
+dw 1110011101001000b
+dw 1001100101001000b
+dw 0100101000100100b
+dw 0000000100000000b
+
+Palm2Brush:
+db 0x11, 0x7
+dw 0010101100101011b
+dw 1011111010111110b
+dw 1110101111101011b
+dw 1010111110101011b
+dw 1011101011111010b
+dw 1110111010111011b
+dw 0011001001111000b
+dw 0000000111101100b
+dw 0000001001000000b
+dw 0000010101000000b
+dw 0000100100001100b
+dw 1100011100110000b
+dw 0010111000100011b
+dw 1110011101001000b
+dw 1001100101001000b
+dw 0100101000100100b
+dw 0000000100000000b
+
+Palm3Brush:
+db 0x11, 0x7
+dw 0010101100000000b
+dw 1011111010101011b
+dw 1011101011101110b
 dw 1010111110111011b
 dw 1011111010111110b
 dw 1011101010101110b
@@ -647,6 +686,7 @@ _SCREEN_POS equ 3 ; 2 bytes
 _MIRROR_ equ 5  ; 1 byte
 _STATE_ equ 6   ; 1 bytes
 _DIR_ equ 7     ; 1 byte
+_ANIM_ equ 8    ; 1 byte
 
 ; =========================================== MAGIC NUMBERS ====================
 
@@ -752,7 +792,7 @@ spawn_entities:
       mov byte [di+_MIRROR_], 0x0 ;  Save mirror (none)
       mov byte [di+_STATE_], STATE_STATIC ; Save basic state
       mov byte [di+_DIR_], 0x0 ; Save basic state
-
+      mov byte [di+_ANIM_], 0x0
 
       cmp bl, ID_SNAKE
       jz .set_explore
@@ -775,6 +815,16 @@ spawn_entities:
         and al, 0x01
         mov byte [di+_MIRROR_], al
       .skip_mirror:
+
+      cmp bl, ID_PALM
+      jz .set_random_anim
+      jmp .skip_random_anim
+      .set_random_anim:
+        xor al, ah
+        and al, 0x01
+        mov byte [di+_ANIM_], al
+
+      .skip_random_anim:
 
       cmp bl, ID_BRIDGE
       jz .set_interactive
@@ -1421,6 +1471,30 @@ draw_entities:
     mov bx, BrushRefs       ; Get brush reference table
     add bl, al              ; Shift to ref (id*2 bytes)
     mov dx, [bx]            ; Get brush data address
+
+  ; TEMPORARRY ANIMATION
+ ;   push bx
+    cmp ah, ID_PALM
+    jnz .skip_anim_palm
+
+      mov bl, [_GAME_TICK_]
+      and bl, 0x4
+      cmp bl, 0x4
+      jnz .skip_anim_palm
+
+      xor bx, bx
+      mov bl, [si+_ANIM_]
+      inc bl
+      ;cmp bl, 0x2
+      ;and bl, 0x2
+      ;mov byte [si+_ANIM_], bl
+     imul bx, 36 ; palm brush size
+      add dx, bx
+
+    .skip_anim_palm:
+;      pop bx
+  ; TEMPORARRY ANIMATION
+
     push dx                 ; Save address for SI
 
     add al, 0x2               ; offest is at next byte (+2)
