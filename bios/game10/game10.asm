@@ -814,17 +814,8 @@ spawn_entities:
         xor al, ah
         and al, 0x01
         mov byte [di+_MIRROR_], al
-      .skip_mirror:
-
-      cmp bl, ID_PALM
-      jz .set_random_anim
-      jmp .skip_random_anim
-      .set_random_anim:
-        xor al, ah
-        and al, 0x01
         mov byte [di+_ANIM_], al
-
-      .skip_random_anim:
+      .skip_mirror:
 
       cmp bl, ID_BRIDGE
       jz .set_interactive
@@ -1477,17 +1468,12 @@ draw_entities:
     cmp ah, ID_PALM
     jnz .skip_anim_palm
 
-      mov bl, [_GAME_TICK_]
-      and bl, 0x4
-      cmp bl, 0x4
-      jnz .skip_anim_palm
+      mov bx, [_GAME_TICK_]
+      ;inc bl
+      shr bx, 2
+      and bx, 2
 
-      xor bx, bx
-      mov bl, [si+_ANIM_]
-      inc bl
-      ;cmp bl, 0x2
-      ;and bl, 0x2
-      ;mov byte [si+_ANIM_], bl
+      mov byte [si+_ANIM_], bl
      imul bx, 36 ; palm brush size
       add dx, bx
 
