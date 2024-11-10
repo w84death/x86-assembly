@@ -693,6 +693,8 @@ BEEP_BITE equ 3
 BEEP_PICK equ 15
 BEEP_PUT equ 20
 BEEP_GOLD equ 5
+BEEP_STEP equ 25
+BEEP_WEB equ 30
 
 ; =========================================== INITIALIZATION ===================
 
@@ -1125,9 +1127,14 @@ check_keyboard:
     cmp byte [_WEB_LOCKED_], 0
     jz .skip_web_check
       dec byte [_WEB_LOCKED_]
+      mov bl, BEEP_WEB
+      call beep
       jmp .no_move
     .skip_web_check:
     mov word [si+_POS_], cx
+    mov bl, BEEP_STEP
+    call beep
+
     .no_move:
     mov word [_REQUEST_POSITION_], cx
 
@@ -1430,7 +1437,6 @@ draw_entities:
         jmp .save_move
 
        .save_move:
-
        mov cx, [si+_POS_]
        call conv_pos2mem
        mov dx, di
@@ -1441,6 +1447,11 @@ draw_entities:
        mov cx, [si+_POS_]
        mov [si+_POS_OLD_], cx
 
+       cmp byte [si+_ID_], ID_PLAYER
+       jnz .skip_step_beep
+       mov bl, BEEP_STEP
+       call beep
+       .skip_step_beep:
 
 
     .in_position:
