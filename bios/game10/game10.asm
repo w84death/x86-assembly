@@ -710,8 +710,6 @@ start:
     mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz) and 0 delay
     int 16h             ; Call BIOS
 
-  call start_fast_clock
-
 restart_game:
   mov word [_GAME_TICK_], 0x0
   mov byte [_GAME_STATE_], GSTATE_INTRO
@@ -943,7 +941,6 @@ skip_game_state_pregame:
 
 test byte [_GAME_STATE_], GSTATE_GAME
 jz skip_game_state_game
-
 
 ; =========================================== STOP SOUND ====================
 stop_game_sound:
@@ -1664,7 +1661,15 @@ vga_blit:
 
 ; =========================================== GAME TICK ========================
 
-hlt ; Halt the CPU until the next interrupt
+wait_for_tick:
+    xor ax, ax          ; Function 00h: Read system timer counter
+    int _TICK_          ; Returns tick count in CX:DX
+    mov bx, dx          ; Store the current tick count
+.wait_loop:
+    int _TICK_          ; Read the tick count again
+    cmp dx, bx
+    je .wait_loop       ; Loop until the tick count changes
+
 inc word [_GAME_TICK_]  ; Increment game tick
 
 ; =========================================== ESC OR LOOP ======================
@@ -1680,34 +1685,9 @@ inc word [_GAME_TICK_]  ; Increment game tick
 ; =========================================== BEEP STOP ========================
 
   call stop_beep
-  call stop_fast_clock
   mov ax, 0x4c00
   int 0x21
   ret                       ; Return to BIOS/DOS
-
-
-; ========================================== FAST CLOCK ========================
-start_fast_clock:
-  cli
-  mov al, 0x36
-  out 0x43, al
-  mov al, 0x6f
-  out 0x40, al
-  mov al, 0xba
-  out 0x40, al
-  sti
-  ret
-
-stop_fast_clock:
-  cli
-  mov al, 0x36
-  out 0x43, al
-  mov al, 0x0
-  out 0x40, al
-  mov al, 0x0
-  out 0x40, al
-  sti
-  ret
 
 
 ; =========================================== BEEP PC SPEAKER ==================
