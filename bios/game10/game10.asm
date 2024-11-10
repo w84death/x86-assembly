@@ -707,8 +707,8 @@ start:
     xor ax, ax
     xor bx, bx
     mov ah, 03h         ; BIOS function to set typematic rate and delay
-    mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
-    int 16h
+    mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz) and 0 delay
+    int 16h             ; Call BIOS
 
   call start_fast_clock
 
@@ -951,9 +951,7 @@ stop_game_sound:
   jnz .skip_stop_sound
   test byte [_GAME_STATE_], GSTATE_POSTGAME
   jnz .skip_stop_sound
-    in al, 0x61    ; Read the PIC chip
-    and al, 0x0FC  ; Clear bit 0 to disable the speaker
-    out 0x61, al   ; Write the updated value back to the PIC chip
+    call stop_beep
   .skip_stop_sound:
 
 ; =========================================== DRAWING LEVEL ====================
@@ -1666,17 +1664,8 @@ vga_blit:
 
 ; =========================================== GAME TICK ========================
 
-wait_for_tick:
-    xor ax, ax          ; Function 00h: Read system timer counter
-    int _TICK_          ; Returns tick count in CX:DX
-    mov bx, dx          ; Store the current tick count
-.wait_loop:
-    int _TICK_          ; Read the tick count again
-    cmp dx, bx
-    je .wait_loop       ; Loop until the tick count changes
-
+hlt ; Halt the CPU until the next interrupt
 inc word [_GAME_TICK_]  ; Increment game tick
-
 
 ; =========================================== ESC OR LOOP ======================
 
@@ -1690,16 +1679,14 @@ inc word [_GAME_TICK_]  ; Increment game tick
 
 ; =========================================== BEEP STOP ========================
 
-  in al, 0x61    ; Read the PIC chip
-  and al, 0x0FC  ; Clear bit 0 to disable the speaker
-  out 0x61, al   ; Write the updated value back to the PIC chip
-
+  call stop_beep
   call stop_fast_clock
-    mov ax, 0x4c00
-    int 0x21
-    ret                       ; Return to BIOS/DOS
+  mov ax, 0x4c00
+  int 0x21
+  ret                       ; Return to BIOS/DOS
 
 
+; ========================================== FAST CLOCK ========================
 start_fast_clock:
   cli
   mov al, 0x36
@@ -1738,6 +1725,12 @@ beep:
   out 0x42, al   ; Write the high byte of the frequency value
   in al, 0x61    ; Read the PIC chip
   or al, 0x03    ; Set bit 0 to enable the speaker
+  out 0x61, al   ; Write the updated value back to the PIC chip
+ret
+
+stop_beep:
+  in al, 0x61    ; Read the PIC chip
+  and al, 0x0FC  ; Clear bit 0 to disable the speaker
   out 0x61, al   ; Write the updated value back to the PIC chip
 ret
 
