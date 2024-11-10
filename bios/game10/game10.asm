@@ -45,7 +45,7 @@ db 0x00, 0x00, 0x75, 0x00   ; 0x11 Shadow
 
 BrushRefs:
 dw IndieBottomBrush, -320*4
-dw Palm1Brush, -320*10
+dw PalmBrush, -320*10
 dw SnakeBrush, -320*2
 dw RockBrush, -320
 dw SkullBrush, 0
@@ -177,51 +177,11 @@ dw 0000100101111001b
 dw 0000001010010111b
 dw 0000000000101001b
 
-Palm1Brush:
+PalmBrush:
 db 0x11, 0x7
 dw 0000101011101011b
 dw 0010111010111110b
 dw 1011101011101011b
-dw 1010111110111011b
-dw 1011111010111110b
-dw 1011101010101110b
-dw 1110111001101110b
-dw 0011000101111011b
-dw 0000001001000000b
-dw 0000010101000000b
-dw 0000100100001100b
-dw 1100011100110000b
-dw 0010111000100011b
-dw 1110011101001000b
-dw 1001100101001000b
-dw 0100101000100100b
-dw 0000000100000000b
-
-Palm2Brush:
-db 0x11, 0x7
-dw 0010101100101011b
-dw 1011111010111110b
-dw 1110101111101011b
-dw 1010111110101011b
-dw 1011101011111010b
-dw 1110111010111011b
-dw 0011001001111000b
-dw 0000000111101100b
-dw 0000001001000000b
-dw 0000010101000000b
-dw 0000100100001100b
-dw 1100011100110000b
-dw 0010111000100011b
-dw 1110011101001000b
-dw 1001100101001000b
-dw 0100101000100100b
-dw 0000000100000000b
-
-Palm3Brush:
-db 0x11, 0x7
-dw 0010101100000000b
-dw 1011111010101011b
-dw 1011101011101110b
 dw 1010111110111011b
 dw 1011111010111110b
 dw 1011101010101110b
@@ -661,7 +621,7 @@ db 0
 
 ; =========================================== MEMORY ADDRESSES =================
 
-_ENTITIES_ equ 0x1000         ; 5 bytes per entity, 64 entites cap, 320 bytes
+_ENTITIES_ equ 0x7000         ; 5 bytes per entity, 64 entites cap, 320 bytes
 _PLAYER_ENTITY_ID_ equ 0x1800 ; 2 bytes
 _REQUEST_POSITION_ equ 0x1802 ; 2 bytes
 _HOLDING_ID_ equ 0x1804       ; 1 byte
@@ -682,15 +642,16 @@ _TICK_ equ 1Ah                ; BIOS tick
 
 _ID_ equ 0      ; 1 byte
 _POS_ equ 1     ; 2 bytes
-_SCREEN_POS equ 3 ; 2 bytes
-_MIRROR_ equ 5  ; 1 byte
-_STATE_ equ 6   ; 1 bytes
-_DIR_ equ 7     ; 1 byte
-_ANIM_ equ 8    ; 1 byte
+_POS_OLD_ equ 3 ; 2 bytes
+_SCREEN_POS_ equ 5; 2 bytes
+_MIRROR_ equ 7  ; 1 byte
+_STATE_ equ 8   ; 1 bytes
+_DIR_ equ 9     ; 1 byte
+_ANIM_ equ 10    ; 1 byte
 
 ; =========================================== MAGIC NUMBERS ====================
 
-ENTITY_SIZE  equ 10
+ENTITY_SIZE  equ 11
 MAX_ENTITIES equ 64
 LEVEL_START_POSITION equ 320*68+32
 COLOR_SKY equ 0x3b3b
@@ -749,6 +710,8 @@ start:
     mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz)
     int 16h
 
+  call start_fast_clock
+
 restart_game:
   mov word [_GAME_TICK_], 0x0
   mov byte [_GAME_STATE_], GSTATE_INTRO
@@ -787,8 +750,19 @@ spawn_entities:
 
     .next_in_group:
       mov byte [di], bl           ; Save sprite id
-      mov ax, [si]          ; Get position
+      mov ax, [si]                ; Get position
       mov [di+_POS_], ax          ; Save position
+      mov [di+_POS_OLD_], ax      ; Save old position
+
+      push cx
+      push di
+      mov cx, ax
+      call conv_pos2mem
+      mov ax, di
+      pop di
+      pop cx
+      mov [di+_SCREEN_POS_], ax
+
       mov byte [di+_MIRROR_], 0x0 ;  Save mirror (none)
       mov byte [di+_STATE_], STATE_STATIC ; Save basic state
       mov byte [di+_DIR_], 0x0 ; Save basic state
@@ -1096,6 +1070,9 @@ check_keyboard:
 
   mov si, [_PLAYER_ENTITY_ID_]
   mov cx, [si+_POS_]   ; Load player position into CX (Y in CH, X in CL)
+  mov bx, [si+_POS_OLD_]
+  cmp cx, bx
+  jnz .no_key_press
 
   mov ah, 00h         ; BIOS keyboard read function
   int 16h             ; Call BIOS interrupt
@@ -1174,10 +1151,11 @@ ai_entities:
 
     cmp byte [si+_STATE_], STATE_EXPLORING
     jnz .skip_explore
-      mov ax, [_GAME_TICK_]
-      add ax, cx
-      test ax, 0x2
-      jz .skip_explore
+
+    mov ax, [si+_POS_]
+    mov bx, [si+_POS_OLD_]
+    cmp ax, bx
+    jnz .skip_explore
 
       .explore:
         mov cx, [si+_POS_]
@@ -1423,23 +1401,69 @@ draw_entities:
       jz .skip_entity
     .skip_hide_player:
 
+    ; smooth move here
+    mov ax, [si+_POS_OLD_]
     mov cx, [si+_POS_]
-    call conv_pos2mem       ; Convert position to memory
+    cmp cx, ax
+    jz .in_position
 
+       xor bx, bx
+
+       cmp al, cl
+       jl .move_left
+       jg .move_right
+       cmp ah, ch
+       jl .move_down
+       jg .move_up
+
+       jmp .in_position
+
+        .move_left:
+        add bx, 2
+        jmp .save_move
+
+        .move_right:
+        sub bx, 2
+        jmp .save_move
+
+        .move_down:
+        add bx, 320*2
+        jmp .save_move
+
+        .move_up:
+        sub bx, 320*2
+        jmp .save_move
+
+       .save_move:
+
+       mov cx, [si+_POS_]
+       call conv_pos2mem
+       mov dx, di
+       add [si+_SCREEN_POS_], bx
+       mov di, [si+_SCREEN_POS_]
+       cmp dx, di
+       jnz .pos_calculated
+       mov cx, [si+_POS_]
+       mov [si+_POS_OLD_], cx
+
+
+
+    .in_position:
+    call conv_pos2mem  ; screen pos in DI
+    .pos_calculated:
     cmp byte [si+_STATE_], STATE_FOLLOW
     jnz .skip_follow
       push si
       mov si, [_PLAYER_ENTITY_ID_]
       mov cx, [si+_POS_]   ; Load player position into CX (Y in CH, X in CL)
-      pop si
-      mov word [si+_POS_], cx ; Save new position
-      call conv_pos2mem       ; Convert position to memory
+      mov di, [si+_SCREEN_POS_]
       sub di, 320*14          ; Move above player
+      pop si
+      mov word [si+_POS_], cx ; Save new position to holding item
       jmp .skip_draw_shadow
     .skip_follow:
 
     .draw_shadow:
-    ; check if on other entity (bridge)
     test byte [si+_STATE_], STATE_EXPLORING
     jnz .skip_draw_shadow
     cmp byte [si+_ID_], ID_PLAYER
@@ -1462,24 +1486,6 @@ draw_entities:
     mov bx, BrushRefs       ; Get brush reference table
     add bl, al              ; Shift to ref (id*2 bytes)
     mov dx, [bx]            ; Get brush data address
-
-  ; TEMPORARRY ANIMATION
- ;   push bx
-    cmp ah, ID_PALM
-    jnz .skip_anim_palm
-
-      mov bx, [_GAME_TICK_]
-      ;inc bl
-      shr bx, 2
-      and bx, 2
-
-      mov byte [si+_ANIM_], bl
-     imul bx, 36 ; palm brush size
-      add dx, bx
-
-    .skip_anim_palm:
-;      pop bx
-  ; TEMPORARRY ANIMATION
 
     push dx                 ; Save address for SI
 
@@ -1688,9 +1694,34 @@ inc word [_GAME_TICK_]  ; Increment game tick
   and al, 0x0FC  ; Clear bit 0 to disable the speaker
   out 0x61, al   ; Write the updated value back to the PIC chip
 
+  call stop_fast_clock
     mov ax, 0x4c00
     int 0x21
     ret                       ; Return to BIOS/DOS
+
+
+start_fast_clock:
+  cli
+  mov al, 0x36
+  out 0x43, al
+  mov al, 0x6f
+  out 0x40, al
+  mov al, 0xba
+  out 0x40, al
+  sti
+  ret
+
+stop_fast_clock:
+  cli
+  mov al, 0x36
+  out 0x43, al
+  mov al, 0x0
+  out 0x40, al
+  mov al, 0x0
+  out 0x40, al
+  sti
+  ret
+
 
 ; =========================================== BEEP PC SPEAKER ==================
 ; Set the speaker frequency
@@ -1752,26 +1783,30 @@ check_friends:
   xor bx, bx
   mov ax, cx
 
+  ;cmp byte dl, 0x1
+  ;jz .skip_check
+
   mov cl, MAX_ENTITIES
   mov si, _ENTITIES_
   .next_entity:
-    cmp byte dl, 0x1
-    jz .skip_check
     cmp byte [si+_STATE_], STATE_FOLLOW
     jle .skip_this_entity
     .skip_check:
+
     cmp word [si+_POS_], ax
-    jnz .skip_this_entity
-      inc bx
-      jmp .done
+    jz .hit
     .skip_this_entity:
     add si, ENTITY_SIZE
   loop .next_entity
+  jmp .done
+  .hit:
+  mov bx, 0x1
+  cmp bx,0x1
 
   .done:
   pop cx
   pop si
-  cmp bx, 0x1
+
 ret
 
 ; =========================================== CHECK WATER TILE ================
