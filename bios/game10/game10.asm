@@ -653,6 +653,7 @@ _ANIM_ equ 10    ; 1 byte
 
 ENTITY_SIZE  equ 11
 MAX_ENTITIES equ 64
+ENTITIES_SPEED equ 2
 LEVEL_START_POSITION equ 320*68+32
 COLOR_SKY equ 0x3b3b
 COLOR_WATER equ 0x3535
@@ -1065,14 +1066,15 @@ check_keyboard:
   int 16h             ; Call BIOS interrupt
   jz .no_key_press           ; Jump if Zero Flag is set (no key pressed)
 
+  mov ah, 00h         ; BIOS keyboard read function
+  int 16h             ; Call BIOS interrupt
+
   mov si, [_PLAYER_ENTITY_ID_]
   mov cx, [si+_POS_]   ; Load player position into CX (Y in CH, X in CL)
   mov bx, [si+_POS_OLD_]
   cmp cx, bx
   jnz .no_key_press
 
-  mov ah, 00h         ; BIOS keyboard read function
-  int 16h             ; Call BIOS interrupt
 
   .check_spacebar:
   cmp ah, 39h         ; Compare scan code with spacebar
@@ -1421,19 +1423,19 @@ draw_entities:
        jmp .in_position
 
         .move_left:
-        add bx, 2
+        add bx, ENTITIES_SPEED
         jmp .save_move
 
         .move_right:
-        sub bx, 2
+        sub bx, ENTITIES_SPEED
         jmp .save_move
 
         .move_down:
-        add bx, 320*2
+        add bx, 320*ENTITIES_SPEED
         jmp .save_move
 
         .move_up:
-        sub bx, 320*2
+        sub bx, 320*ENTITIES_SPEED
         jmp .save_move
 
        .save_move:
