@@ -44,7 +44,7 @@ db 0x00, 0x00, 0x75, 0x00   ; 0x11 Shadow
 ; Data: offset to brush data, Y shift
 
 BrushRefs:
-dw IndieBottomBrush, -320*4
+dw IndieBottom1Brush, -320*4
 dw PalmBrush, -320*10
 dw SnakeBrush, -320*2
 dw RockBrush, -320
@@ -92,7 +92,7 @@ dw 0000001110110000b
 dw 0000000010100000b
 dw 0000010000000000b
 
-IndieBottomBrush:
+IndieBottom1Brush:
 db 0xa, 0x2
 dw 0011100000000000b
 dw 1101101100000000b
@@ -104,6 +104,31 @@ dw 0010101010000000b
 dw 0010100010000000b
 dw 0011000011000000b
 dw 0001010001010000b
+
+IndieBottom2Brush:
+db 0xa, 0x2
+dw 0000100000000000b
+dw 0011101100000000b
+dw 1101100110000000b
+dw 0101101010000000b
+dw 0101101010000000b
+dw 0010010111000000b
+dw 0000101010000000b
+dw 0000101000000000b
+dw 0000001100000000b
+dw 0000000101000000b
+
+IndieBottom3Brush:
+db 0x8, 0x2
+dw 0011011100000000b
+dw 1101100110000000b
+dw 0101101010000000b
+dw 0101101010000000b
+dw 0001010111000000b
+dw 0111101010000000b
+dw 0100000010000100b
+dw 0000000000110100b
+
 
 SnakeBrush:
 db 0x8, 0x8
@@ -621,20 +646,21 @@ db 0
 
 ; =========================================== MEMORY ADDRESSES =================
 
-_ENTITIES_ equ 0x7000         ; 5 bytes per entity, 64 entites cap, 320 bytes
-_PLAYER_ENTITY_ID_ equ 0x1800 ; 2 bytes
-_REQUEST_POSITION_ equ 0x1802 ; 2 bytes
-_HOLDING_ID_ equ 0x1804       ; 1 byte
-_SCORE_ equ 0x1805            ; 1 byte
-_SCORE_TARGET_ equ 0x1806     ; 1 byte
-_GAME_TICK_ equ 0x1807        ; 2 bytes
-_GAME_STATE_ equ 0x1809       ; 1 byte
-_WEB_LOCKED_ equ 0x180a       ; 1 byte
-_LAST_TICK_ equ 0x180b        ; 2 bytes
-_CURRENT_TUNE_ equ 0x180d     ; 2 bytes
-_NEXT_TUNE_ equ 0x180f        ; 2 bytes
-_NOTE_TIMER_ equ 0x1811       ; 1 byte
-_NOTE_TEMPO_ equ 0x1812       ; 1 byte
+
+_PLAYER_ENTITY_ID_ equ 0x1000 ; 2 bytes
+_REQUEST_POSITION_ equ 0x1002 ; 2 bytes
+_HOLDING_ID_ equ 0x1004       ; 1 byte
+_SCORE_ equ 0x1005            ; 1 byte
+_SCORE_TARGET_ equ 0x1006     ; 1 byte
+_GAME_TICK_ equ 0x1007        ; 2 bytes
+_GAME_STATE_ equ 0x1009       ; 1 byte
+_WEB_LOCKED_ equ 0x100a       ; 1 byte
+_LAST_TICK_ equ 0x100b        ; 2 bytes
+_CURRENT_TUNE_ equ 0x100d     ; 2 bytes
+_NEXT_TUNE_ equ 0x100f        ; 2 bytes
+_NOTE_TIMER_ equ 0x1011       ; 1 byte
+_NOTE_TEMPO_ equ 0x1012       ; 1 byte
+_ENTITIES_ equ 0x1020         ; 11 bytes per entity, 64 entites cap, 320 bytes
 
 _DBUFFER_MEMORY_ equ 0x2000   ; 64k bytes
 _VGA_MEMORY_ equ 0xA000       ; 64k bytes
@@ -647,7 +673,7 @@ _SCREEN_POS_ equ 5; 2 bytes
 _MIRROR_ equ 7  ; 1 byte
 _STATE_ equ 8   ; 1 bytes
 _DIR_ equ 9     ; 1 byte
-_ANIM_ equ 10    ; 1 byte
+_ANIM_ equ 10    ; 1 byte ; 11 bytes total
 
 ; =========================================== MAGIC NUMBERS ====================
 
@@ -1502,18 +1528,49 @@ draw_entities:
     add di, [BrushRefs + bx]  ; Get shift and apply to destination position
     mov dl, [si+_MIRROR_]     ; Get brush mirror flag
 
+
+    xor bx,bx
+    cmp ah, ID_PLAYER
+    jnz .skip_player_anim
+      cmp byte [si+_ANIM_], 0x1
+      jnz .skip1
+      mov bx, 22
+      .skip1:
+      cmp byte [si+_ANIM_], 0x2
+      jnz .skip2
+      mov bx, 22+22
+      .skip2:
+
+      inc byte [si+_ANIM_]
+      cmp byte [si+_ANIM_], 0x3
+      jnz .skip_ovf
+        mov byte [si+_ANIM_], 0x0
+      .skip_ovf:
+
+    .skip_player_anim:
+
     pop si                  ; Get address
+    add si, bx
+
     call draw_sprite
 
     cmp ah, ID_PLAYER
     jnz .skip_player_draw
       mov si, IndieTopBrush
       sub di, 320*4
+
+      cmp bx, 22+22
+      jnz .skip_anim_move
+        add di, 320
+      .skip_anim_move:
+
       cmp byte [_HOLDING_ID_], 0x0
       jz .skip_player_holding
          mov si, IndieTop2Brush
-       .skip_player_holding:
+      .skip_player_holding:
+
       call draw_sprite
+
       cmp byte [_WEB_LOCKED_], 0
       jz .skip_web_draw
         mov si, WebBrush
