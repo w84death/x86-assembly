@@ -660,9 +660,9 @@ _CURRENT_TUNE_ equ 0x100d     ; 2 bytes
 _NEXT_TUNE_ equ 0x100f        ; 2 bytes
 _NOTE_TIMER_ equ 0x1011       ; 1 byte
 _NOTE_TEMPO_ equ 0x1012       ; 1 byte
-_ENTITIES_ equ 0x1020         ; 11 bytes per entity, 64 entites cap, 320 bytes
+_ENTITIES_ equ 0x1200         ; 11 bytes per entity, 64 entites cap, 320 bytes
 
-_DBUFFER_MEMORY_ equ 0x2000   ; 64k bytes
+_DBUFFER_MEMORY_ equ 0x3000   ; 64k bytes
 _VGA_MEMORY_ equ 0xA000       ; 64k bytes
 _TICK_ equ 1Ah                ; BIOS tick
 
@@ -1418,7 +1418,6 @@ draw_entities:
     cmp byte [si+_STATE_], STATE_DEACTIVATED
     jz .skip_entity
 
-    .hire_player:
     test byte [_GAME_STATE_], GSTATE_PREGAME
     jnz .hide_player
     test byte [_GAME_STATE_], GSTATE_POSTGAME
@@ -1826,25 +1825,22 @@ check_friends:
   xor bx, bx
   mov ax, cx
 
-  ;cmp byte dl, 0x1
-  ;jz .skip_check
-
-  mov cl, MAX_ENTITIES
+  mov cx, MAX_ENTITIES
   mov si, _ENTITIES_
   .next_entity:
     cmp byte [si+_STATE_], STATE_FOLLOW
     jle .skip_this_entity
-    .skip_check:
-
     cmp word [si+_POS_], ax
     jz .hit
     .skip_this_entity:
     add si, ENTITY_SIZE
   loop .next_entity
+
   jmp .done
+
   .hit:
   mov bx, 0x1
-  cmp bx,0x1
+  cmp bx, 0x1
 
   .done:
   pop cx
