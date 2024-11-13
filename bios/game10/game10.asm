@@ -44,7 +44,7 @@ db 0x00, 0x00, 0x75, 0x00   ; 0x11 Shadow
 ; Data: offset to brush data, Y shift
 
 BrushRefs:
-dw IndieBottom1Brush, -320*4
+dw IndieBottomBrush, -320*4
 dw PalmBrush, -320*10
 dw SnakeBrush, -320*2
 dw RockBrush, -320
@@ -92,7 +92,7 @@ dw 0000001110110000b
 dw 0000000010100000b
 dw 0000010000000000b
 
-IndieBottom1Brush:
+IndieBottomBrush:
 db 0xa, 0x2
 dw 0011100000000000b
 dw 1101101100000000b
@@ -105,8 +105,7 @@ dw 0010100010000000b
 dw 0011000011000000b
 dw 0001010001010000b
 
-IndieBottom3Brush:
-db 0x8, 0x2
+IndieBottomFrame2Brush:
 dw 0011011100000000b
 dw 1101100110000000b
 dw 0101101010000000b
@@ -115,6 +114,7 @@ dw 0001010111000000b
 dw 0111101010000000b
 dw 0100000010000100b
 dw 0000000000110100b
+dw 0, 0
 
 SnakeBrush:
 db 0x8, 0x8
@@ -801,7 +801,6 @@ spawn_entities:
         xor al, ah
         and al, 0x01
         mov byte [di+_MIRROR_], al
-        mov byte [di+_ANIM_], al
       .skip_mirror:
 
       cmp bl, ID_BRIDGE
@@ -851,6 +850,7 @@ draw_ocean:
 
 ;jmp skip_more_ocean
 draw_more_ocean:
+  xor dx,dx
   mov si, Ocean1Brush
   mov di, 320*62
   mov ax, [_GAME_TICK_]
@@ -1459,7 +1459,7 @@ draw_entities:
        jnz .pos_calculated
        mov cx, [si+_POS_]
        mov [si+_POS_OLD_], cx
-
+       mov byte [si+_ANIM_], 0x0
        cmp byte [si+_ID_], ID_PLAYER
        jnz .skip_step_beep
        mov bl, BEEP_STEP
@@ -1481,6 +1481,7 @@ draw_entities:
       mov word [si+_POS_], cx ; Save new position to holding item
       jmp .skip_draw_shadow
     .skip_follow:
+
 
     .draw_shadow:
     test byte [si+_STATE_], STATE_EXPLORING
@@ -1513,25 +1514,18 @@ draw_entities:
     add di, [BrushRefs + bx]  ; Get shift and apply to destination position
     mov dl, [si+_MIRROR_]     ; Get brush mirror flag
 
-    xor bx,bx
     cmp ah, ID_PLAYER
     jnz .skip_player_anim
-
       mov ax, [si+_POS_]
       cmp ax, [si+_POS_OLD_]
       mov ah, ID_PLAYER
       jz .skip_player_anim
-
-      mov bl, [si+_ANIM_]
-     imul bx, 22
-
-      ;inc byte [si+_ANIM_]      ; next anim
-      xor byte [si+_ANIM_], 0x1
-
+        xor byte [si+_ANIM_], 0x1
     .skip_player_anim:
-    pop si                  ; Get address
-    add si, bx
 
+    mov dh, [si+_ANIM_]       ; Get anination frame
+
+    pop si                  ; Get address
     call draw_sprite
 
     cmp ah, ID_PLAYER
@@ -1539,7 +1533,7 @@ draw_entities:
       mov si, IndieTopBrush
       sub di, 320*4
 
-      cmp bx, 22
+      cmp dh, 0x1       ; move head down on second frame
       jnz .skip_anim_move
         add di, 320
       .skip_anim_move:
@@ -1549,6 +1543,7 @@ draw_entities:
          mov si, IndieTop2Brush
       .skip_player_holding:
 
+      xor dh, dh
       call draw_sprite
 
       cmp byte [_WEB_LOCKED_], 0
@@ -1566,24 +1561,25 @@ draw_entities:
       and ax, 0x4
       cmp ax, 0x2
       jl .skip_gold_draw
-      xor dl, dl ; no mirror
+      xor dx, dx ; no mirror
       mov si, GoldBrush
       call draw_sprite
     .skip_gold_draw:
 
     cmp ah, ID_CRAB
     jnz .skip_crab
-      mov dl, 0
+      mov dx, 0
       mov si, CrabClawBrush
       add di, 8
       call draw_sprite
-      mov dl, 1
+      mov dx, 1
       sub di, 320+16
       call draw_sprite
     .skip_crab:
 
     cmp ah, ID_CHEST
     jnz .skip_chest
+     xor dx,dx
       cmp byte [_HOLDING_ID_], ID_GOLD
       jnz .skip_open_chest
         mov si, ChestTopBrush
@@ -1931,12 +1927,14 @@ ret
 ; Expects:
 ; DI - positon (linear)
 ; DL - settings: 0 normal, 1 mirrored x, 2 mirrored y, 3 mirrored x&y
+; DH - frame number
 ; Return: -
 
 draw_sprite:
   pusha
   xor cx, cx
   mov byte cl, [si]       ; lines
+
   inc si
 
   xor ax, ax
@@ -1946,6 +1944,11 @@ draw_sprite:
   shl ax, 0x2              ; each set is 4x 1 byte
   mov bp, ax
   add bp, PaletteSets
+
+  movzx ax, dh  ; Get frame
+ imul ax, cx    ; muliply by lines
+  shl ax, 0x1   ; *2 bytes per line
+  add si, ax    ; Mobe to the frame memory position
 
   test dl, 0x1              ; Check x mirror
   jz .no_x_mirror
