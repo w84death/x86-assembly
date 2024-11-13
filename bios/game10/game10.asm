@@ -105,32 +105,6 @@ dw 0010100010000000b
 dw 0011000011000000b
 dw 0001010001010000b
 
-IndieBottom2Brush:
-db 0xa, 0x2
-dw 0000100000000000b
-dw 0011101100000000b
-dw 1101100110000000b
-dw 0101101010000000b
-dw 0101101010000000b
-dw 0010010111000000b
-dw 0000101010000000b
-dw 0000101000000000b
-dw 0000001100000000b
-dw 0000000101000000b
-
-IndieBottom4Brush:
-db 0xa, 0x2
-dw 0011100000000000b
-dw 1101101100000000b
-dw 0101100110000000b
-dw 0101101010000000b
-dw 0010101010000000b
-dw 0000010111000000b
-dw 0010101010000000b
-dw 0010100010000000b
-dw 0011000011000000b
-dw 0001010001010000b
-
 IndieBottom3Brush:
 db 0x8, 0x2
 dw 0011011100000000b
@@ -141,7 +115,6 @@ dw 0001010111000000b
 dw 0111101010000000b
 dw 0100000010000100b
 dw 0000000000110100b
-
 
 SnakeBrush:
 db 0x8, 0x8
@@ -1544,10 +1517,16 @@ draw_entities:
     cmp ah, ID_PLAYER
     jnz .skip_player_anim
 
-    mov bl, [si+_ANIM_]
-    imul bx, 22               ; offset for brush animation
-    inc byte [si+_ANIM_]      ; next anim
-    and byte [si+_ANIM_], 0x3
+      mov ax, [si+_POS_]
+      cmp ax, [si+_POS_OLD_]
+      mov ah, ID_PLAYER
+      jz .skip_player_anim
+
+      mov bl, [si+_ANIM_]
+     imul bx, 22
+
+      ;inc byte [si+_ANIM_]      ; next anim
+      xor byte [si+_ANIM_], 0x1
 
     .skip_player_anim:
     pop si                  ; Get address
@@ -1560,7 +1539,7 @@ draw_entities:
       mov si, IndieTopBrush
       sub di, 320*4
 
-      cmp bx, 22+22
+      cmp bx, 22
       jnz .skip_anim_move
         add di, 320
       .skip_anim_move:
