@@ -118,6 +118,19 @@ dw 0000101000000000b
 dw 0000001100000000b
 dw 0000000101000000b
 
+IndieBottom4Brush:
+db 0xa, 0x2
+dw 0011100000000000b
+dw 1101101100000000b
+dw 0101100110000000b
+dw 0101101010000000b
+dw 0010101010000000b
+dw 0000010111000000b
+dw 0010101010000000b
+dw 0010100010000000b
+dw 0011000011000000b
+dw 0001010001010000b
+
 IndieBottom3Brush:
 db 0x8, 0x2
 dw 0011011100000000b
@@ -1527,27 +1540,16 @@ draw_entities:
     add di, [BrushRefs + bx]  ; Get shift and apply to destination position
     mov dl, [si+_MIRROR_]     ; Get brush mirror flag
 
-
     xor bx,bx
     cmp ah, ID_PLAYER
     jnz .skip_player_anim
-      cmp byte [si+_ANIM_], 0x1
-      jnz .skip1
-      mov bx, 22
-      .skip1:
-      cmp byte [si+_ANIM_], 0x2
-      jnz .skip2
-      mov bx, 22+22
-      .skip2:
 
-      inc byte [si+_ANIM_]
-      cmp byte [si+_ANIM_], 0x3
-      jnz .skip_ovf
-        mov byte [si+_ANIM_], 0x0
-      .skip_ovf:
+    mov bl, [si+_ANIM_]
+    imul bx, 22               ; offset for brush animation
+    inc byte [si+_ANIM_]      ; next anim
+    and byte [si+_ANIM_], 0x3
 
     .skip_player_anim:
-
     pop si                  ; Get address
     add si, bx
 
