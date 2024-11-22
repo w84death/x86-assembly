@@ -11,7 +11,6 @@
 ; License: MIT
 
 org 0x100
-
 use16
 
 jmp start
@@ -41,7 +40,8 @@ _NOTE_TIMER_ equ 0x1011       ; 1 byte
 _NOTE_TEMPO_ equ 0x1012       ; 1 byte
 _ENTITIES_ equ 0x1200         ; 11 bytes per entity, 64 entites cap, 320 bytes
 
-_DBUFFER_MEMORY_ equ 0x3000   ; 64k bytes
+_DBUFFER_MEMORY_ equ 0x5000   ; 64k bytes
+_BG_BUFFER_MEMORY_ equ 0x2000 ; 64k bytes
 _VGA_MEMORY_ equ 0xA000       ; 64k bytes
 _TICK_ equ 1Ah                ; BIOS tick
 
@@ -100,9 +100,6 @@ start:
     mov ax,0x13                             ; Init VGA 320x200x256
     int 0x10                                ; Video BIOS interrupt
 
-    push _DBUFFER_MEMORY_                 ; Set doublebuffer memory
-    pop es                                  ; as target
-
   set_keyboard_rate:
     xor ax, ax
     xor bx, bx
@@ -119,7 +116,6 @@ restart_game:
   mov word [_CURRENT_TUNE_], tune_intro
   mov word [_NEXT_TUNE_], tune_intro           ; loop intro tune
   mov byte [_NOTE_TIMER_], 0x0
-
 
 ; =========================================== SPAWN ENTITIES ==================
 ; Expects: entities array from level data
@@ -209,13 +205,13 @@ spawn_entities:
 
 mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
 
-; =========================================== GAME LOGIC =======================
-
-game_loop:
-  xor di, di
-  xor si, si
 
 ; =========================================== DRAW BACKGROUND ==================
+
+push _BG_BUFFER_MEMORY_
+pop es                                  ; as target
+xor di,di
+xor si,si
 
 draw_bg:
   mov ax, COLOR_SKY               ; Set starting sky color
@@ -233,7 +229,6 @@ draw_ocean:
   mov cx, 320*70              ; 70 lines of ocean
   rep stosw
 
-;jmp skip_more_ocean
 draw_more_ocean:
   xor dx,dx
   mov si, Ocean1Brush
@@ -270,6 +265,24 @@ draw_more_ocean:
   loop .draw_line
 skip_more_ocean:
 
+; =========================================== GAME LOGIC =======================
+
+game_loop:
+  push ds
+
+  push _BG_BUFFER_MEMORY_
+  pop ds
+  xor si, si
+
+  push _DBUFFER_MEMORY_
+  pop es               
+  xor di, di
+
+  mov cx, 0x7D00
+  rep movsw
+
+  pop ds
+
 
 ; =========================================== INTRO ====================
 
@@ -298,6 +311,7 @@ jz skip_game_state_intro
   mov byte [_GAME_STATE_], GSTATE_PREGAME
   add byte [_GAME_STATE_], GSTATE_GAME
   mov word [_GAME_TICK_], 0x0
+  call draw_level
   .no_key_press:
 
 skip_game_state_intro:
@@ -351,97 +365,6 @@ stop_game_sound:
     call stop_beep
   .skip_stop_sound:
 
-; =========================================== DRAWING LEVEL ====================
-
-
-draw_level:
-  mov si, LevelData
-  mov di, LEVEL_START_POSITION
-  xor cx, cx
-  .next_meta_tile:
-    push cx
-    push si
-
-    mov byte al, [si]     ; Read level cell
-    mov bl, al            ; Make a copy
-    shr bl, 0x4           ; Remove first nible
-    and bl, 0x3           ; Read XY mirroring - BL
-
-    and ax, 0xf           ; Read first nibble - AX
-    jnz .not_empty
-      add di, 16
-      jmp .skip_meta_tile
-    .not_empty:
-
-    mov si, MetaTiles
-    shl ax, 0x2           ; ID*4 Move to position; 4 bytes per tile
-    add si, ax            ; Meta-tile address
-
-    mov     dx, 0x0123       ; Default order: 0, 1, 2, 3
-    .check_y:
-      test    bl, 2
-      jz      .check_x
-      xchg    dh, dl           ; Swap top and bottom rows (Order: 2, 3, 0, 1)
-    .check_x:
-      test    bl, 1
-      jz      .push_tiles
-      ror     dh, 4            ; Swap nibbles in dh (tiles in positions 0 and 1)
-      ror     dl, 4            ; Swap nibbles in dl (tiles in positions 2 and 3)
-
-    .push_tiles:
-        mov     cx, 4            ; 4 tiles to push
-    .next_tile_push:
-        push    dx               ; Push the tile ID
-        ror     dx, 4            ; Rotate dx to get the next tile ID in place
-        loop    .next_tile_push
-
-    mov cx, 0x4           ; 2x2 tiles
-    .next_tile:
-      pop dx              ; Get tile order
-      and dx, 0x7
-      push si
-      add si, dx
-      mov byte al, [si]   ; Read meta-tile with order
-      pop si
-      mov bh, al
-      shr bh, 4            ; Extract the upper 4 bits
-      and bh, 3            ; Mask to get the mirror flags (both X and Y)
-
-      xor bh, bl          ; invert original tile mirror by meta-tile mirror
-      mov dl, bh          ; set final mirror for tile
-
-      and ax, 0xf         ; First nibble
-      dec ax              ; We do not have tile 0, shifting values
-     imul ax, 18          ; Move to position
-
-      push si
-      mov si, TerrainTiles
-      add si, ax
-      call draw_sprite
-      pop si
-
-      add di, 8
-
-      cmp cx, 0x3
-      jnz .skip_set_new_line
-        add di, 320*8-16  ; Word wrap
-      .skip_set_new_line:
-
-    loop .next_tile
-    sub di, 320*8
-    .skip_meta_tile:
-
-    pop si
-    inc si
-    pop cx
-    inc cx
-    test cx, 0xf
-    jnz .no_new_line
-      add di, 320*16-(16*16)  ; Move to the next display line
-    .no_new_line:
-
-    cmp cx, 0x80           ; 128 = 16*8
-  jl .next_meta_tile
 
 
 test byte [_GAME_STATE_], GSTATE_PREGAME
@@ -1081,9 +1004,10 @@ vga_blit:
     pop es                                  ; as target
     push _DBUFFER_MEMORY_                 ; Set doublebuffer memory
     pop ds                                  ; as source
-    mov cx,0x7D00                           ; Half of 320x200 pixels
     xor si,si                               ; Clear SI
     xor di,di                               ; Clear DI
+    
+    mov cx,0x7D00                           ; Half of 320x200 pixels
     rep movsw                               ; Push words (2x pixels)
 
     pop ds
@@ -1249,7 +1173,105 @@ play_tune:
 ret
 
 
-; skip
+; =========================================== DRAWING LEVEL ====================
+draw_level:
+  push es
+  push _BG_BUFFER_MEMORY_
+  pop es                                  ; as target
+
+  mov si, LevelData
+  mov di, LEVEL_START_POSITION
+  xor cx, cx
+  .next_meta_tile:
+    push cx
+    push si
+
+    mov byte al, [si]     ; Read level cell
+    mov bl, al            ; Make a copy
+    shr bl, 0x4           ; Remove first nible
+    and bl, 0x3           ; Read XY mirroring - BL
+
+    and ax, 0xf           ; Read first nibble - AX
+    jnz .not_empty
+      add di, 16
+      jmp .skip_meta_tile
+    .not_empty:
+
+    mov si, MetaTiles
+    shl ax, 0x2           ; ID*4 Move to position; 4 bytes per tile
+    add si, ax            ; Meta-tile address
+
+    mov     dx, 0x0123       ; Default order: 0, 1, 2, 3
+    .check_y:
+      test    bl, 2
+      jz      .check_x
+      xchg    dh, dl           ; Swap top and bottom rows (Order: 2, 3, 0, 1)
+    .check_x:
+      test    bl, 1
+      jz      .push_tiles
+      ror     dh, 4            ; Swap nibbles in dh (tiles in positions 0 and 1)
+      ror     dl, 4            ; Swap nibbles in dl (tiles in positions 2 and 3)
+
+    .push_tiles:
+        mov     cx, 4            ; 4 tiles to push
+    .next_tile_push:
+        push    dx               ; Push the tile ID
+        ror     dx, 4            ; Rotate dx to get the next tile ID in place
+        loop    .next_tile_push
+
+    mov cx, 0x4           ; 2x2 tiles
+    .next_tile:
+      pop dx              ; Get tile order
+      and dx, 0x7
+      push si
+      add si, dx
+      mov byte al, [si]   ; Read meta-tile with order
+      pop si
+      mov bh, al
+      shr bh, 4            ; Extract the upper 4 bits
+      and bh, 3            ; Mask to get the mirror flags (both X and Y)
+
+      xor bh, bl          ; invert original tile mirror by meta-tile mirror
+      mov dl, bh          ; set final mirror for tile
+
+      and ax, 0xf         ; First nibble
+      dec ax              ; We do not have tile 0, shifting values
+     imul ax, 18          ; Move to position
+
+      push si
+      mov si, TerrainTiles
+      add si, ax
+      call draw_sprite
+      pop si
+
+      add di, 8
+
+      cmp cx, 0x3
+      jnz .skip_set_new_line
+        add di, 320*8-16  ; Word wrap
+      .skip_set_new_line:
+
+    loop .next_tile
+    sub di, 320*8
+    .skip_meta_tile:
+
+    pop si
+    inc si
+    pop cx
+    inc cx
+    test cx, 0xf
+    jnz .no_new_line
+      add di, 320*16-(16*16)  ; Move to the next display line
+    .no_new_line:
+
+    cmp cx, 0x80           ; 128 = 16*8
+  jl .next_meta_tile
+  
+  pop es
+ret
+
+
+; =========================================== DRAWING SHIP ====================
 ; in: bx - wiosla
 
 draw_ship:
@@ -1317,6 +1339,7 @@ ret
 
 draw_sprite:
   pusha
+
   xor cx, cx
   mov byte cl, [si]       ; lines
 
