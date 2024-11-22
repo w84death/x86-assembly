@@ -215,7 +215,7 @@ xor si,si
 
 draw_bg:
   mov ax, COLOR_SKY               ; Set starting sky color
-  mov dl, 0xe                  ; 10 bars to draw
+  mov dl, 0xf                  ; 10 bars to draw
   .draw_sky:
     mov cx, 320*2           ; 3 pixels high
     rep stosw               ; Write to the doublebuffer
@@ -225,8 +225,20 @@ draw_bg:
     jnz .draw_sky
 
 draw_ocean:
-  mov ax, COLOR_WATER
-  mov cx, 320*72
+
+ mov ax, COLOR_WATER-0x0303               ; Set starting sky color
+  mov dl, 0x4                  ; 10 bars to draw
+  .line:
+    mov cx, 320*16          ; 3 pixels high
+    rep stosw               ; Write to the doublebuffer
+    inc al                  ; Increment color index for next bar
+    ;inc ah
+    xchg al, ah             ; Swap colors
+    dec dl
+    jnz .line
+
+  ; mov ax, COLOR_WATER
+  mov cx, 320*6
   rep stosw
 
 ; =========================================== GAME LOGIC =======================
