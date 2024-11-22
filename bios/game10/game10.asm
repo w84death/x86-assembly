@@ -226,44 +226,27 @@ draw_bg:
 
 draw_ocean:
   mov ax, COLOR_WATER
-  mov cx, 320*70              ; 70 lines of ocean
-  rep stosw
-
-draw_more_ocean:
-  xor dx,dx
-  mov si, Ocean1Brush
-  mov di, 320*62
-  mov ax, [_GAME_TICK_]
-  shr ax, 2
-  mov cx, 16
-  .draw_line:
+  mov cx, 70              ; 70 lines of ocean
+  .line:
     push cx
 
-    mov cx, 40
-    .draw_next_tile:
+    mov ax, COLOR_WATER
+    and cx, 0x1
+    add al, cl
+    dec cl
+    add ah, cl   
+    mov cx, 320/2
+    rep stosw
+    xchg al, ah
+    mov cx, 320/2
+    rep stosw
 
-      test ax, 0x4
-      jz .skip_tile
-
-      mov si, Ocean1Brush
-      test cx, 0x2
-      jz .skip_brush_swap
-        mov si, Ocean2Brush
-      .skip_brush_swap:
-
-      call draw_sprite
-
-      .skip_tile:
-      add di, 8
-      add ax, 0x2
-      .skip_new_line:
-
-    loop .draw_next_tile
-    add di, 320*8
-    inc ax
     pop cx
-  loop .draw_line
-skip_more_ocean:
+  loop .line
+
+
+  
+
 
 ; =========================================== GAME LOGIC =======================
 
