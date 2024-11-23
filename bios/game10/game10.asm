@@ -61,7 +61,7 @@ MAX_ENTITIES equ 64
 ENTITIES_SPEED equ 2
 LEVEL_START_POSITION equ 320*68+32
 COLOR_SKY equ 0x3c3c
-COLOR_WATER equ 0x3535
+COLOR_WATER equ 0x3434
 SCORE_POSITION equ 320*24+32
 INTRO_TIME equ 240
 PRE_GAME_TIME equ 64
@@ -224,22 +224,19 @@ draw_bg:
     dec dl
     jnz .draw_sky
 
-draw_ocean:
+  .draw_ocean:
+    mov ax, COLOR_WATER               ; Set starting sky color
+    mov dl, 0x4                  ; 10 bars to draw
+    .line:
+      mov cx, 320*16          ; 3 pixels high
+      rep stosw               ; Write to the doublebuffer
+      dec al                  ; Increment color index for next bar
+      xchg al, ah             ; Swap colors
+      dec dl
+      jnz .line
 
- mov ax, COLOR_WATER-0x0303               ; Set starting sky color
-  mov dl, 0x4                  ; 10 bars to draw
-  .line:
-    mov cx, 320*16          ; 3 pixels high
-    rep stosw               ; Write to the doublebuffer
-    inc al                  ; Increment color index for next bar
-    ;inc ah
-    xchg al, ah             ; Swap colors
-    dec dl
-    jnz .line
-
-  ; mov ax, COLOR_WATER
-  mov cx, 320*6
-  rep stosw
+    mov cx, 320*6
+    rep stosw
 
 ; =========================================== GAME LOGIC =======================
 
