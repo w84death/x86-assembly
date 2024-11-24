@@ -890,6 +890,19 @@ draw_entities:
 
 skip_draw_entities:
 
+draw_clouds:
+  mov di, 320*40+20
+  call draw_cloud
+
+  mov di, 320*30+100
+  call draw_cloud
+
+  mov di, 320*34+120
+  call draw_cloud
+
+  mov di, 320*16+210
+  call draw_cloud
+
 ; =========================================== CHECK SCORE =======================
 
 test byte [_GAME_STATE_], GSTATE_PREGAME
@@ -1145,7 +1158,19 @@ play_tune:
   .done:
 ret
 
-
+; ========================================= DAWING CLOUD ======
+draw_cloud:
+mov ax, [_GAME_TICK_]
+shr ax, 4
+add di, ax
+  mov si, Cloud1Brush
+  mov cx, 4
+  .part:
+  call draw_sprite
+  add si, 18
+  add di, 8
+  loop .part
+ret
 ; =========================================== DRAWING LEVEL ====================
 draw_level:
   push es
