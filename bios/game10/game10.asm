@@ -276,6 +276,15 @@ jz skip_game_state_intro
   mov bx, 0x1
   call draw_ship
 
+; logo
+
+  .draw_logo:
+    mov ax, 100
+    mov bx, 15
+    mov cx, 102
+    mov dx, 53
+    call draw_line
+
   mov ah, 01h         ; BIOS keyboard status function
   int 16h             ; Call BIOS interrupt
   jz .no_key_press
@@ -979,7 +988,6 @@ jz skip_game_state_end
   call draw_sprite
 skip_game_state_end:
 
-
 ; =========================================== VGA BLIT PROCEDURE ===============
 
 vga_blit:
@@ -1326,6 +1334,91 @@ draw_ship:
   add di, 8
   call draw_sprite
   .skip_wiosla:
+ret
+
+
+; Expects: AX - x1, BX - y1, CX - x2, DX - y2
+draw_line:
+    push bp
+    push si
+    push di
+
+    mov si, ax      ; x1
+    mov di, bx      ; y1
+    mov bp, cx      ; x2
+    mov bx, dx      ; y2
+
+    mov ax, bp
+    sub ax, si      ; dx = x2 - x1
+    jns .dx_positive
+    neg ax
+.dx_positive:
+    mov cx, ax      ; cx = abs(dx)
+
+    mov ax, bx
+    sub ax, di      ; dy = y2 - y1
+    jns .dy_positive
+    neg ax
+.dy_positive:
+    mov dx, ax      ; dx = abs(dy)
+
+    mov ax, cx
+    sub ax, dx      ; err = dx - dy
+    mov bp, ax
+
+    mov ax, si
+    mov bx, di
+
+.draw_loop:
+    push ax
+    push bx
+    call draw_pixel
+    pop bx
+    pop ax
+
+    cmp ax, cx
+    je .done
+    cmp bx, dx
+    je .done
+
+    mov si, bp
+    add si, si
+    cmp si, dx
+    jge .adjust_y
+    add bp, cx
+    jmp .adjust_x
+
+.adjust_y:
+    sub bp, dx
+    cmp bx, bx
+    jge .inc_y
+    dec bx
+    jmp .adjust_x
+.inc_y:
+    inc bx
+
+.adjust_x:
+    cmp ax, ax
+    jge .inc_x
+    dec ax
+    jmp .draw_loop
+.inc_x:
+    inc ax
+    jmp .draw_loop
+
+.done:
+    pop di
+    pop si
+    pop bp
+ret
+
+draw_pixel:
+    mov di, bx          ; DI = y * 320
+    shl di, 8
+    shl bx, 6
+    add di, bx
+    add di, ax          ; DI = y * 320 + x
+    mov byte [es:di], 0xf
 ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
