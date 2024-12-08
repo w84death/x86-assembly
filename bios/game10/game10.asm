@@ -67,6 +67,7 @@ INTRO_TIME equ 240
 PRE_GAME_TIME equ 64
 POST_GAME_TIME equ 32
 WEB_LOCK equ 2
+COLOR_TRANSPARENT equ 0x0F
 
 ID_PLAYER equ 0
 ID_PALM equ 1
@@ -276,14 +277,25 @@ jz skip_game_state_intro
   mov bx, 0x1
   call draw_ship
 
-; logo
+  .control_pixel:
+    mov ax, 64
+    mov bx, 32
+    call draw_pixel
 
   .draw_logo:
-    mov ax, 100
+    mov ax, 80
     mov bx, 15
-    mov cx, 102
-    mov dx, 53
+    mov cx, 24
+    mov dx, 20
     call draw_line
+
+    mov ax, 180
+    mov bx, 50
+    mov cx, 90
+    mov dx, 60
+    call draw_line
+
+
 
   mov ah, 01h         ; BIOS keyboard status function
   int 16h             ; Call BIOS interrupt
@@ -1336,82 +1348,56 @@ draw_ship:
   .skip_wiosla:
 ret
 
-
-; Expects: AX - x1, BX - y1, CX - x2, DX - y2
+; draw_line:
+; AX - x1 (start)
+; BX - y1 (start)
+; CX - x2 (end)
+; DX - y2 (end)
 draw_line:
     push bp
-    push si
-    push di
+    mov bp, sp
 
-    mov si, ax      ; x1
-    mov di, bx      ; y1
-    mov bp, cx      ; x2
-    mov bx, dx      ; y2
+    mov si, ax  ; x1
+    mov di, bx  ; y1
+    mov dx, cx  ; x2
+    mov cx, dx  ; y2
 
-    mov ax, bp
-    sub ax, si      ; dx = x2 - x1
-    jns .dx_positive
-    neg ax
-.dx_positive:
-    mov cx, ax      ; cx = abs(dx)
+    sub dx, si  ; dx = x2 - x1
+    sub cx, di  ; dy = y2 - y1
 
-    mov ax, bx
-    sub ax, di      ; dy = y2 - y1
-    jns .dy_positive
-    neg ax
-.dy_positive:
-    mov dx, ax      ; dx = abs(dy)
+    mov ax, dx
+    mov bx, cx
+    cmp ax, bx
+    jge .no_swap
+    xchg ax, bx
+  .no_swap:
 
-    mov ax, cx
-    sub ax, dx      ; err = dx - dy
-    mov bp, ax
+    mov bp, ax  ; bp = abs(dx)
+    shr bp, 1   ; bp = abs(dx) / 2
 
-    mov ax, si
-    mov bx, di
+    mov ax, si  ; x = x1
+    mov bx, di  ; y = y1
 
-.draw_loop:
-    push ax
-    push bx
+  .draw_loop:
     call draw_pixel
-    pop bx
-    pop ax
-
-    cmp ax, cx
-    je .done
-    cmp bx, dx
-    je .done
-
-    mov si, bp
-    add si, si
-    cmp si, dx
-    jge .adjust_y
-    add bp, cx
-    jmp .adjust_x
-
-.adjust_y:
-    sub bp, dx
-    cmp bx, bx
-    jge .inc_y
-    dec bx
-    jmp .adjust_x
-.inc_y:
-    inc bx
-
-.adjust_x:
-    cmp ax, ax
-    jge .inc_x
-    dec ax
-    jmp .draw_loop
-.inc_x:
+    add si, dx
+    cmp si, bp
+    jl .skip_inc
+    add bx, cx
+    sub si, bp
+.skip_inc:
     inc ax
-    jmp .draw_loop
+    cmp ax, dx
+    jle .draw_loop
 
-.done:
-    pop di
-    pop si
     pop bp
-ret
+    ret
 
+;----------------------------------------------------------------------
+; draw_pixel:
+; ax - x
+; bx - y
+;----------------------------------------------------------------------
 draw_pixel:
     mov di, bx          ; DI = y * 320
     shl di, 8
@@ -1420,6 +1406,7 @@ draw_pixel:
     add di, ax          ; DI = y * 320 + x
     mov byte [es:di], 0xf
 ret
+
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
 ; Expects:
