@@ -277,22 +277,26 @@ jz skip_game_state_intro
   mov bx, 0x1
   call draw_ship
 
-  .control_pixel:
-    mov ax, 64
-    mov bx, 32
-    call draw_pixel
+;ax=x0
+;bx=x1
+;dl=y0,
+;dh=y1,
+;cl=col
+
 
   .draw_logo:
     mov ax, 80
-    mov bx, 15
-    mov cx, 24
-    mov dx, 20
+    mov bx, 120
+    mov dl, 20
+    mov dh, 90
+    mov cl, 0x2f
     call draw_line
 
-    mov ax, 180
-    mov bx, 50
-    mov cx, 90
-    mov dx, 60
+    mov ax, 220
+    mov bx, 100
+    mov dl, 64
+    mov dh, 10
+    mov cl, 0x4
     call draw_line
 
 
@@ -1348,50 +1352,56 @@ draw_ship:
   .skip_wiosla:
 ret
 
-; draw_line:
-; AX - x1 (start)
-; BX - y1 (start)
-; CX - x2 (end)
-; DX - y2 (end)
+; =========================================== DRAWING LINE ====================
+; ax=x0
+; bx=x1
+; dl=y0,
+; dh=y1,
+; cl=col
+; Spektre @ https://stackoverflow.com/questions/71390507/line-drawing-algorithm-in-assembly#71391899
 draw_line:
-    push bp
-    mov bp, sp
-
-    mov si, ax  ; x1
-    mov di, bx  ; y1
-    mov dx, cx  ; x2
-    mov cx, dx  ; y2
-
-    sub dx, si  ; dx = x2 - x1
-    sub cx, di  ; dy = y2 - y1
-
-    mov ax, dx
-    mov bx, cx
-    cmp ax, bx
-    jge .no_swap
-    xchg ax, bx
-  .no_swap:
-
-    mov bp, ax  ; bp = abs(dx)
-    shr bp, 1   ; bp = abs(dx) / 2
-
-    mov ax, si  ; x = x1
-    mov bx, di  ; y = y1
-
-  .draw_loop:
-    call draw_pixel
-    add si, dx
-    cmp si, bp
-    jl .skip_inc
-    add bx, cx
-    sub si, bp
-.skip_inc:
-    inc ax
-    cmp ax, dx
-    jle .draw_loop
-
-    pop bp
+  pusha       
+    push    ax
+    mov si,bx
+    sub si,ax
+    sub ah,ah
+    mov al,dl
+    mov bx,ax
+    mov al,dh
+    sub ax,bx
+    mov di,ax
+    mov ax,320
+    sub dh,dh
+    mul dx
+    pop bx
+    add ax,bx
+    mov bp,ax
+    mov ax,1
+    mov bx,320
+    cmp si,32768
+    jb  .r0
+    neg si
+    neg ax
+ .r0:    cmp di,32768
+    jb  .r1
+    neg di
+    neg bx
+ .r1:    cmp si,di
+    ja  .r2
+    xchg    ax,bx
+    xchg    si,di
+ .r2:    mov [.ct],si
+ .l0:    mov [es:bp],cl
+    add bp,ax
+    sub dx,di
+    jnc .r3
+    add dx,si
+    add bp,bx
+ .r3:    dec word [.ct]
+    jnz .l0
+    popa
     ret
+ .ct:    dw  0
 
 ;----------------------------------------------------------------------
 ; draw_pixel:
