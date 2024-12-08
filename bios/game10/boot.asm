@@ -45,7 +45,7 @@ start:
     mov bx, 0x0100         ; Offset where code will be loaded
 
 .load_sectors:
-    mov ax, 0x0209         ; 8 sectors to load from the disk
+    mov ax, 0x0208         ; 8 sectors to load from the disk
     xor dx, dx             ; CH = 0 cylinder, DH = 0 head
     mov cl, 2              ; CL = start at second sector
     int 0x13               ; BIOS disk interrupt

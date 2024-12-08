@@ -20,12 +20,16 @@ jmp start
 include 'palettes.asm'  ; 72b
 include 'brushes.asm'   ; ?
 include 'tiles.asm'     ; 232b
+include 'levels.asm'
+include 'tunes.asm'
+
 BEEP_BITE equ 3
 BEEP_PICK equ 15
 BEEP_PUT equ 20
 BEEP_GOLD equ 5
 BEEP_STEP equ 25
 BEEP_WEB equ 30
+
 ; =========================================== MEMORY ADDRESSES =================
 
 _PLAYER_ENTITY_ID_ equ 0x1000 ; 2 bytes
@@ -43,8 +47,8 @@ _NOTE_TIMER_ equ 0x1011       ; 1 byte
 _NOTE_TEMPO_ equ 0x1012       ; 1 byte
 _ENTITIES_ equ 0x1200         ; 11 bytes per entity, 64 entites cap, 320 bytes
 
-_DBUFFER_MEMORY_ equ 0x9000   ; 64k bytes
-_BG_BUFFER_MEMORY_ equ 0x7000 ; 64k bytes
+_DBUFFER_MEMORY_ equ 0x4000   ; 64k bytes
+_BG_BUFFER_MEMORY_ equ 0x2000 ; 64k bytes
 _VGA_MEMORY_ equ 0xA000       ; 64k bytes
 _TICK_ equ 1Ah                ; BIOS tick
 
@@ -269,17 +273,6 @@ jz skip_game_state_intro
   mov byte [_NOTE_TEMPO_], 2
   call play_tune
 
-; ship moving
-
-  mov di, 320*120
-  mov ax, [_GAME_TICK_]
-  shr ax, 1
-  add di, ax
-  cmp ax, INTRO_TIME
-  jg .start_game
-  mov bx, 0x1
-  call draw_ship
-
   mov si, LogoVector
   call draw_vector
   
@@ -295,7 +288,6 @@ jz skip_game_state_intro
   .no_key_press:
 
 skip_game_state_intro:
-
 
 ; =========================================== PRE-GAME =======================
 
@@ -344,7 +336,6 @@ stop_game_sound:
   jnz .skip_stop_sound
     call stop_beep
   .skip_stop_sound:
-
 
 
 test byte [_GAME_STATE_], GSTATE_PREGAME
@@ -627,8 +618,6 @@ ai_entities:
     dec cx
   jnz .next_entity
 
-
-
 ; =========================================== SORT ENITIES ===============
 ; Sort entities by Y position
 ; Expects: entities array
@@ -897,18 +886,8 @@ draw_entities:
 
 skip_draw_entities:
 
-draw_clouds:
-  mov di, 320*40+20
-  call draw_cloud
-
-  mov di, 320*30+100
-  call draw_cloud
-
-  mov di, 320*34+120
-  call draw_cloud
-
-  mov di, 320*16+210
-  call draw_cloud
+; draw_clouds:
+; TODO
 
 ; =========================================== CHECK SCORE =======================
 
@@ -1164,19 +1143,6 @@ play_tune:
   .done:
 ret
 
-; ========================================= DAWING CLOUD ======
-draw_cloud:
-mov ax, [_GAME_TICK_]
-shr ax, 4
-add di, ax
-  mov si, Cloud1Brush
-  mov cx, 4
-  .part:
-  call draw_sprite
-  add si, 18
-  add di, 8
-  loop .part
-ret
 ; =========================================== DRAWING LEVEL ====================
 draw_level:
   push es
@@ -1535,9 +1501,8 @@ draw_vector:
   ret
 
 ; =========================================== INCLUDES GAME DATA ========================
-include 'levels.asm'
+
 include 'vectors.asm'
-include 'tunes.asm'
 
 ; =========================================== THE END ==========================
 ; Thanks for reading the source code!
