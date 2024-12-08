@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Vector Line Drawer</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background-color: #121212;
+      color: #ffffff;
+      margin: 0;
+    }
+    canvas {
+      border: 1px solid #ffffff;
+      cursor: crosshair;
+      background: radial-gradient(circle, rgb(235, 233, 233) 0%, rgb(202, 202, 202) 70%);
+      image-rendering: pixelated;
+      width: 640px; /* 2x scaling */
+      height: 400px; /* 2x scaling */
+    }
+    button, textarea {
+      margin-top: 10px;
+      margin: 2px;
+      background-color: #333333;
+      color: #ffffff;
+      border: 1px solid #636363;
+      transition: background-color 0.3s, transform 0.3s;
+    }
+    button:hover {
+      background-color: #555555;
+      transform: scale(1.05);
+    }
+    textarea {
+      resize: none;
+    }
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-left: 20px;
+    }
+    .pan-buttons {
+      display: flex;
+      justify-content: space-between;
+      width: 150px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="320" height="200"></canvas>
+  <div class="controls">
+    <button id="redoButton">Redo</button>
+    <div class="pan-buttons">
+      <button id="panLeftButton">Left</button>
+      <button id="panUpButton">Up</button>
+      <button id="panDownButton">Down</button>
+      <button id="panRightButton">Right</button>
+    </div>
+    <textarea id="dataOutput" rows="10" cols="50"></textarea>
+    <div class="controls">
+        <button id="clearButton">Clear drawing!</button>
+        <input type="file" id="backgroundImageInput" accept="image/*">
+    </div>
+</div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const lines = [];
+    let startPoint = null;
+    let backgroundImage = null;
+
+    document.getElementById('backgroundImageInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            backgroundImage = img;
+            drawLines();
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / 2; // Adjust for 2x scaling
+      const y = (e.clientY - rect.top) / 2; // Adjust for 2x scaling
+
+      if (!startPoint) {
+        startPoint = { x, y };
+      } else {
+        lines.push({ x0: startPoint.x, y0: startPoint.y, x1: x, y1: y });
+        if (!e.shiftKey) {
+          startPoint = null;
+        } else {
+          startPoint = { x, y };
+        }
+        drawLines();
+        updateDataOutput();
+      }
+    });
+
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      startPoint = null;
+      drawLines(); // Refresh canvas
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!startPoint) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / 2; // Adjust for 2x scaling
+      const y = (e.clientY - rect.top) / 2; // Adjust for 2x scaling
+
+      drawLines();
+
+      // Draw preview line with 25% transparency
+      ctx.save();
+      ctx.globalAlpha = 0.25;
+      ctx.beginPath();
+      ctx.moveTo(startPoint.x, startPoint.y);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    document.getElementById('redoButton').addEventListener('click', () => {
+      lines.pop();
+      drawLines();
+      updateDataOutput();
+    });
+
+    document.getElementById('clearButton').addEventListener('click', () => {
+      lines.length = 0;
+      drawLines();
+      updateDataOutput();
+    });
+
+    document.getElementById('panLeftButton').addEventListener('click', () => panCanvas(-4, 0));
+    document.getElementById('panUpButton').addEventListener('click', () => panCanvas(0, -4));
+    document.getElementById('panDownButton').addEventListener('click', () => panCanvas(0, 4));
+    document.getElementById('panRightButton').addEventListener('click', () => panCanvas(4, 0));
+
+    function panCanvas(dx, dy) {
+      for (const line of lines) {
+        line.x0 += dx;
+        line.y0 += dy;
+        line.x1 += dx;
+        line.y1 += dy;
+      }
+      drawLines();
+      updateDataOutput();
+    }
+
+    function drawLines() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (backgroundImage) {
+        ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+      }
+      ctx.beginPath();
+      for (const line of lines) {
+        ctx.moveTo(line.x0, line.y0);
+        ctx.lineTo(line.x1, line.y1);
+      }
+      ctx.stroke();
+    }
+
+    function updateDataOutput() {
+      let data = '';
+      for (const line of lines) {
+        const x0 = Math.round(line.x0);
+        const x1 = Math.round(line.x1);
+        const y0 = Math.round(line.y0);
+        const y1 = Math.round(line.y1);
+        data += `dw ${x0}, ${x1}\n`;
+        data += `db ${y0}, ${y1}\n`;
+      }
+      data += 'dw 0\n';
+      document.getElementById('dataOutput').value = data;
+    }
+  </script>
+</body>
+</html>

@@ -20,10 +20,12 @@ jmp start
 include 'palettes.asm'  ; 72b
 include 'brushes.asm'   ; ?
 include 'tiles.asm'     ; 232b
-include 'levels.asm'    ; 245b
-include 'tunes.asm'     ; 235b
-include 'logo.asm'
-
+BEEP_BITE equ 3
+BEEP_PICK equ 15
+BEEP_PUT equ 20
+BEEP_GOLD equ 5
+BEEP_STEP equ 25
+BEEP_WEB equ 30
 ; =========================================== MEMORY ADDRESSES =================
 
 _PLAYER_ENTITY_ID_ equ 0x1000 ; 2 bytes
@@ -41,8 +43,8 @@ _NOTE_TIMER_ equ 0x1011       ; 1 byte
 _NOTE_TEMPO_ equ 0x1012       ; 1 byte
 _ENTITIES_ equ 0x1200         ; 11 bytes per entity, 64 entites cap, 320 bytes
 
-_DBUFFER_MEMORY_ equ 0x5000   ; 64k bytes
-_BG_BUFFER_MEMORY_ equ 0x2000 ; 64k bytes
+_DBUFFER_MEMORY_ equ 0x9000   ; 64k bytes
+_BG_BUFFER_MEMORY_ equ 0x7000 ; 64k bytes
 _VGA_MEMORY_ equ 0xA000       ; 64k bytes
 _TICK_ equ 1Ah                ; BIOS tick
 
@@ -278,29 +280,8 @@ jz skip_game_state_intro
   mov bx, 0x1
   call draw_ship
 
-;ax=x0
-;bx=x1
-;dl=y0,
-;dh=y1,
-;cl=col
-
-
-  .draw_logo:    
-  
-    mov cl, 0x10
-    mov si, LogoData
-    .read_line:
-      mov ax, [si]
-      cmp ax, 0x0
-      jz .done
-      mov bx, [si+2]
-      mov dl, [si+4]
-      mov dh, [si+5]
-      call draw_line
-
-      add si, 6
-      jmp .read_line
-    .done:
+  mov si, LogoVector
+  call draw_vector
   
   mov ah, 01h         ; BIOS keyboard status function
   int 16h             ; Call BIOS interrupt
@@ -1515,9 +1496,48 @@ draw_sprite:
   popa
 ret
 
-; ========================================== SAFETY CHECK ======================
+draw_vector:   
+  pusha 
+  .read_line:
+    mov ax, [si]
+    cmp ax, 0x0
+    jz .done
 
-; times 0x7FD - ($ - $$) db 0x0   ; Pad to 2048 bytes
+    mov bx, [si+2]
+    mov dl, [si+4]
+    mov dh, [si+5]
+    mov cl, 0x14
+
+    mov di, [_GAME_TICK_]
+    shr di, 0x1
+    add di, si
+    and di, 0x2
+    add ax, di
+    sub bx, di
+    add dx, di
+
+    call draw_line
+    mov cl, 0x1f
+    sub ax, 0x2
+    sub bx, 0x2
+    sub dh, 0x3
+    sub dl, 0x3    
+    call draw_line
+
+    inc ax
+    inc bx
+    call draw_line
+
+    add si, 6
+    jmp .read_line
+  .done:
+  popa
+  ret
+
+; =========================================== INCLUDES GAME DATA ========================
+include 'levels.asm'
+include 'vectors.asm'
+include 'tunes.asm'
 
 ; =========================================== THE END ==========================
 ; Thanks for reading the source code!

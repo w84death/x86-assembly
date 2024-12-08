@@ -29,9 +29,4 @@ db 12, 14, 16, 14, 12, 15, 13,  12
 db 10, 12, 14, 12, 10, 9 , 8 ,  10
 db 0
 
-BEEP_BITE equ 3
-BEEP_PICK equ 15
-BEEP_PUT equ 20
-BEEP_GOLD equ 5
-BEEP_STEP equ 25
-BEEP_WEB equ 30
+
