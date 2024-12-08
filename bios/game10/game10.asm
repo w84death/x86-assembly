@@ -21,7 +21,6 @@ include 'palettes.asm'  ; 72b
 include 'brushes.asm'   ; ?
 include 'tiles.asm'     ; 232b
 include 'levels.asm'
-include 'tunes.asm'
 
 BEEP_BITE equ 3
 BEEP_PICK equ 15
@@ -246,6 +245,13 @@ draw_bg:
     mov cx, 320*6
     rep stosw
 
+
+  draw_clouds:
+    mov si, CloudVector
+    call draw_vector
+    mov si, Cloud2Vector
+    call draw_vector
+    
 ; =========================================== GAME LOGIC =======================
 
 game_loop:
@@ -886,8 +892,6 @@ draw_entities:
 
 skip_draw_entities:
 
-; draw_clouds:
-; TODO
 
 ; =========================================== CHECK SCORE =======================
 
@@ -1040,6 +1044,29 @@ stop_beep:
   out 0x61, al   ; Write the updated value back to the PIC chip
 ret
 
+
+play_tune:
+  cmp byte [_NOTE_TIMER_], 0x0
+  jz .new_note
+    dec byte [_NOTE_TIMER_]
+    jmp .done
+  .new_note:
+    inc word [_CURRENT_TUNE_]
+    mov si, [_CURRENT_TUNE_]
+    mov bl, [si]
+    cmp bl, 0
+    jnz .skip_loop
+      mov ax, [_NEXT_TUNE_]
+      mov word [_CURRENT_TUNE_], ax     ; Loop to begining of the tune
+      mov si, ax
+      mov bl, [si]
+    .skip_loop:
+    mov byte al, [_NOTE_TEMPO_]
+    mov byte [_NOTE_TIMER_], al
+    call beep
+  .done:
+ret
+
 ; =========================================== CNVERT XY TO MEM =================
 ; Expects: CX - position YY/XX
 ; Return: DI memory position
@@ -1121,27 +1148,6 @@ check_water_tile:
   test al, 0x40   ; Check if movable (7th bit set)
 ret
 
-play_tune:
-  cmp byte [_NOTE_TIMER_], 0x0
-  jz .new_note
-    dec byte [_NOTE_TIMER_]
-    jmp .done
-  .new_note:
-    inc word [_CURRENT_TUNE_]
-    mov si, [_CURRENT_TUNE_]
-    mov bl, [si]
-    cmp bl, 0
-    jnz .skip_loop
-      mov ax, [_NEXT_TUNE_]
-      mov word [_CURRENT_TUNE_], ax     ; Loop to begining of the tune
-      mov si, ax
-      mov bl, [si]
-    .skip_loop:
-    mov byte al, [_NOTE_TEMPO_]
-    mov byte [_NOTE_TIMER_], al
-    call beep
-  .done:
-ret
 
 ; =========================================== DRAWING LEVEL ====================
 draw_level:
@@ -1503,6 +1509,7 @@ draw_vector:
 ; =========================================== INCLUDES GAME DATA ========================
 
 include 'vectors.asm'
+include 'tunes.asm'
 
 ; =========================================== THE END ==========================
 ; Thanks for reading the source code!
