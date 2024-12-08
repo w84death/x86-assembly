@@ -22,6 +22,7 @@ include 'brushes.asm'   ; ?
 include 'tiles.asm'     ; 232b
 include 'levels.asm'    ; 245b
 include 'tunes.asm'     ; 235b
+include 'logo.asm'
 
 ; =========================================== MEMORY ADDRESSES =================
 
@@ -284,23 +285,23 @@ jz skip_game_state_intro
 ;cl=col
 
 
-  .draw_logo:
-    mov ax, 80
-    mov bx, 120
-    mov dl, 20
-    mov dh, 90
-    mov cl, 0x2f
-    call draw_line
+  .draw_logo:    
+  
+    mov cl, 0x10
+    mov si, LogoData
+    .read_line:
+      mov ax, [si]
+      cmp ax, 0x0
+      jz .done
+      mov bx, [si+2]
+      mov dl, [si+4]
+      mov dh, [si+5]
+      call draw_line
 
-    mov ax, 220
-    mov bx, 100
-    mov dl, 64
-    mov dh, 10
-    mov cl, 0x4
-    call draw_line
-
-
-
+      add si, 6
+      jmp .read_line
+    .done:
+  
   mov ah, 01h         ; BIOS keyboard status function
   int 16h             ; Call BIOS interrupt
   jz .no_key_press
