@@ -1480,6 +1480,7 @@ draw_vector:
     mov dh, [si+5]
     mov cl, 0x14
 
+    ; shake
     mov di, [_GAME_TICK_]
     shr di, 0x1
     add di, si
@@ -1488,7 +1489,10 @@ draw_vector:
     sub bx, di
     add dx, di
 
+    ; shadow
     call draw_line
+
+    ; lines
     mov cl, 0x1f
     sub ax, 0x2
     sub bx, 0x2
@@ -1496,6 +1500,7 @@ draw_vector:
     sub dl, 0x3    
     call draw_line
 
+    ; double line
     inc ax
     inc bx
     call draw_line
