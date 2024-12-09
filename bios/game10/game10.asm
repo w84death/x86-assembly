@@ -1470,11 +1470,19 @@ ret
 
 draw_vector:   
   pusha 
-  .read_line:
+  .read_group:
+    xor cx, cx
+    mov cl, [si]
+    cmp cl, 0x0
+    jz .done
+
+    inc si
+
+    .read_line:
+    push cx
+
     xor ax, ax
     mov al, [si]
-    cmp al, 0x0
-    jz .done
 
     xor bx, bx
     mov bl, [si+2]
@@ -1507,8 +1515,11 @@ draw_vector:
     inc bx
     call draw_line
 
-    add si, 4
-    jmp .read_line
+    add si, 2
+    pop cx
+    loop .read_line
+    add si, 2
+    jmp .read_group
   .done:
   popa
   ret

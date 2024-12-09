@@ -79,8 +79,9 @@
   <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    const lines = [];
+    const paths = [];
     let startPoint = null;
+    let currentPath = null;
     let backgroundImage = null;
     let fillColor = '#ffffff';
 
@@ -92,7 +93,7 @@
           const img = new Image();
           img.onload = () => {
             backgroundImage = img;
-            drawLines();
+            drawPaths();
           };
           img.src = event.target.result;
         };
@@ -102,24 +103,27 @@
 
     document.getElementById('fillColorInput').addEventListener('input', (e) => {
       fillColor = e.target.value;
-      drawLines();
+      drawPaths();
     });
 
     canvas.addEventListener('click', (e) => {
       const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / 2; // Adjust for 2x scaling
-      const y = (e.clientY - rect.top) / 2; // Adjust for 2x scaling
+      const x = Math.round((e.clientX - rect.left) / 2); // Adjust for 2x scaling
+      const y = Math.round((e.clientY - rect.top) / 2); // Adjust for 2x scaling
 
       if (!startPoint) {
         startPoint = { x, y };
+        currentPath = [{ x, y }];
+        paths.push(currentPath);
       } else {
-        lines.push({ x0: startPoint.x, y0: startPoint.y, x1: x, y1: y });
+        currentPath.push({ x, y });
         if (!e.shiftKey) {
           startPoint = null;
+          currentPath = null;
         } else {
           startPoint = { x, y };
         }
-        drawLines();
+        drawPaths();
         updateDataOutput();
       }
     });
@@ -127,7 +131,7 @@
     canvas.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       startPoint = null;
-      drawLines(); // Refresh canvas
+      drawPaths(); // Refresh canvas
     });
 
     canvas.addEventListener('mousemove', (e) => {
@@ -137,7 +141,7 @@
       const x = (e.clientX - rect.left) / 2; // Adjust for 2x scaling
       const y = (e.clientY - rect.top) / 2; // Adjust for 2x scaling
 
-      drawLines();
+      drawPaths();
 
       // Draw preview line with 25% transparency
       ctx.save();
@@ -150,14 +154,27 @@
     });
 
     document.getElementById('redoButton').addEventListener('click', () => {
-      lines.pop();
-      drawLines();
+      if (currentPath && currentPath.length > 1) {
+        currentPath.pop();
+        if (currentPath.length === 1) {
+          paths.pop();
+          startPoint = null;
+          currentPath = null;
+        }
+      } else if (paths.length > 0) {
+        paths.pop();
+        startPoint = null;
+        currentPath = null;
+      }
+      drawPaths();
       updateDataOutput();
     });
 
     document.getElementById('clearButton').addEventListener('click', () => {
-      lines.length = 0;
-      drawLines();
+      paths.length = 0;
+      startPoint = null;
+      currentPath = null;
+      drawPaths();
       updateDataOutput();
     });
 
@@ -167,43 +184,46 @@
     document.getElementById('panRightButton').addEventListener('click', () => panCanvas(4, 0));
 
     function panCanvas(dx, dy) {
-      for (const line of lines) {
-        line.x0 += dx;
-        line.y0 += dy;
-        line.x1 += dx;
-        line.y1 += dy;
+      for (const path of paths) {
+        for (const point of path) {
+          point.x += dx;
+          point.y += dy;
+        }
       }
-      drawLines();
+      drawPaths();
       updateDataOutput();
     }
 
-    function drawLines() {
+    function drawPaths() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (backgroundImage) {
         ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
       }
       ctx.strokeStyle = fillColor;
       ctx.beginPath();
-      for (const line of lines) {
-        ctx.moveTo(line.x0, line.y0);
-        ctx.lineTo(line.x1, line.y1);
+      for (const path of paths) {
+        ctx.moveTo(path[0].x, path[0].y);
+        for (let i = 1; i < path.length; i++) {
+          ctx.lineTo(path[i].x, path[i].y);
+        }
       }
       ctx.stroke();
     }
 
     function updateDataOutput() {
-      let data = 'db ';
+      let data = '';
       let dataSize = 0;
-      for (const line of lines) {
-        const x0 = Math.round(line.x0);
-        const x1 = Math.round(line.x1);
-        const y0 = Math.round(line.y0);
-        const y1 = Math.round(line.y1);
-        data += `${x0}, ${y0}, ${x1}, ${y1}, `;
-        dataSize += 4; // 4 bytes for db
+      for (const path of paths) {
+        const numLines = path.length - 1;
+        data += `db ${numLines}\ndb `;
+        for (const point of path) {
+          data += `${point.x}, ${point.y}, `;
+          dataSize += 2; // 2 bytes per point
+        }
+        data = data.slice(0, -2); // Remove the last comma and space
+        data += '\n';
       }
-      data = data.slice(0, -2); // Remove the last comma and space
-      data += '\ndb 0\n';
+      data += 'db 0\n';
       dataSize += 1; // 1 byte for the final db 0
       document.getElementById('dataOutput').value = data;
       document.getElementById('dataSize').textContent = `Data size: ${dataSize} bytes`;
