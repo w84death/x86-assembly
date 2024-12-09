@@ -247,10 +247,10 @@ draw_bg:
 
 
   draw_clouds:
-    mov si, CloudVector
-    call draw_vector
-    mov si, Cloud2Vector
-    call draw_vector
+    ; mov si, CloudVector
+    ; call draw_vector
+    ; mov si, Cloud2Vector
+    ; call draw_vector
     
 ; =========================================== GAME LOGIC =======================
 
@@ -1471,13 +1471,15 @@ ret
 draw_vector:   
   pusha 
   .read_line:
-    mov ax, [si]
-    cmp ax, 0x0
+    xor ax, ax
+    mov al, [si]
+    cmp al, 0x0
     jz .done
 
-    mov bx, [si+2]
-    mov dl, [si+4]
-    mov dh, [si+5]
+    xor bx, bx
+    mov bl, [si+2]
+    mov dl, [si+1]
+    mov dh, [si+3]
     mov cl, 0x14
 
     ; shake
@@ -1505,7 +1507,7 @@ draw_vector:
     inc bx
     call draw_line
 
-    add si, 6
+    add si, 4
     jmp .read_line
   .done:
   popa
