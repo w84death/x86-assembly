@@ -20,7 +20,7 @@ jmp start
 include 'palettes.asm'  ; 72b
 include 'brushes.asm'   ; ?
 include 'tiles.asm'     ; 232b
-include 'levels.asm'
+
 
 BEEP_BITE equ 3
 BEEP_PICK equ 15
@@ -46,8 +46,8 @@ _NOTE_TIMER_ equ 0x1011       ; 1 byte
 _NOTE_TEMPO_ equ 0x1012       ; 1 byte
 _ENTITIES_ equ 0x1200         ; 11 bytes per entity, 64 entites cap, 320 bytes
 
-_DBUFFER_MEMORY_ equ 0x4000   ; 64k bytes
-_BG_BUFFER_MEMORY_ equ 0x2000 ; 64k bytes
+_DBUFFER_MEMORY_ equ 0x9000   ; 64k bytes
+_BG_BUFFER_MEMORY_ equ 0x8000 ; 64k bytes
 _VGA_MEMORY_ equ 0xA000       ; 64k bytes
 _TICK_ equ 1Ah                ; BIOS tick
 
@@ -120,9 +120,9 @@ restart_game:
   mov byte [_SCORE_], 0x0
   mov byte [_HOLDING_ID_], 0x0
   mov byte [_WEB_LOCKED_], 0x0
-  mov word [_CURRENT_TUNE_], tune_intro
-  mov word [_NEXT_TUNE_], tune_intro           ; loop intro tune
-  mov byte [_NOTE_TIMER_], 0x0
+  ; mov word [_CURRENT_TUNE_], tune_intro
+  ; mov word [_NEXT_TUNE_], tune_intro           ; loop intro tune
+  ; mov byte [_NOTE_TIMER_], 0x0
 
 ; =========================================== SPAWN ENTITIES ==================
 ; Expects: entities array from level data
@@ -245,12 +245,6 @@ draw_bg:
     mov cx, 320*6
     rep stosw
 
-
-  draw_clouds:
-    ; mov si, CloudVector
-    ; call draw_vector
-    ; mov si, Cloud2Vector
-    ; call draw_vector
     
 ; =========================================== GAME LOGIC =======================
 
@@ -276,11 +270,20 @@ game_loop:
 test byte [_GAME_STATE_], GSTATE_INTRO
 jz skip_game_state_intro
 
-  mov byte [_NOTE_TEMPO_], 2
-  call play_tune
+  mov bp, [_GAME_TICK_]
+  shr bp, 4
+  mov si, CloudsVector
+  call draw_vector
+
+  mov bp, 320*90+24
+  mov si, Logo2Vector
+  call draw_vector
 
   mov si, LogoVector
+  mov bp, 80
   call draw_vector
+
+
   
   mov ah, 01h         ; BIOS keyboard status function
   int 16h             ; Call BIOS interrupt
@@ -301,7 +304,7 @@ test byte [_GAME_STATE_], GSTATE_PREGAME
 jz skip_game_state_pregame
 
 pre_game:
-    call play_tune
+    ; call play_tune
 
     mov di, 320*52
     mov ax, [_GAME_TICK_]
@@ -542,10 +545,10 @@ ai_entities:
               .crab_bite:                 ; Crab
               .snake_bite:                ; Snake
               mov byte [_GAME_STATE_], GSTATE_END
-              mov word [_CURRENT_TUNE_], tune_end
-              mov word [_NEXT_TUNE_], tune_end
-              mov byte [_NOTE_TIMER_], 0x0
-              mov byte [_NOTE_TEMPO_], 0xa
+              ; mov word [_CURRENT_TUNE_], tune_end
+              ; mov word [_NEXT_TUNE_], tune_end
+              ; mov byte [_NOTE_TIMER_], 0x0
+              ; mov byte [_NOTE_TEMPO_], 0xa
               jmp .skip_item
 
               .spider_web:                ; Spider
@@ -891,7 +894,13 @@ draw_entities:
   jg .next
 
 skip_draw_entities:
+  mov bp, 64
 
+  mov ax, [_GAME_TICK_]
+  shr ax, 4
+  add bp, ax
+  mov si, CloudsVector
+  call draw_vector
 
 ; =========================================== CHECK SCORE =======================
 
@@ -908,10 +917,10 @@ check_score:
   jg .continue_game
     add byte [_GAME_STATE_], GSTATE_POSTGAME
     mov word [_GAME_TICK_], 0x0
-    mov word [_CURRENT_TUNE_], tune_win
-    mov word [_NEXT_TUNE_], tune_win
-    mov byte [_NOTE_TIMER_], 0x0
-    mov byte [_NOTE_TEMPO_], 0x2
+    ; mov word [_CURRENT_TUNE_], tune_win
+    ; mov word [_NEXT_TUNE_], tune_win
+    ; mov byte [_NOTE_TIMER_], 0x0
+    ; mov byte [_NOTE_TEMPO_], 0x2
   .continue_game:
 
 ; =========================================== DRAW SCORE ========================
@@ -950,7 +959,7 @@ draw_post_game:
   add di, ax
   mov bx, 0x1
   call draw_ship
-  call play_tune
+  ; call play_tune
 
 
 skip_game_state_postgame:
@@ -959,7 +968,7 @@ skip_game_state_postgame:
 
 test byte [_GAME_STATE_], GSTATE_END
 jz skip_game_state_end
-  call play_tune
+  ; call play_tune
   mov di, 320*100+154
   mov si, SkullBrush
   test byte [_GAME_STATE_], GSTATE_WIN
@@ -1046,25 +1055,25 @@ ret
 
 
 play_tune:
-  cmp byte [_NOTE_TIMER_], 0x0
-  jz .new_note
-    dec byte [_NOTE_TIMER_]
-    jmp .done
-  .new_note:
-    inc word [_CURRENT_TUNE_]
-    mov si, [_CURRENT_TUNE_]
-    mov bl, [si]
-    cmp bl, 0
-    jnz .skip_loop
-      mov ax, [_NEXT_TUNE_]
-      mov word [_CURRENT_TUNE_], ax     ; Loop to begining of the tune
-      mov si, ax
-      mov bl, [si]
-    .skip_loop:
-    mov byte al, [_NOTE_TEMPO_]
-    mov byte [_NOTE_TIMER_], al
-    call beep
-  .done:
+  ; cmp byte [_NOTE_TIMER_], 0x0
+  ; jz .new_note
+  ;   dec byte [_NOTE_TIMER_]
+  ;   jmp .done
+  ; .new_note:
+  ;   inc word [_CURRENT_TUNE_]
+  ;   mov si, [_CURRENT_TUNE_]
+  ;   mov bl, [si]
+  ;   cmp bl, 0
+  ;   jnz .skip_loop
+  ;     mov ax, [_NEXT_TUNE_]
+  ;     mov word [_CURRENT_TUNE_], ax     ; Loop to begining of the tune
+  ;     mov si, ax
+  ;     mov bl, [si]
+  ;   .skip_loop:
+  ;   mov byte al, [_NOTE_TEMPO_]
+  ;   mov byte [_NOTE_TIMER_], al
+  ;   call beep
+  ; .done:
 ret
 
 ; =========================================== CNVERT XY TO MEM =================
@@ -1483,9 +1492,11 @@ draw_vector:
 
     xor ax, ax
     mov al, [si]
+    add ax, bp
 
     xor bx, bx
     mov bl, [si+2]
+    add bx, bp
     mov dl, [si+1]
     mov dh, [si+3]
     mov cl, 0x14
@@ -1526,8 +1537,9 @@ draw_vector:
 
 ; =========================================== INCLUDES GAME DATA ========================
 
+include 'levels.asm'
+; include 'tunes.asm'
 include 'vectors.asm'
-include 'tunes.asm'
 
 ; =========================================== THE END ==========================
 ; Thanks for reading the source code!
