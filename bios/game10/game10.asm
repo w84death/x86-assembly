@@ -1350,7 +1350,7 @@ draw_line:
     xchg    ax,bx
     xchg    si,di
  .r2:    mov [.ct],si
- .l0:    mov [es:bp],cl
+ .l0:    mov word [es:bp], cx
     add bp,ax
     sub dx,di
     jnc .r3
@@ -1481,7 +1481,7 @@ draw_vector:
     add bx, bp
     mov dl, [si+1]
     mov dh, [si+3]
-    mov cl, 0x16  ; shadow color
+    mov cx, 0x1814  ; shadow color
 
     ; shake
     mov di, [_GAME_TICK_]
@@ -1495,7 +1495,7 @@ draw_vector:
     ; shadow
     call draw_line
     
-    mov cl, 0x1e  ; white color
+    mov cx, 0x585e  ; white color
     sub ax, 0x1
     sub bx, 0x1
     sub dh, 0x2
@@ -1503,6 +1503,8 @@ draw_vector:
     call draw_line
 
     ; double line
+    dec cl
+    dec ch
     inc ax
     inc bx
     call draw_line
