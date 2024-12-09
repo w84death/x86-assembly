@@ -270,10 +270,7 @@ game_loop:
 test byte [_GAME_STATE_], GSTATE_INTRO
 jz skip_game_state_intro
 
-  mov bp, [_GAME_TICK_]
-  shr bp, 4
-  mov si, CloudsVector
-  call draw_vector
+  call draw_clouds
 
   mov bp, 320*90+24
   mov si, Logo2Vector
@@ -282,8 +279,6 @@ jz skip_game_state_intro
   mov si, LogoVector
   mov bp, 80
   call draw_vector
-
-
   
   mov ah, 01h         ; BIOS keyboard status function
   int 16h             ; Call BIOS interrupt
@@ -894,13 +889,8 @@ draw_entities:
   jg .next
 
 skip_draw_entities:
-  mov bp, 64
 
-  mov ax, [_GAME_TICK_]
-  shr ax, 4
-  add bp, ax
-  mov si, CloudsVector
-  call draw_vector
+  call draw_clouds
 
 ; =========================================== CHECK SCORE =======================
 
@@ -1076,6 +1066,12 @@ play_tune:
   ; .done:
 ret
 
+draw_clouds:
+  mov bp, [_GAME_TICK_]
+  shr bp, 4
+  mov si, CloudsVector
+  call draw_vector
+ret
 ; =========================================== CNVERT XY TO MEM =================
 ; Expects: CX - position YY/XX
 ; Return: DI memory position
@@ -1366,20 +1362,6 @@ draw_line:
     ret
  .ct:    dw  0
 
-;----------------------------------------------------------------------
-; draw_pixel:
-; ax - x
-; bx - y
-;----------------------------------------------------------------------
-draw_pixel:
-    mov di, bx          ; DI = y * 320
-    shl di, 8
-    shl bx, 6
-    add di, bx
-    add di, ax          ; DI = y * 320 + x
-    mov byte [es:di], 0xf
-ret
-
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
 ; Expects:
@@ -1499,7 +1481,7 @@ draw_vector:
     add bx, bp
     mov dl, [si+1]
     mov dh, [si+3]
-    mov cl, 0x14
+    mov cl, 0x16  ; shadow color
 
     ; shake
     mov di, [_GAME_TICK_]
@@ -1512,13 +1494,12 @@ draw_vector:
 
     ; shadow
     call draw_line
-
-    ; lines
-    mov cl, 0x1f
-    sub ax, 0x2
-    sub bx, 0x2
-    sub dh, 0x3
-    sub dl, 0x3    
+    
+    mov cl, 0x1e  ; white color
+    sub ax, 0x1
+    sub bx, 0x1
+    sub dh, 0x2
+    sub dl, 0x2    
     call draw_line
 
     ; double line
