@@ -12,6 +12,7 @@
       background-color: #121212;
       color: #ffffff;
       margin: 0;
+      font-family: 'Courier New', Courier, monospace;
     }
     canvas {
       border: 1px solid #ffffff;
@@ -21,7 +22,7 @@
       width: 640px; /* 2x scaling */
       height: 400px; /* 2x scaling */
     }
-    button, textarea {
+    button, textarea, input[type="color"] {
       margin-top: 10px;
       margin: 2px;
       background-color: #333333;
@@ -47,6 +48,13 @@
       justify-content: space-between;
       width: 150px;
     }
+    .data-size-box {
+      background-color: #333333;
+      border: 1px solid #636363;
+      padding: 10px;
+      margin-top: 10px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -63,8 +71,10 @@
     <div class="controls">
         <button id="clearButton">Clear drawing!</button>
         <input type="file" id="backgroundImageInput" accept="image/*">
+        <input type="color" id="fillColorInput" value="#ffffff">
     </div>
-</div>
+    <div class="data-size-box" id="dataSize">Data size: 0 bytes</div>
+  </div>
 
   <script>
     const canvas = document.getElementById('canvas');
@@ -72,6 +82,7 @@
     const lines = [];
     let startPoint = null;
     let backgroundImage = null;
+    let fillColor = '#ffffff';
 
     document.getElementById('backgroundImageInput').addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -87,6 +98,11 @@
         };
         reader.readAsDataURL(file);
       }
+    });
+
+    document.getElementById('fillColorInput').addEventListener('input', (e) => {
+      fillColor = e.target.value;
+      drawLines();
     });
 
     canvas.addEventListener('click', (e) => {
@@ -166,6 +182,7 @@
       if (backgroundImage) {
         ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
       }
+      ctx.strokeStyle = fillColor;
       ctx.beginPath();
       for (const line of lines) {
         ctx.moveTo(line.x0, line.y0);
@@ -176,6 +193,7 @@
 
     function updateDataOutput() {
       let data = '';
+      let dataSize = 0;
       for (const line of lines) {
         const x0 = Math.round(line.x0);
         const x1 = Math.round(line.x1);
@@ -183,9 +201,12 @@
         const y1 = Math.round(line.y1);
         data += `dw ${x0}, ${x1}\n`;
         data += `db ${y0}, ${y1}\n`;
+        dataSize += 6; // 4 bytes for dw and 2 bytes for db
       }
       data += 'dw 0\n';
+      dataSize += 2; // 2 bytes for the final dw 0
       document.getElementById('dataOutput').value = data;
+      document.getElementById('dataSize').textContent = `Data size: ${dataSize} bytes`;
     }
   </script>
 </body>
