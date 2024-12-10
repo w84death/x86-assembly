@@ -46,10 +46,10 @@ xor di,di
 xor si,si
 
 ; draw bg
- mov ax, 0x3c3c               ; Set starting sky color
-  mov dl, 0x32                  ; 10 bars to draw
+ mov ax, 0x5c5c               ; Set starting sky color
+  mov dl, 0x0b                  ; 10 bars to draw
   .draw_sky:
-    mov cx, 320*2           ; 3 pixels high
+    mov cx, 320*9           ; 3 pixels high
     rep stosw               ; Write to the doublebuffer
     inc ax                  ; Increment color index for next bar
     xchg al, ah             ; Swap colors
@@ -253,7 +253,7 @@ draw_vector:
     ; shadow
     call draw_line
     
-    mov cx, 0x585e  ; white color
+    mov cx, 0x1e1f  ; white color
     sub ax, 0x1
     sub bx, 0x1
     sub dh, 0x2
