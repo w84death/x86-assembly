@@ -20,6 +20,8 @@ jmp start
 include 'palettes.asm'  ; 72b
 include 'brushes.asm'   ; ?
 include 'tiles.asm'     ; 232b
+include 'levels.asm'
+include 'vectors.asm'
 
 
 BEEP_BITE equ 3
@@ -44,6 +46,7 @@ _CURRENT_TUNE_ equ 0x100d     ; 2 bytes
 _NEXT_TUNE_ equ 0x100f        ; 2 bytes
 _NOTE_TIMER_ equ 0x1011       ; 1 byte
 _NOTE_TEMPO_ equ 0x1012       ; 1 byte
+_VECTOR_COLOR_ equ 0x1013     ; 2 bytes
 _ENTITIES_ equ 0x1200         ; 11 bytes per entity, 64 entites cap, 320 bytes
 
 _DBUFFER_MEMORY_ equ 0x9000   ; 64k bytes
@@ -270,16 +273,28 @@ game_loop:
 test byte [_GAME_STATE_], GSTATE_INTRO
 jz skip_game_state_intro
 
+  
+
   call draw_clouds
+
+  
+  mov word [_VECTOR_COLOR_], 0x5e5f
+
+  mov ax, [_GAME_TICK_]
+  cmp ax, 0xf
+  jl .skip_logo_draw
 
   mov bp, 320*90+24
   mov si, Logo2Vector
   call draw_vector
 
+  .skip_logo_draw:
+
+  mov word [_VECTOR_COLOR_], 0x7c7d
   mov si, LogoVector
   mov bp, 80
   call draw_vector
-  
+
   mov ah, 01h         ; BIOS keyboard status function
   int 16h             ; Call BIOS interrupt
   jz .no_key_press
@@ -299,8 +314,6 @@ test byte [_GAME_STATE_], GSTATE_PREGAME
 jz skip_game_state_pregame
 
 pre_game:
-    ; call play_tune
-
     mov di, 320*52
     mov ax, [_GAME_TICK_]
     cmp ax, PRE_GAME_TIME
@@ -1067,6 +1080,7 @@ play_tune:
 ret
 
 draw_clouds:
+  mov word [_VECTOR_COLOR_], 0x5456
   mov bp, [_GAME_TICK_]
   shr bp, 4
   mov si, CloudsVector
@@ -1495,7 +1509,7 @@ draw_vector:
     ; shadow
     call draw_line
     
-    mov cx, 0x585e  ; white color
+    mov cx, [_VECTOR_COLOR_]  ; line color
     sub ax, 0x1
     sub bx, 0x1
     sub dh, 0x2
@@ -1520,9 +1534,6 @@ draw_vector:
 
 ; =========================================== INCLUDES GAME DATA ========================
 
-include 'levels.asm'
-; include 'tunes.asm'
-include 'vectors.asm'
 
 ; =========================================== THE END ==========================
 ; Thanks for reading the source code!
