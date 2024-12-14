@@ -298,6 +298,11 @@ jz skip_game_state_intro
   mov bp, 320*35+210
   call draw_vector
 
+  mov word [_VECTOR_COLOR_], 0x1212
+  mov si, P1XVector
+  mov bp, 320*150+140
+  call draw_vector
+
   mov ah, 01h         ; BIOS keyboard status function
   int 16h             ; Call BIOS interrupt
   jz .no_key_press
