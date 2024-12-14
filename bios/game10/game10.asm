@@ -284,15 +284,18 @@ jz skip_game_state_intro
   cmp ax, 0xf
   jl .skip_logo_draw
 
-  mov bp, 320*90+24
-  mov si, Logo2Vector
+  mov bp, 320*65+80
+  mov si, LogoVector
   call draw_vector
 
   .skip_logo_draw:
 
-  mov word [_VECTOR_COLOR_], 0x7c7d
-  mov si, LogoVector
-  mov bp, 80
+  mov word [_VECTOR_COLOR_], 0x7879
+  mov si, PalmVector
+  mov bp, 24
+  call draw_vector
+
+  mov bp, 320*35+210
   call draw_vector
 
   mov ah, 01h         ; BIOS keyboard status function
@@ -1325,6 +1328,58 @@ draw_ship:
   .skip_wiosla:
 ret
 
+; =========================================== DRAW VECTOR ======================
+draw_vector:   
+  pusha 
+  .read_group:
+    xor cx, cx
+    mov cl, [si]
+    cmp cl, 0x0
+    jz .done
+
+    inc si
+
+    .read_line:
+    push cx
+
+    xor ax, ax
+    mov al, [si]
+    add ax, bp
+
+    xor bx, bx
+    mov bl, [si+2]
+    add bx, bp
+    mov dl, [si+1]
+    mov dh, [si+3]
+    mov cx, 0x1814  ; shadow color
+
+
+    ; shadow
+    call draw_line
+    
+    mov cx, [_VECTOR_COLOR_]  ; line color
+    dec ax
+    dec bx
+    sub dh, 0x2
+    sub dl, 0x2    
+    call draw_line
+
+    ; double line
+    dec cl
+    dec ch
+    inc ax
+    inc bx
+    call draw_line
+
+    add si, 2
+    pop cx
+    loop .read_line
+    add si, 2
+    jmp .read_group
+  .done:
+  popa
+  ret
+
 ; =========================================== DRAWING LINE ====================
 ; ax=x0
 ; bx=x1
@@ -1472,68 +1527,6 @@ draw_sprite:
   loop .plot_line
   popa
 ret
-
-draw_vector:   
-  pusha 
-  .read_group:
-    xor cx, cx
-    mov cl, [si]
-    cmp cl, 0x0
-    jz .done
-
-    inc si
-
-    .read_line:
-    push cx
-
-    xor ax, ax
-    mov al, [si]
-    add ax, bp
-
-    xor bx, bx
-    mov bl, [si+2]
-    add bx, bp
-    mov dl, [si+1]
-    mov dh, [si+3]
-    mov cx, 0x1814  ; shadow color
-
-    ; shake
-    mov di, [_GAME_TICK_]
-    shr di, 0x1
-    add di, si
-    and di, 0x2
-    add ax, di
-    sub bx, di
-    add dx, di
-
-    ; shadow
-    call draw_line
-    
-    mov cx, [_VECTOR_COLOR_]  ; line color
-    sub ax, 0x1
-    sub bx, 0x1
-    sub dh, 0x2
-    sub dl, 0x2    
-    call draw_line
-
-    ; double line
-    dec cl
-    dec ch
-    inc ax
-    inc bx
-    call draw_line
-
-    add si, 2
-    pop cx
-    loop .read_line
-    add si, 2
-    jmp .read_group
-  .done:
-  popa
-  ret
-
-; =========================================== INCLUDES GAME DATA ========================
-
 
 ; =========================================== THE END ==========================
 ; Thanks for reading the source code!
