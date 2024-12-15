@@ -13,22 +13,15 @@
 org 0x100
 use16
 
-; =========================================== INITIALIZATION ===================
+jmp start
 
-start:
-    mov ax, 0x13         ; Init VGA 320x200x256
-    int 0x10             ; Video BIOS interrupt
+include 'tunes.asm'
+include 'brushes.asm'
+include 'tiles.asm'
+include 'levels.asm'
+include 'vectors.asm'
+include 'palettes.asm'
 
-    mov ax, cs           ; All segments point to the same memory in .COM
-    mov ss, ax
-    mov sp, 0xFFFE       ; Stack grows downward from near the top of memory
-
-  set_keyboard_rate:
-    xor ax, ax
-    xor bx, bx
-    mov ah, 03h         ; BIOS function to set typematic rate and delay
-    mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz) and 0 delay
-    int 16h             ; Call BIOS
 
 BEEP_BITE equ 3
 BEEP_PICK equ 15
@@ -39,23 +32,24 @@ BEEP_WEB equ 30
 
 ; =========================================== MEMORY ADDRESSES =================
 
-_PLAYER_ENTITY_ID_ equ 0x1000 ; 2 bytes
-_REQUEST_POSITION_ equ 0x1002 ; 2 bytes
-_HOLDING_ID_ equ 0x1004       ; 1 byte
-_SCORE_ equ 0x1005            ; 1 byte
-_SCORE_TARGET_ equ 0x1006     ; 1 byte
-_GAME_TICK_ equ 0x1007        ; 2 bytes
-_GAME_STATE_ equ 0x1009       ; 1 byte
-_WEB_LOCKED_ equ 0x100a       ; 1 byte
-_LAST_TICK_ equ 0x100b        ; 2 bytes
-_CURRENT_TUNE_ equ 0x100d     ; 2 bytes
-_NEXT_TUNE_ equ 0x100f        ; 2 bytes
-_NOTE_TIMER_ equ 0x1011       ; 1 byte
-_NOTE_TEMPO_ equ 0x1012       ; 1 byte
-_VECTOR_COLOR_ equ 0x1013     ; 2 bytes
-_ENTITIES_ equ 0x6000         ; 11 bytes per entity, 64 entites cap, 320 bytes
+_BASE_ equ 0x2000
+_PLAYER_ENTITY_ID_ equ _BASE_ ; 2 bytes
+_REQUEST_POSITION_ equ _BASE_ + 0x02 ; 2 bytes
+_HOLDING_ID_ equ _BASE_ + 0x04       ; 1 byte
+_SCORE_ equ _BASE_ + 0x05            ; 1 byte
+_SCORE_TARGET_ equ _BASE_ + 0x06     ; 1 byte
+_GAME_TICK_ equ _BASE_ + 0x07        ; 2 bytes
+_GAME_STATE_ equ _BASE_ + 0x09       ; 1 byte
+_WEB_LOCKED_ equ _BASE_ + 0x0a       ; 1 byte
+_LAST_TICK_ equ _BASE_ + 0x0b        ; 2 bytes
+_CURRENT_TUNE_ equ _BASE_ + 0x0d     ; 2 bytes
+_NEXT_TUNE_ equ _BASE_ + 0x0f        ; 2 bytes
+_NOTE_TIMER_ equ _BASE_ + 0x11       ; 1 byte
+_NOTE_TEMPO_ equ _BASE_ + 0x12       ; 1 byte
+_VECTOR_COLOR_ equ _BASE_ + 0x13     ; 2 bytes
+_ENTITIES_ equ 0x1a00         ; 11 bytes per entity, 64 entites cap, 320 bytes
 
-_DBUFFER_MEMORY_ equ 0x2000   ; 64k bytes
+_DBUFFER_MEMORY_ equ 0x3000   ; 64k bytes
 _BG_BUFFER_MEMORY_ equ 0x4000 ; 64k bytes
 _VGA_MEMORY_ equ 0xA000       ; 64k bytes
 _TICK_ equ 1Ah                ; BIOS tick
@@ -109,6 +103,24 @@ GSTATE_POSTGAME equ 16
 GSTATE_END equ 32
 GSTATE_WIN equ 64
 GSTATE_OUTRO equ 128
+
+start:
+
+; =========================================== INITIALIZATION ===================
+
+    mov ax, 0x13         ; Init VGA 320x200x256
+    int 0x10             ; Video BIOS interrupt
+
+    mov ax, cs           ; All segments point to the same memory in .COM
+    mov ss, ax
+    mov sp, 0xFFFE       ; Stack grows downward from near the top of memory
+
+  set_keyboard_rate:
+    xor ax, ax
+    xor bx, bx
+    mov ah, 03h         ; BIOS function to set typematic rate and delay
+    mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz) and 0 delay
+    int 16h             ; Call BIOS
 
 restart_game:
   mov word [_GAME_TICK_], 0x0
@@ -554,10 +566,10 @@ ai_entities:
               .crab_bite:                 ; Crab
               .snake_bite:                ; Snake
               mov byte [_GAME_STATE_], GSTATE_END
-              ; mov word [_CURRENT_TUNE_], tune_end
-              ; mov word [_NEXT_TUNE_], tune_end
-              ; mov byte [_NOTE_TIMER_], 0x0
-              ; mov byte [_NOTE_TEMPO_], 0xa
+              mov word [_CURRENT_TUNE_], tune_end
+              mov word [_NEXT_TUNE_], tune_end
+              mov byte [_NOTE_TIMER_], 0x0
+              mov byte [_NOTE_TEMPO_], 0xa
               jmp .skip_item
 
               .spider_web:                ; Spider
@@ -1057,7 +1069,7 @@ stop_beep:
   out 0x61, al   ; Write the updated value back to the PIC chip
 ret
 
-
+; =========================================== PLAY TUNE ========================
 play_tune:
   cmp byte [_NOTE_TIMER_], 0x0
   jz .new_note
@@ -1530,13 +1542,6 @@ ret
 ; Thanks for reading the source code!
 ; Visit http://smol.p1x.in for more.
 
-
-include 'palettes.asm'
-include 'brushes.asm'
-include 'tiles.asm'
-include 'levels.asm'
-include 'tunes.asm'
-include 'vectors.asm'
 
 Logo:
 db "P1X"    ; Use HEX viewer to see P1X at the end of binary
