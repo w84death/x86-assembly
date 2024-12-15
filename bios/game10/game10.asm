@@ -278,7 +278,7 @@ game_loop:
 test byte [_GAME_STATE_], GSTATE_INTRO
 jz skip_game_state_intro
 
-  
+  call play_tune
 
   call draw_clouds
 
@@ -335,6 +335,7 @@ pre_game:
     add di, ax
     mov bx, 0x1
     call draw_ship
+    call play_tune
     jmp skip_game_state_pregame
 
   .start_game:
@@ -916,7 +917,7 @@ draw_entities:
 
 skip_draw_entities:
 
-  call draw_clouds
+  ; call draw_clouds
 
 ; =========================================== CHECK SCORE =======================
 
@@ -938,23 +939,43 @@ check_score:
     mov byte [_NOTE_TIMER_], 0x0
     mov byte [_NOTE_TEMPO_], 0x2
   .continue_game:
-
+  
 ; =========================================== DRAW SCORE ========================
-
-draw_score:
-  xor cl, cl
+draw_score_ui:
+mov si, CoinVector
+mov bp, 320*10+100
+xor cl, cl
   .draw_spot:
-      mov si, SlotBrush
-      call draw_sprite
+      mov word [_VECTOR_COLOR_], 0x1e1f
       cmp cl, ah
       jge .skip_gold_draw
-        mov si, GoldBrush
-        call draw_sprite
+          mov word [_VECTOR_COLOR_], 0x1212
       .skip_gold_draw:
+          add bp, 22
+          call draw_vector
     add di, 0xa
     inc cl
     cmp al, cl
   jnz .draw_spot
+
+
+draw_life_ui:
+  mov ah, 0x3
+  mov al, 0x3
+  mov word [_VECTOR_COLOR_], 0x1e1f
+  mov si, LifeUIVector
+  mov bp, 320*10+10
+  xor cl, cl
+  .draw_life_spot:
+      cmp cl, ah
+      jge .skip_life_draw
+      add bp, 22
+        call draw_vector
+      .skip_life_draw:
+    add di, 0xa
+    inc cl
+    cmp al, cl
+  jnz .draw_life_spot
 
 skip_score:
 skip_game_state_game:
@@ -975,7 +996,7 @@ draw_post_game:
   add di, ax
   mov bx, 0x1
   call draw_ship
-  ; call play_tune
+  call play_tune
 
 
 skip_game_state_postgame:
@@ -984,7 +1005,7 @@ skip_game_state_postgame:
 
 test byte [_GAME_STATE_], GSTATE_END
 jz skip_game_state_end
-  ; call play_tune
+  call play_tune
   mov di, 320*100+154
   mov si, SkullBrush
   test byte [_GAME_STATE_], GSTATE_WIN
