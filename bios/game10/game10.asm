@@ -13,15 +13,24 @@
 org 0x100
 use16
 
-jmp start
+; =========================================== INITIALIZATION ===================
 
-; =========================================== DATA FOR THE GAME ===============
+start:
+    mov ax, 0x13         ; Init VGA 320x200x256
+    int 0x10             ; Video BIOS interrupt
 
-include 'palettes.asm'  ; 72b
-include 'brushes.asm'   ; ?
-include 'tiles.asm'     ; 232b
-include 'levels.asm'
-include 'vectors.asm'
+    mov ax, cs
+    mov ds, ax           ; Set DS to code segment
+    ; mov ax, 0x8000       ; Set up stack segment at 0x7000
+    ; mov ss, ax
+    ; mov sp, 0xFFFE       ; Set stack pointer to top of segment
+
+  set_keyboard_rate:
+    xor ax, ax
+    xor bx, bx
+    mov ah, 03h         ; BIOS function to set typematic rate and delay
+    mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz) and 0 delay
+    int 16h             ; Call BIOS
 
 
 BEEP_BITE equ 3
@@ -49,8 +58,8 @@ _NOTE_TEMPO_ equ 0x1012       ; 1 byte
 _VECTOR_COLOR_ equ 0x1013     ; 2 bytes
 _ENTITIES_ equ 0x1200         ; 11 bytes per entity, 64 entites cap, 320 bytes
 
-_DBUFFER_MEMORY_ equ 0x9000   ; 64k bytes
-_BG_BUFFER_MEMORY_ equ 0x8000 ; 64k bytes
+_DBUFFER_MEMORY_ equ 0x4000   ; 64k bytes
+_BG_BUFFER_MEMORY_ equ 0x2000 ; 64k bytes
 _VGA_MEMORY_ equ 0xA000       ; 64k bytes
 _TICK_ equ 1Ah                ; BIOS tick
 
@@ -103,19 +112,6 @@ GSTATE_POSTGAME equ 16
 GSTATE_END equ 32
 GSTATE_WIN equ 64
 GSTATE_OUTRO equ 128
-
-; =========================================== INITIALIZATION ===================
-
-start:
-    mov ax,0x13                             ; Init VGA 320x200x256
-    int 0x10                                ; Video BIOS interrupt
-
-  set_keyboard_rate:
-    xor ax, ax
-    xor bx, bx
-    mov ah, 03h         ; BIOS function to set typematic rate and delay
-    mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz) and 0 delay
-    int 16h             ; Call BIOS
 
 restart_game:
   mov word [_GAME_TICK_], 0x0
@@ -1536,6 +1532,12 @@ ret
 ; =========================================== THE END ==========================
 ; Thanks for reading the source code!
 ; Visit http://smol.p1x.in for more.
+
+include 'vectors.asm'
+include 'palettes.asm'
+include 'brushes.asm'
+include 'tiles.asm'
+include 'levels.asm'
 
 Logo:
 db "P1X"    ; Use HEX viewer to see P1X at the end of binary
