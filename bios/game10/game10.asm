@@ -19,11 +19,9 @@ start:
     mov ax, 0x13         ; Init VGA 320x200x256
     int 0x10             ; Video BIOS interrupt
 
-    mov ax, cs
-    mov ds, ax           ; Set DS to code segment
-    ; mov ax, 0x8000       ; Set up stack segment at 0x7000
-    ; mov ss, ax
-    ; mov sp, 0xFFFE       ; Set stack pointer to top of segment
+    mov ax, cs           ; All segments point to the same memory in .COM
+    mov ss, ax
+    mov sp, 0xFFFE       ; Stack grows downward from near the top of memory
 
   set_keyboard_rate:
     xor ax, ax
@@ -31,7 +29,6 @@ start:
     mov ah, 03h         ; BIOS function to set typematic rate and delay
     mov bl, 1Fh         ; BL = 31 (0x1F) for maximum repeat rate (30 Hz) and 0 delay
     int 16h             ; Call BIOS
-
 
 BEEP_BITE equ 3
 BEEP_PICK equ 15
@@ -56,10 +53,10 @@ _NEXT_TUNE_ equ 0x100f        ; 2 bytes
 _NOTE_TIMER_ equ 0x1011       ; 1 byte
 _NOTE_TEMPO_ equ 0x1012       ; 1 byte
 _VECTOR_COLOR_ equ 0x1013     ; 2 bytes
-_ENTITIES_ equ 0x1200         ; 11 bytes per entity, 64 entites cap, 320 bytes
+_ENTITIES_ equ 0x6000         ; 11 bytes per entity, 64 entites cap, 320 bytes
 
-_DBUFFER_MEMORY_ equ 0x4000   ; 64k bytes
-_BG_BUFFER_MEMORY_ equ 0x2000 ; 64k bytes
+_DBUFFER_MEMORY_ equ 0x2000   ; 64k bytes
+_BG_BUFFER_MEMORY_ equ 0x4000 ; 64k bytes
 _VGA_MEMORY_ equ 0xA000       ; 64k bytes
 _TICK_ equ 1Ah                ; BIOS tick
 
@@ -119,9 +116,9 @@ restart_game:
   mov byte [_SCORE_], 0x0
   mov byte [_HOLDING_ID_], 0x0
   mov byte [_WEB_LOCKED_], 0x0
-  ; mov word [_CURRENT_TUNE_], tune_intro
-  ; mov word [_NEXT_TUNE_], tune_intro           ; loop intro tune
-  ; mov byte [_NOTE_TIMER_], 0x0
+  mov word [_CURRENT_TUNE_], tune_intro
+  mov word [_NEXT_TUNE_], tune_intro           ; loop intro tune
+  mov byte [_NOTE_TIMER_], 0x0
 
 ; =========================================== SPAWN ENTITIES ==================
 ; Expects: entities array from level data
@@ -288,13 +285,13 @@ jz skip_game_state_intro
 
   mov word [_VECTOR_COLOR_], 0x7879
   mov si, PalmVector
-  mov bp, 24
+  mov bp, 320*80
   call draw_vector
 
-  mov bp, 320*35+210
-  call draw_vector
+  ; mov bp, 320*80+210
+  ; call draw_vector
 
-  mov word [_VECTOR_COLOR_], 0x1212
+  mov word [_VECTOR_COLOR_], 0x1215
   mov si, P1XVector
   mov bp, 320*150+140
   call draw_vector
@@ -924,10 +921,10 @@ check_score:
   jg .continue_game
     add byte [_GAME_STATE_], GSTATE_POSTGAME
     mov word [_GAME_TICK_], 0x0
-    ; mov word [_CURRENT_TUNE_], tune_win
-    ; mov word [_NEXT_TUNE_], tune_win
-    ; mov byte [_NOTE_TIMER_], 0x0
-    ; mov byte [_NOTE_TEMPO_], 0x2
+    mov word [_CURRENT_TUNE_], tune_win
+    mov word [_NEXT_TUNE_], tune_win
+    mov byte [_NOTE_TIMER_], 0x0
+    mov byte [_NOTE_TEMPO_], 0x2
   .continue_game:
 
 ; =========================================== DRAW SCORE ========================
@@ -1062,25 +1059,25 @@ ret
 
 
 play_tune:
-  ; cmp byte [_NOTE_TIMER_], 0x0
-  ; jz .new_note
-  ;   dec byte [_NOTE_TIMER_]
-  ;   jmp .done
-  ; .new_note:
-  ;   inc word [_CURRENT_TUNE_]
-  ;   mov si, [_CURRENT_TUNE_]
-  ;   mov bl, [si]
-  ;   cmp bl, 0
-  ;   jnz .skip_loop
-  ;     mov ax, [_NEXT_TUNE_]
-  ;     mov word [_CURRENT_TUNE_], ax     ; Loop to begining of the tune
-  ;     mov si, ax
-  ;     mov bl, [si]
-  ;   .skip_loop:
-  ;   mov byte al, [_NOTE_TEMPO_]
-  ;   mov byte [_NOTE_TIMER_], al
-  ;   call beep
-  ; .done:
+  cmp byte [_NOTE_TIMER_], 0x0
+  jz .new_note
+    dec byte [_NOTE_TIMER_]
+    jmp .done
+  .new_note:
+    inc word [_CURRENT_TUNE_]
+    mov si, [_CURRENT_TUNE_]
+    mov bl, [si]
+    cmp bl, 0
+    jnz .skip_loop
+      mov ax, [_NEXT_TUNE_]
+      mov word [_CURRENT_TUNE_], ax     ; Loop to begining of the tune
+      mov si, ax
+      mov bl, [si]
+    .skip_loop:
+    mov byte al, [_NOTE_TEMPO_]
+    mov byte [_NOTE_TIMER_], al
+    call beep
+  .done:
 ret
 
 draw_clouds:
@@ -1533,11 +1530,13 @@ ret
 ; Thanks for reading the source code!
 ; Visit http://smol.p1x.in for more.
 
-include 'vectors.asm'
+
 include 'palettes.asm'
 include 'brushes.asm'
 include 'tiles.asm'
 include 'levels.asm'
+include 'tunes.asm'
+include 'vectors.asm'
 
 Logo:
 db "P1X"    ; Use HEX viewer to see P1X at the end of binary
