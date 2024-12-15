@@ -9,6 +9,8 @@
 ; Web: smol.p1x.in/assembly/forgotten-isles/
 ; License: MIT
 
+Levels:
+dw LevelData, Level2Data, Level3Data
 
 ; =========================================== LEVEL DATA =======================
 ; 16x8 level data
@@ -88,8 +90,9 @@ dw 0x0c04
 db 11, 2
 dw 0x000c
 dw 0x0e07
-db 12, 1
+db 12, 2
 dw 0x0c11
+dw 0x0402
 db 4, 8
 dw 0x021b
 dw 0x031a

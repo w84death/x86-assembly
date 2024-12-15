@@ -47,6 +47,10 @@ _NEXT_TUNE_ equ _BASE_ + 0x0f        ; 2 bytes
 _NOTE_TIMER_ equ _BASE_ + 0x11       ; 1 byte
 _NOTE_TEMPO_ equ _BASE_ + 0x12       ; 1 byte
 _VECTOR_COLOR_ equ _BASE_ + 0x13     ; 2 bytes
+_LIFE_ equ _BASE_ + 0x15             ; 1 byte
+_LIFE_TARGET_ equ _BASE_ + 0x16      ; 1 byte
+_CURRENT_LEVEL_ equ _BASE_ + 0x17    ; 1 byte
+
 _ENTITIES_ equ 0x1a00         ; 11 bytes per entity, 64 entites cap, 320 bytes
 
 _DBUFFER_MEMORY_ equ 0x3000   ; 64k bytes
@@ -123,100 +127,20 @@ start:
     int 16h             ; Call BIOS
 
 restart_game:
-  mov word [_GAME_TICK_], 0x0
   mov byte [_GAME_STATE_], GSTATE_INTRO
+  mov byte [_CURRENT_LEVEL_], 0x0
   mov byte [_SCORE_], 0x0
+  mov byte [_LIFE_], 0x3
+  mov byte [_LIFE_TARGET_], 0x3
+  mov word [_GAME_TICK_], 0x0
   mov byte [_HOLDING_ID_], 0x0
   mov byte [_WEB_LOCKED_], 0x0
   mov word [_CURRENT_TUNE_], tune_intro
   mov word [_NEXT_TUNE_], tune_intro           ; loop intro tune
   mov byte [_NOTE_TIMER_], 0x0
 
-; =========================================== SPAWN ENTITIES ==================
-; Expects: entities array from level data
-; Returns: entities in memory array
 
-spawn_entities:
-  mov si, EntityData
-  mov di, _ENTITIES_
-
-  .next_entitie:
-    mov bl, [si]       ; Get first word (ID)
-    cmp bl, 0x0        ; Check for last entity marker
-    jz .done
-
-    dec bl             ; Conv level id to game id
-
-    inc si
-    mov al, [si]       ; Get amount in group
-    inc si             ; mov to the next word (first entitie in group)
-    mov cl, al         ; Set loop
-
-    cmp bl, ID_GOLD    ; Check if gold coin
-    jnz .not_gold
-    mov [_SCORE_TARGET_], cl ; Count each gold as score target
-    .not_gold:
-
-    .next_in_group:
-      mov byte [di], bl           ; Save sprite id
-      mov ax, [si]                ; Get position
-      mov [di+_POS_], ax          ; Save position
-      mov [di+_POS_OLD_], ax      ; Save old position
-
-      push cx
-      push di
-      mov cx, ax
-      call conv_pos2mem
-      mov ax, di
-      pop di
-      pop cx
-      mov [di+_SCREEN_POS_], ax
-
-      mov byte [di+_MIRROR_], 0x0 ;  Save mirror (none)
-      mov byte [di+_STATE_], STATE_STATIC ; Save basic state
-      mov byte [di+_DIR_], 0x0 ; Save basic state
-      mov byte [di+_ANIM_], 0x0
-
-      cmp bl, ID_SNAKE
-      jz .set_explore
-      cmp bl, ID_CRAB
-      jz .set_explore
-      cmp bl, ID_SPIDER
-      jz .set_explore
-      jmp .skip_explore
-      .set_explore:   ; Set explore state to alive entities
-        mov byte [di+_STATE_], STATE_EXPLORING
-      .skip_explore:
-
-      cmp bl, ID_PALM
-      jz .set_rand_mirror
-      cmp bl, ID_BUSH
-      jz .set_rand_mirror
-      jnz .skip_mirror
-      .set_rand_mirror:  ; Random X mirror, for foliage
-        xor al, ah
-        and al, 0x01
-        mov byte [di+_MIRROR_], al
-      .skip_mirror:
-
-      cmp bl, ID_BRIDGE
-      jz .set_interactive
-      cmp bl, ID_GOLD
-      jz .set_interactive
-      cmp bl, ID_ROCK
-      jz .set_interactive
-      cmp bl, ID_CHEST
-      jz .set_interactive
-      jmp .skip_interactive
-      .set_interactive:  ; Set interactive entities
-        mov byte [di+_STATE_], STATE_INTERACTIVE
-      .skip_interactive:
-
-      add si, 0x02                  ; Move to the next entity in code
-      add di, ENTITY_SIZE           ; Move to the next entity in memory
-    loop .next_in_group
-  jmp .next_entitie
-  .done:
+call spawn_entities
 
 mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
 
@@ -566,12 +490,15 @@ ai_entities:
 
               .crab_bite:                 ; Crab
               .snake_bite:                ; Snake
-              mov byte [_GAME_STATE_], GSTATE_END
-              mov word [_CURRENT_TUNE_], tune_end
-              mov word [_NEXT_TUNE_], tune_end
-              mov byte [_NOTE_TIMER_], 0x0
-              mov byte [_NOTE_TEMPO_], 0xa
-              jmp .skip_item
+                dec byte [_LIFE_]
+                jnz .continue_game
+
+                mov byte [_GAME_STATE_], GSTATE_END
+                mov word [_CURRENT_TUNE_], tune_end
+                mov word [_NEXT_TUNE_], tune_end
+                mov byte [_NOTE_TIMER_], 0x0
+                mov byte [_NOTE_TEMPO_], 0xa
+                jmp .skip_item
 
               .spider_web:                ; Spider
                   mov byte [_WEB_LOCKED_] , WEB_LOCK
@@ -915,10 +842,6 @@ draw_entities:
     dec cx
   jg .next
 
-skip_draw_entities:
-
-  ; call draw_clouds
-
 ; =========================================== CHECK SCORE =======================
 
 test byte [_GAME_STATE_], GSTATE_PREGAME
@@ -928,7 +851,7 @@ jnz skip_score
 
 check_score:
   mov di, SCORE_POSITION
-  mov al, [_SCORE_TARGET_]
+  mov al, 1;[_SCORE_TARGET_]
   mov ah, [_SCORE_]
   cmp al, ah
   jg .continue_game
@@ -946,10 +869,10 @@ mov si, CoinVector
 mov bp, 320*10+100
 xor cl, cl
   .draw_spot:
-      mov word [_VECTOR_COLOR_], 0x1e1f
+      mov word [_VECTOR_COLOR_], 0x1213
       cmp cl, ah
       jge .skip_gold_draw
-          mov word [_VECTOR_COLOR_], 0x1212
+          mov word [_VECTOR_COLOR_], 0x4344
       .skip_gold_draw:
           add bp, 22
           call draw_vector
@@ -960,18 +883,20 @@ xor cl, cl
 
 
 draw_life_ui:
-  mov ah, 0x3
-  mov al, 0x3
-  mov word [_VECTOR_COLOR_], 0x1e1f
+  mov ah, [_LIFE_]
+  mov al, [_LIFE_TARGET_]
+  
   mov si, LifeUIVector
   mov bp, 320*10+10
   xor cl, cl
   .draw_life_spot:
+      mov word [_VECTOR_COLOR_], 0xb9ba
       cmp cl, ah
       jge .skip_life_draw
-      add bp, 22
-        call draw_vector
+      mov word [_VECTOR_COLOR_], 0x2829
       .skip_life_draw:
+      add bp, 22
+      call draw_vector
     add di, 0xa
     inc cl
     cmp al, cl
@@ -1013,6 +938,26 @@ jz skip_game_state_end
   mov si, GoldBrush
   .draw_icon:
   call draw_sprite
+
+  mov ah, 01h         ; BIOS keyboard status function
+  int 16h             ; Call BIOS interrupt
+  jz .no_key_press
+  .restart_game:
+    test byte [_GAME_STATE_], GSTATE_WIN
+    jz restart_game
+    inc byte [_CURRENT_LEVEL_]
+    mov byte [_GAME_STATE_], GSTATE_GAME+GSTATE_PREGAME
+    mov byte [_SCORE_], 0x0
+    mov word [_GAME_TICK_], 0x0
+    mov byte [_HOLDING_ID_], 0x0
+    mov byte [_WEB_LOCKED_], 0x0
+    mov word [_CURRENT_TUNE_], tune_intro
+    mov word [_NEXT_TUNE_], tune_intro           ; loop intro tune
+    mov byte [_NOTE_TIMER_], 0x0
+    call draw_level
+    call spawn_entities
+    
+  .no_key_press:
 skip_game_state_end:
 
 ; =========================================== VGA BLIT PROCEDURE ===============
@@ -1134,6 +1079,100 @@ conv_pos2mem:
   shl dx, 3                ; DX = X * 8
   add ax, dx               ; AX = Y * 2560 + X * 8
   add di, ax               ; Move result to DI
+ret
+
+
+; =========================================== SPAWN ENTITIES ==================
+; Expects: entities array from level data
+; Returns: entities in memory array
+
+spawn_entities:
+  mov si, Levels
+  mov ax, [_CURRENT_LEVEL_]
+  shl ax, 1
+  add si, ax
+  mov ax, [si]
+  add ax, 128
+  mov si, ax
+  mov di, _ENTITIES_
+
+  .next_entitie:
+    mov bl, [si]       ; Get first word (ID)
+    cmp bl, 0x0        ; Check for last entity marker
+    jz .done
+
+    dec bl             ; Conv level id to game id
+
+    inc si
+    mov al, [si]       ; Get amount in group
+    inc si             ; mov to the next word (first entitie in group)
+    mov cl, al         ; Set loop
+
+    cmp bl, ID_GOLD    ; Check if gold coin
+    jnz .not_gold
+    mov [_SCORE_TARGET_], cl ; Count each gold as score target
+    .not_gold:
+
+    .next_in_group:
+      mov byte [di], bl           ; Save sprite id
+      mov ax, [si]                ; Get position
+      mov [di+_POS_], ax          ; Save position
+      mov [di+_POS_OLD_], ax      ; Save old position
+
+      push cx
+      push di
+      mov cx, ax
+      call conv_pos2mem
+      mov ax, di
+      pop di
+      pop cx
+      mov [di+_SCREEN_POS_], ax
+
+      mov byte [di+_MIRROR_], 0x0 ;  Save mirror (none)
+      mov byte [di+_STATE_], STATE_STATIC ; Save basic state
+      mov byte [di+_DIR_], 0x0 ; Save basic state
+      mov byte [di+_ANIM_], 0x0
+
+      cmp bl, ID_SNAKE
+      jz .set_explore
+      cmp bl, ID_CRAB
+      jz .set_explore
+      cmp bl, ID_SPIDER
+      jz .set_explore
+      jmp .skip_explore
+      .set_explore:   ; Set explore state to alive entities
+        mov byte [di+_STATE_], STATE_EXPLORING
+      .skip_explore:
+
+      cmp bl, ID_PALM
+      jz .set_rand_mirror
+      cmp bl, ID_BUSH
+      jz .set_rand_mirror
+      jnz .skip_mirror
+      .set_rand_mirror:  ; Random X mirror, for foliage
+        xor al, ah
+        and al, 0x01
+        mov byte [di+_MIRROR_], al
+      .skip_mirror:
+
+      cmp bl, ID_BRIDGE
+      jz .set_interactive
+      cmp bl, ID_GOLD
+      jz .set_interactive
+      cmp bl, ID_ROCK
+      jz .set_interactive
+      cmp bl, ID_CHEST
+      jz .set_interactive
+      jmp .skip_interactive
+      .set_interactive:  ; Set interactive entities
+        mov byte [di+_STATE_], STATE_INTERACTIVE
+      .skip_interactive:
+
+      add si, 0x02                  ; Move to the next entity in code
+      add di, ENTITY_SIZE           ; Move to the next entity in memory
+    loop .next_in_group
+  jmp .next_entitie
+  .done:
 ret
 
 ; =========================================== CHECK BOUNDS =====================
@@ -1382,7 +1421,7 @@ draw_vector:
     add bx, bp
     mov dl, [si+1]
     mov dh, [si+3]
-    mov cx, 0x1814  ; shadow color
+    mov cx, 0x1816  ; shadow color
 
 
     ; shadow
