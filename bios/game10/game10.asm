@@ -72,6 +72,7 @@ _ANIM_ equ 10    ; 1 byte ; 11 bytes total
 ENTITY_SIZE  equ 11
 MAX_ENTITIES equ 64
 ENTITIES_SPEED equ 2
+AVAILABLE_LEVELS equ 0x3
 LEVEL_START_POSITION equ 320*68+32
 COLOR_SKY equ 0x3c3c
 COLOR_WATER equ 0x3434
@@ -106,7 +107,8 @@ GSTATE_GAME equ 8
 GSTATE_POSTGAME equ 16
 GSTATE_END equ 32
 GSTATE_WIN equ 64
-GSTATE_OUTRO equ 128
+GSTATE_NEXT equ 128
+GSTATE_OUTRO equ 256
 
 start:
 
@@ -141,9 +143,6 @@ restart_game:
 
 
 call spawn_entities
-
-mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
-
 
 ; =========================================== DRAW BACKGROUND ==================
 
@@ -915,7 +914,19 @@ draw_post_game:
   shr ax, 1
   cmp ax, POST_GAME_TIME
   jnz .move_ship
-    mov byte [_GAME_STATE_], GSTATE_END+GSTATE_WIN
+    inc byte [_CURRENT_LEVEL_]
+    cmp byte [_CURRENT_LEVEL_], AVAILABLE_LEVELS
+    jz restart_game
+    mov byte [_GAME_STATE_], GSTATE_GAME+GSTATE_PREGAME
+    mov byte [_SCORE_], 0x0
+    mov word [_GAME_TICK_], 0x0
+    mov byte [_HOLDING_ID_], 0x0
+    mov byte [_WEB_LOCKED_], 0x0
+    mov word [_CURRENT_TUNE_], tune_intro
+    mov word [_NEXT_TUNE_], tune_intro           ; loop intro tune
+    mov byte [_NOTE_TIMER_], 0x0
+    call draw_level
+    call spawn_entities
   .move_ship:
   mov di, 320*52+32
   add di, ax
@@ -945,17 +956,6 @@ jz skip_game_state_end
   .restart_game:
     test byte [_GAME_STATE_], GSTATE_WIN
     jz restart_game
-    inc byte [_CURRENT_LEVEL_]
-    mov byte [_GAME_STATE_], GSTATE_GAME+GSTATE_PREGAME
-    mov byte [_SCORE_], 0x0
-    mov word [_GAME_TICK_], 0x0
-    mov byte [_HOLDING_ID_], 0x0
-    mov byte [_WEB_LOCKED_], 0x0
-    mov word [_CURRENT_TUNE_], tune_intro
-    mov word [_NEXT_TUNE_], tune_intro           ; loop intro tune
-    mov byte [_NOTE_TIMER_], 0x0
-    call draw_level
-    call spawn_entities
     
   .no_key_press:
 skip_game_state_end:
@@ -1173,6 +1173,9 @@ spawn_entities:
     loop .next_in_group
   jmp .next_entitie
   .done:
+
+  mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
+
 ret
 
 ; =========================================== CHECK BOUNDS =====================
@@ -1435,10 +1438,10 @@ draw_vector:
     call draw_line
 
     ; double line
-    dec cl
-    dec ch
-    inc ax
-    inc bx
+    inc cl
+    inc ch
+    dec ax
+    dec bx 
     call draw_line
 
     add si, 2
