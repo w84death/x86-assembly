@@ -202,33 +202,53 @@ test byte [_GAME_STATE_], GSTATE_INTRO
 jz skip_game_state_intro
 
   call play_tune
-
   call draw_clouds
 
   
-  mov word [_VECTOR_COLOR_], 0x5e5f
+  mov ah, [_GAME_TICK_]  
+  and ah, 0xf
+  add ah, 0x6c
+  mov al, 0x87
+  mov word [_VECTOR_COLOR_], ax
 
   mov ax, [_GAME_TICK_]
   cmp ax, 0xf
   jl .skip_logo_draw
-
   mov bp, 320*65+80
   mov si, LogoVector
   call draw_vector
-
   .skip_logo_draw:
 
-  mov word [_VECTOR_COLOR_], 0x7879
+  cmp ax, 0x1f
+  jl .skip_logo2_draw
+  mov si, Logo2Vector
+  call draw_vector
+  .skip_logo2_draw:
+
+  mov word [_VECTOR_COLOR_], 0x0687
   mov si, PalmVector
-  mov bp, 320*80
+  mov bp, 320*55-18
+  call draw_vector
+  
+  mov word [_VECTOR_COLOR_], 0x7876
+  mov si, PalmGreenVector
   call draw_vector
 
-  ; mov bp, 320*80+210
-  ; call draw_vector
+  add bp, 320*95-32
+  call draw_vector
 
-  mov word [_VECTOR_COLOR_], 0x1215
+  add bp, 290
+  call draw_vector
+
+  sub bp, 320*20+20
+  call draw_vector
+  
+  sub bp, 320*170-20
+  call draw_vector
+
+  mov word [_VECTOR_COLOR_], 0x1e14
   mov si, P1XVector
-  mov bp, 320*150+140
+  mov bp, 320*150+270
   call draw_vector
 
   mov ah, 01h         ; BIOS keyboard status function
@@ -850,7 +870,7 @@ jnz skip_score
 
 check_score:
   mov di, SCORE_POSITION
-  mov al, 1;[_SCORE_TARGET_]
+  mov al, [_SCORE_TARGET_]
   mov ah, [_SCORE_]
   cmp al, ah
   jg .continue_game
@@ -1423,18 +1443,19 @@ draw_vector:
     mov bl, [si+2]
     add bx, bp
     mov dl, [si+1]
-    mov dh, [si+3]
-    mov cx, 0x1816  ; shadow color
-
+    mov dh, [si+3]    
+    mov cx, [_VECTOR_COLOR_]  ; shadow color
+    mov ch, cl
 
     ; shadow
     call draw_line
     
     mov cx, [_VECTOR_COLOR_]  ; line color
+    mov cl, ch
     dec ax
     dec bx
-    sub dh, 0x2
-    sub dl, 0x2    
+    dec dh
+    dec dl    
     call draw_line
 
     ; double line
