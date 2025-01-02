@@ -909,10 +909,10 @@ draw_life_ui:
   mov bp, 320*10+10
   xor cl, cl
   .draw_life_spot:
-      mov word [_VECTOR_COLOR_], 0xb9ba
+      mov word [_VECTOR_COLOR_], 0x8482
       cmp cl, ah
       jge .skip_life_draw
-      mov word [_VECTOR_COLOR_], 0x2829
+      mov word [_VECTOR_COLOR_], 0x2321
       .skip_life_draw:
       add bp, 22
       call draw_vector
