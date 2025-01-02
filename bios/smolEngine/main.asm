@@ -40,9 +40,9 @@ STATE_QUIT equ 256
 mov ax, 0x13        ; Init 320x200, 256 colors mode
 int 0x10            ; Video BIOS interrupt
 
-push cs             
-pop ss              ; Set stack segment to the same as code segment
-mov sp, 0xFFFE      ; Stack grows downward from near the top of memory
+;push cs             
+;pop ss              ; Set stack segment to the same as code segment
+;mov sp, 0xFFFE      ; Stack grows downward from near the top of memory
 
 push _DBUFFER_MEMORY_
 pop es              ; Set ES to the double buffer memory
@@ -51,6 +51,8 @@ xor di, di          ; Set DI to 0
 ; =========================================== GAME LOOP ========================
 
 mov word [_POS_], 320*100+160
+mov word [_DIR_], 0
+
 game_loop:
 
 
@@ -100,6 +102,7 @@ mov [_DIR_], cx
 mov word ax, [_DIR_]
 add word [_POS_], ax   
 mov word di, [_POS_]
+
 
 mov al, 0x0f            ; White color
 mov byte [es:di], al    ; Draw a pixel
