@@ -50,11 +50,11 @@ _VECTOR_COLOR_ equ _BASE_ + 0x13     ; 2 bytes
 _LIFE_ equ _BASE_ + 0x15             ; 1 byte
 _LIFE_TARGET_ equ _BASE_ + 0x16      ; 1 byte
 _CURRENT_LEVEL_ equ _BASE_ + 0x17    ; 1 byte
+_MAX_ENTITIES_  equ _BASE_ + 0x18    ; 1 byte
+_ENTITIES_ equ _BASE_ + 0x40         ; 11 bytes per entity, 64 entites cap, 320 bytes
 
-_ENTITIES_ equ 0x1a00         ; 11 bytes per entity, 64 entites cap, 320 bytes
-
-_DBUFFER_MEMORY_ equ 0x3000   ; 64k bytes
-_BG_BUFFER_MEMORY_ equ 0x4000 ; 64k bytes
+_BG_BUFFER_MEMORY_ equ 0x3000 ; 64k bytes
+_DBUFFER_MEMORY_ equ 0x4000   ; 64k bytes
 _VGA_MEMORY_ equ 0xA000       ; 64k bytes
 _TICK_ equ 1Ah                ; BIOS tick
 
@@ -70,7 +70,6 @@ _ANIM_ equ 10    ; 1 byte ; 11 bytes total
 ; =========================================== MAGIC NUMBERS ====================
 
 ENTITY_SIZE  equ 11
-MAX_ENTITIES equ 64
 ENTITIES_SPEED equ 2
 AVAILABLE_LEVELS equ 0x3
 LEVEL_START_POSITION equ 320*68+32
@@ -414,7 +413,7 @@ skip_keyboard:
 
 ai_entities:
   mov si, _ENTITIES_
-  mov cl, MAX_ENTITIES
+  mov byte cl, [_MAX_ENTITIES_]
   .next_entity:
     push cx
 
@@ -601,7 +600,8 @@ ai_entities:
 ; Returns: sorted entities array
 
 sort_entities:
-  mov cl, MAX_ENTITIES-1  ; We'll do n-1 passes
+  mov cl, [_MAX_ENTITIES_]
+  dec cl  ; We'll do n-1 passes
   .outer_loop:
     push cx
     mov si, _ENTITIES_
@@ -650,7 +650,7 @@ sort_entities:
 
 draw_entities:
   mov si, _ENTITIES_
-  mov cl, MAX_ENTITIES
+  mov byte cl, [_MAX_ENTITIES_]
   .next:
     push cx
     push si
@@ -1115,11 +1115,14 @@ spawn_entities:
   add ax, 128
   mov si, ax
   mov di, _ENTITIES_
+  mov byte [_MAX_ENTITIES_], 0x0
 
   .next_entitie:
     mov bl, [si]       ; Get first word (ID)
     cmp bl, 0x0        ; Check for last entity marker
     jz .done
+
+    inc byte [_MAX_ENTITIES_]
 
     dec bl             ; Conv level id to game id
 
@@ -1224,7 +1227,7 @@ check_friends:
   xor bx, bx
   mov ax, cx
 
-  mov cx, MAX_ENTITIES
+  mov byte cl, [_MAX_ENTITIES_]
   mov si, _ENTITIES_
   .next_entity:
     cmp byte [si+_STATE_], STATE_FOLLOW

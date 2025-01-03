@@ -20,8 +20,8 @@ _GAME_STATE_ equ _BASE_ + 0x02      ; 1 byte
 _SCORE_ equ _BASE_ + 0x03           ; 1 byte
 _LIFE_ equ _BASE_ + 0x04            ; 1 byte
 _LIFE_MAX_ equ _BASE_ + 0x05        ; 1 byte
-_POS_  equ _BASE_ + 0x06            ; 2 bytes
-_DIR_ equ _BASE_ + 0x08            ; 1 byte
+_X_  equ _BASE_ + 0x06            ; 2 bytes
+_Y_  equ _BASE_ + 0x08            ; 2 bytes
 
 ; =========================================== GAME STATES ======================
 
@@ -50,8 +50,8 @@ xor di, di          ; Set DI to 0
 
 ; =========================================== GAME LOOP ========================
 
-mov word [_POS_], 320*100+160
-mov word [_DIR_], 0
+mov word [_X_], 160
+mov word [_Y_], 100
 
 game_loop:
 
@@ -67,49 +67,54 @@ jz .no_key_press           ; Jump if Zero Flag is set (no key pressed)
 mov ah, 00h         ; BIOS keyboard read function
 int 16h             ; Call BIOS interrupt
 
+xor bx, bx
 xor cx, cx
 
 .check_up:
 cmp ah, 48h         ; Compare scan code with up arrow
 jne .check_down
-mov cx, -320
+mov cx, -1
 jmp .check_move
 
 .check_down:
 cmp ah, 50h         ; Compare scan code with down arrow
 jne .check_left
-mov cx, 320
+mov cx, 1
 jmp .check_move
 
 .check_left:
 cmp ah, 4Bh         ; Compare scan code with left arrow
 jne .check_right
-mov cx, -1
+mov bx, -1
 jmp .check_move
-
 
 .check_right:
 cmp ah, 4Dh         ; Compare scan code with right arrow
 jne .no_key_press
-mov cx, 1
+mov bx, 1
 ;jmp .check_move
 
 .check_move:
-mov [_DIR_], cx
+add word [_X_], bx
+add word [_Y_], cx
 
 .no_key_press:
 
-mov word ax, [_DIR_]
-add word [_POS_], ax   
-mov word di, [_POS_]
-
+; =========================================== DRAWING ==========================    
+mov ax, [_Y_]
+imul ax, 320
+add ax, [_X_]
+mov di, ax
 
 mov al, 0x0f            ; White color
 mov byte [es:di], al    ; Draw a pixel
 
-
-
-
+mov ax, [_X_]
+mov bx, 0
+mov byte dh, [_Y_]
+mov dl, 160
+mov cl, 0x14
+call draw_line
 
 
 
@@ -174,10 +179,53 @@ ret                 ; Return to DOS
 
 ; =========================================== PROCEDURES =======================
 
-; draw_gradient_background
-; draw_glyph
-; draw_text
-; draw_sprite
-; draw_line
-; draw_hline
-; draw_vline
+; =========================================== DRAWING LINE ====================
+; ax=x0
+; bx=x1
+; dl=y0,
+; dh=y1,
+; cl=col
+; Spektre @ https://stackoverflow.com/questions/71390507/line-drawing-algorithm-in-assembly#71391899
+draw_line:
+  pusha       
+    push    ax
+    mov si,bx
+    sub si,ax
+    sub ah,ah
+    mov al,dl
+    mov bx,ax
+    mov al,dh
+    sub ax,bx
+    mov di,ax
+    mov ax,320
+    sub dh,dh
+    mul dx
+    pop bx
+    add ax,bx
+    mov bp,ax
+    mov ax,1
+    mov bx,320
+    cmp si,32768
+    jb  .r0
+    neg si
+    neg ax
+ .r0:    cmp di,32768
+    jb  .r1
+    neg di
+    neg bx
+ .r1:    cmp si,di
+    ja  .r2
+    xchg    ax,bx
+    xchg    si,di
+ .r2:    mov [.ct],si
+ .l0:    mov word [es:bp], cx
+    add bp,ax
+    sub dx,di
+    jnc .r3
+    add dx,si
+    add bp,bx
+ .r3:    dec word [.ct]
+    jnz .l0
+    popa
+    ret
+ .ct:    dw  0
