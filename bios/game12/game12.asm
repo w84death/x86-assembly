@@ -14,10 +14,6 @@
 org 0x100
 use16
 
-
-_VGA_MEMORY_ equ 0xA000             ; 64k bytes
-_TICK_ equ 1Ah                      ; BIOS tick
-
 _BASE_ equ 0x2000
 _GAME_TICK_ equ _BASE_ + 0x00       ; 2 bytes
 _GAME_STATE_ equ _BASE_ + 0x02      ; 1 byte
@@ -49,68 +45,34 @@ KB_ENTER equ 0x1C
 
 mov ax, 0x13        ; Init 320x200, 256 colors mode
 int 0x10            ; Video BIOS interrupt
-
-mov ax, _VGA_MEMORY_
+mov ax, 0xA000
 mov es, ax
-
-mov ax, _VGA_MEMORY_
-mov es, ax
-
-; push cs             
-; pop ss              ; Set stack segment to the same as code segment
-mov sp, 0xFFFE      ; Stack grows downward from near the top of memory
 xor di, di          ; Set DI to 0
-xor si, si          ; Set SI to 0
 
 ; =========================================== GAME LOOP ========================
 
 mov word [_X_], 160
 mov word [_Y_], 100
 
-draw_bg:
-  mov ax, 0x9c9c               ; Set starting sky color
-  mov dl, 0x0a                  ; 10 bars to draw
-  .draw_gradient:
-    mov cx, 320*10           ; 2 pixels high
-    rep stosw               ; Write to the VGA memory
-    inc ax                  ; Increment color index for next bar
-    xchg al, ah             ; Swap colors
-    dec dl
-    jnz .draw_gradient
-
-mov byte [_GAME_STATE_], STATE_GAME
+mov byte [_GAME_STATE_], STATE_INTRO
+call draw_bg
 
 game_loop:
-
-; =========================================== GAME STATES ======================
-cmp byte [_GAME_STATE_], STATE_QUIT
-je exit
-
-cmp byte [_GAME_STATE_], STATE_GAME
-je the_game
-
-
-
-; =========================================== GAME LOGIC =======================
-
-the_game:
 
 ; =========================================== KEYBOARD INPUT ===================
 
 check_keyboard:
    mov ah, 01h         ; BIOS keyboard status function
    int 16h             ; Call BIOS interrupt
-   jz .done           ; Jump if Zero Flag is set (no key pressed)
+   jz .done             ; Jump if Zero Flag is set (no key pressed)
 
    mov ah, 00h         ; BIOS keyboard read function
    int 16h             ; Call BIOS interrupt
 
    cmp ah, KB_ESC
-   jne .check_arrows
-   mov byte [_GAME_STATE_], STATE_QUIT
-   jmp .done
-
-   .check_arrows:
+   je .process_esc
+   cmp ah, KB_ENTER
+   je .process_enter
    cmp ah, KB_UP
    je .pressed_up
    cmp ah, KB_DOWN
@@ -119,7 +81,26 @@ check_keyboard:
    je .pressed_left
    cmp ah, KB_RIGHT
    je .pressed_right
+   
+   jmp .done
 
+   .process_esc:
+      cmp byte [_GAME_STATE_], STATE_GAME
+      jz .go_intro
+      mov byte [_GAME_STATE_], STATE_QUIT
+      jmp .done
+   .process_enter:
+      cmp byte [_GAME_STATE_], STATE_INTRO
+      jz .go_game
+      jmp .done
+   .go_intro:
+      mov byte [_GAME_STATE_], STATE_INTRO
+      call draw_bg
+      jmp .done
+   .go_game:
+      mov byte [_GAME_STATE_], STATE_GAME
+      call draw_bg
+      jmp .done
    .pressed_up:
       dec word [_Y_]
       jmp .done
@@ -134,6 +115,35 @@ check_keyboard:
       jmp .done
 
    .done:
+
+; =========================================== GAME STATES ======================
+cmp byte [_GAME_STATE_], STATE_QUIT
+je exit
+
+cmp byte [_GAME_STATE_], STATE_INTRO
+je the_intro
+
+cmp byte [_GAME_STATE_], STATE_GAME
+je the_game
+
+jmp wait_for_tick
+
+
+the_intro:
+mov ax, 20
+mov bx, 300
+mov dl, 80
+mov dh, 80
+mov cl, 0x14
+call draw_line
+add dl, 40
+add dh, 40
+call draw_line
+jmp wait_for_tick
+
+; =========================================== GAME LOGIC =======================
+
+the_game:
 
 
 ; =========================================== DRAWING ==========================    
@@ -151,13 +161,13 @@ stosb
 ; =========================================== GAME TICK ========================
 
 wait_for_tick:
-   xor ax, ax          ; Function 00h: Read system timer counter
-   int _TICK_          ; Returns tick count in CX:DX
-   mov bx, dx          ; Store the current tick count
+   xor ax, ax           ; Function 00h: Read system timer counter
+   int 0x1a             ; Returns tick count in CX:DX
+   mov bx, dx           ; Store the current tick count
    .wait_loop:
-      int _TICK_          ; Read the tick count again
+      int 0x1a          ; Read the tick count again
       cmp dx, bx
-      je .wait_loop       ; Loop until the tick count changes
+      je .wait_loop     ; Loop until the tick count changes
 
 inc word [_GAME_TICK_]  ; Increment game tick
 
@@ -188,6 +198,20 @@ exit:
 
 
 ; =========================================== PROCEDURES =======================
+
+
+draw_bg:
+   xor di, di
+   mov ax, 0x9c9c             ; Set starting color
+   mov dl, 0x0a               ; 10 bars to draw
+   .draw_gradient:
+      mov cx, 320*10          ; Each bar 10 pixels high
+      rep stosw               ; Write to the VGA memory
+      inc ax                  ; Increment color index for next bar
+      xchg al, ah             ; Swap colors
+      dec dl
+      jnz .draw_gradient
+ret
 
 ; =========================================== DRAWING LINE ====================
 ; ax=x0
