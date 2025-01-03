@@ -1,14 +1,14 @@
-; BOOTLOADER
-; BIOS
+; P1X BOOTLOADER V1.5
+; FOR x86 CPU
 ;
 ; Description:
 ;   16-bit real mode bootloader for the floppy disk.
-;   Loads 10 sectors from the disk to the memory and jumps to the loaded code.
+;   Loads needed sectors from the disk to the memory and jumps to the loaded code.
 ;
 ; Size category: 512 bytes
 ;
 ; Author: Krzysztof Krystian Jankowski
-; Web: smol.p1x.in/assembly/games/
+; Web: smol.p1x.in/assembly/#bootloader
 ; License: MIT
 
 ; TODO: add flag for bg color attribute for different floppies colors
@@ -45,7 +45,7 @@ start:
     mov bx, 0x0100         ; Offset where code will be loaded
 
 .load_sectors:
-    mov ax, 0x020A         ; 10 sectors to load from the disk (5K)
+    mov ax, 0x0208         ; 8 sectors to load from the disk
     xor dx, dx             ; CH = 0 cylinder, DH = 0 head
     mov cl, 2              ; CL = start at second sector
     int 0x13               ; BIOS disk interrupt
@@ -67,21 +67,21 @@ start:
     call set_cursor
     mov si, game_line1_msg
     call print_string
-    inc dh
+    add dh, 0x2
     call set_cursor
     mov si, game_line2_msg
     call print_string
 
-    add dh, 0xa
+    add dh, 0x8
     call set_cursor
 
     mov bl, 0x30
     call color_line
     
-    mov si, game_line3_msg
+    mov si, game_info_msg
     call print_string
 
-    inc dh
+    add dh, 0x2
     call set_cursor
 
     mov si, wait_msg
@@ -131,10 +131,10 @@ loading_msg db  'Loading... ',0x0
 error_msg db    'Err',0x0
 done_msg db     'OK!',0x0
 wait_msg db     'Press any key...',0x0
-game_title_msg db '**************  MYSTERIES OF THE FORGOTTEN ISLES  **************',0x0
-game_line1_msg db 'Explore the islands. Find all gold and bring it to the chest.',0x0
-game_line2_msg db 'Use rocks to build bridges on shallow water. Avoid wildlife.',0x0
-game_line3_msg db 'Use [arrows] to move, [spacebar] to drop item, [escape] to reset',0x0
+game_title_msg db 'This is the title of the production',0x0
+game_line1_msg db 'First line',0x0
+game_line2_msg db 'Second line',0x0
+game_info_msg db 'This is an information space',0x0
 
 times 507 - ($ - $$) db 0   ; Pad to 510 bytes
 db "P1X"                    ; Use HEX viewer to see P1X at the end of binary

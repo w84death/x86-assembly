@@ -1117,7 +1117,7 @@ spawn_entities:
   mov di, _ENTITIES_
   mov byte [_MAX_ENTITIES_], 0x0
 
-  .next_entitie:
+  .next_entity:
     mov bl, [si]       ; Get first word (ID)
     cmp bl, 0x0        ; Check for last entity marker
     jz .done
@@ -1195,7 +1195,7 @@ spawn_entities:
       add di, ENTITY_SIZE           ; Move to the next entity in memory
       inc byte [_MAX_ENTITIES_]
     loop .next_in_group
-  jmp .next_entitie
+  jmp .next_entity
   .done:
 
   mov word [_PLAYER_ENTITY_ID_], _ENTITIES_ ; Set player entity id to first entity
