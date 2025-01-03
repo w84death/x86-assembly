@@ -1122,7 +1122,7 @@ spawn_entities:
     cmp bl, 0x0        ; Check for last entity marker
     jz .done
 
-    inc byte [_MAX_ENTITIES_]
+    
 
     dec bl             ; Conv level id to game id
 
@@ -1193,6 +1193,7 @@ spawn_entities:
 
       add si, 0x02                  ; Move to the next entity in code
       add di, ENTITY_SIZE           ; Move to the next entity in memory
+      inc byte [_MAX_ENTITIES_]
     loop .next_in_group
   jmp .next_entitie
   .done:
