@@ -39,17 +39,19 @@ KB_LEFT equ 0x4B
 KB_RIGHT equ 0x4D
 KB_ENTER equ 0x1C
 KB_SPACE equ 0x39
+KB_DEL equ 0x53
+KB_BACK equ 0x0E
 KB_Q equ 0x10
 KB_W equ 0x11
 KB_LSHIFT equ 0x2A
 KB_RSHIFT equ 0x36
 
-TOOLS equ 10
-
+TOOLS equ 0xB
 GRID_H_LINES equ 11
 GRID_V_LINES equ 20
-COLOR_BACKGROUND equ 0xDE
-COLOR_GRID equ 0xDD
+
+COLOR_BACKGROUND equ 0xC7
+COLOR_GRID equ 0xC6
 COLOR_TEXT equ 0x4E
 COLOR_CURSOR equ 0x1F
 COLOR_CURSOR_ERR equ 0x6F
@@ -59,7 +61,9 @@ COLOR_GRADIENT_END equ 0x1010
 COLOR_METAL equ 0xA3
 COLOR_STEEL equ 0x67
 COLOR_WOOD equ 0xD3
-COLOR_GREEN equ 0x76
+COLOR_GREEN equ 0x74
+COLOR_MOUNTAIN equ 0xAD
+COLOR_INFRA equ 0xA0
 
 ; =========================================== INITIALIZATION ===================
 
@@ -100,6 +104,10 @@ check_keyboard:
    jnz .done
    cmp ah, KB_SPACE
    je .process_space
+   cmp ah, KB_DEL
+   je .process_del
+   cmp ah, KB_BACK
+   je .process_del
    cmp ah, KB_Q
    je .process_q
    cmp ah, KB_W
@@ -129,6 +137,12 @@ check_keyboard:
    .process_space:
       cmp byte [_GAME_STATE_], STATE_GAME
       jz .go_game_space
+      jmp .done
+   .process_del:
+      call get_cursor_pos
+      call clear_tile
+      mov cl, COLOR_CURSOR_OK
+      call draw_cursor
       jmp .done
    .process_q:
       dec byte [_TOOL_]
@@ -357,6 +371,20 @@ get_cursor_pos:
    mov bp, ax
 ret
 
+clear_tile:
+   mov di, bp
+   mov ax, COLOR_BACKGROUND
+   mov ah, al
+   mov cx, 16
+   .h_line_loop:
+      push cx
+      mov cx, 8
+      rep stosw
+      pop cx
+      add di, 304
+   loop .h_line_loop
+ret
+
 stamp_tile:
    push bp
 
@@ -368,15 +396,23 @@ stamp_tile:
    jg .skip_black_change
       mov byte [_VECTOR_COLOR_], COLOR_WOOD
    .skip_black_change:
-   cmp bl, TOOLS-3
+   cmp bl, TOOLS-4
    jl .skip_steel_change
-      mov byte [_VECTOR_COLOR_], COLOR_STEEL
+      mov byte [_VECTOR_COLOR_], COLOR_INFRA
    .skip_steel_change:
 
-   cmp bl, TOOLS-1
+   cmp bl, TOOLS-2
    jl .skip_green_change
+      mov ax, [_GAME_TICK_]
+      and ax, 0x7
       mov byte [_VECTOR_COLOR_], COLOR_GREEN
+      add byte [_VECTOR_COLOR_], al
    .skip_green_change:
+
+   cmp bl, TOOLS-1
+   jl .skip_mountain_change
+      mov byte [_VECTOR_COLOR_], COLOR_MOUNTAIN
+   .skip_mountain_change:
    
    shl bx, 1
    mov si, ToolsList   
@@ -609,8 +645,8 @@ ToolsList:
 dw XVector
 dw RailroadTracksHRailVector, RailroadTracksVRailVector
 dw RailroadTracksTurn3Vector, RailroadTracksTurn6Vector, RailroadTracksTurn9Vector, RailroadTracksTurn12Vector
-dw LocomotiveHVector, LocomotiveVVector
-dw ForestVector
+dw Infra1Vector, Infra2Vector
+dw ForestVector, MountainVector
 dw 0
 
 XVector:
@@ -662,27 +698,28 @@ db 1
 db 10, 0, 16, 5
 db 0
 
-LocomotiveHVector:
+Infra1Vector:
 db 4
-db 1, 4, 15, 4, 15, 12, 1, 12, 1, 4
+db 3, 3, 13, 3, 13, 13, 3, 13, 3, 3
 db 1
-db 3, 7, 14, 7
+db 3, 3, 13, 13
 db 1
-db 3, 9, 14, 9
+db 13, 3, 3, 13
 db 0
 
-LocomotiveVVector:
-db 4
-db 4, 1, 4, 15, 12, 15, 12, 1, 4, 1
-db 1
-db 7, 3, 7, 14
-db 1
-db 9, 3, 9, 14
+Infra2Vector:
+db 0
+
+MountainVector:
+db 2
+db 1, 11, 7, 3, 11, 11
+db 2
+db 9, 8, 12, 4, 15, 10
 db 0
 
 ForestVector:
 db 8
-db 7, 15, 7, 9, 12, 7, 12, 4, 9, 2, 5, 2, 3, 5, 5, 8, 7, 9
+db 7, 15, 7, 12, 12, 9, 12, 6, 9, 4, 5, 4, 3, 7, 5, 10, 7, 11
 db 0
 
 LevelData:
