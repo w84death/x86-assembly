@@ -19,8 +19,7 @@ _CUR_TEST_Y_  equ _BASE_ + 0x0A       ; 2 bytes
 _VECTOR_COLOR_ equ _BASE_ + 0x0C    ; 1 byte
 _TOOL_ equ _BASE_ + 0x0D            ; 1 byte
 
-_SPRITES_ equ 0x3000
-_LEVEL_ equ 0x4000
+_MAP_ equ 0x3000
 
 ; =========================================== GAME STATES ======================
 
@@ -46,7 +45,7 @@ KB_W equ 0x11
 KB_LSHIFT equ 0x2A
 KB_RSHIFT equ 0x36
 
-TOOLS equ 0xB
+TOOLS equ 0x4
 GRID_H_LINES equ 11
 GRID_V_LINES equ 20
 
@@ -78,8 +77,10 @@ mov ss, ax
 mov sp, 0xFFFF
 
 mov byte [_GAME_TICK_], 0
+call init_map
 mov byte [_GAME_STATE_], STATE_INTRO
 call prepare_intro
+
 
 ; =========================================== GAME LOOP ========================
 
@@ -141,6 +142,9 @@ check_keyboard:
    .process_del:
       call get_cursor_pos
       call clear_tile
+      mov byte [_TOOL_], 255
+      call save_tile
+      mov byte [_TOOL_], 0
       mov cl, COLOR_CURSOR_OK
       call draw_cursor
       jmp .done
@@ -166,6 +170,8 @@ check_keyboard:
       jmp .done
    .go_game_space:
       call get_cursor_pos
+      call save_tile
+      call clear_tile
       call stamp_tile
       mov cl, COLOR_CURSOR_OK
       call draw_cursor
@@ -200,7 +206,7 @@ je draw_game
 jmp wait_for_tick
 
 draw_intro:
-      mov ax, [_GAME_TICK_]
+   mov ax, [_GAME_TICK_]
    test ax, 0x10
    jnz .done
 
@@ -303,6 +309,8 @@ prepare_game:
    mov byte [_TOOL_], 0
    call draw_tools
 
+   call load_map
+
    mov word [_CUR_X_], 9
    mov word [_CUR_Y_], 5
    mov word [_CUR_TEST_X_], 9
@@ -389,7 +397,7 @@ stamp_tile:
    push bp
 
    xor bx, bx
-   mov byte bl, [_TOOL_]   
+   mov byte bl, [_TOOL_]
    
    mov byte [_VECTOR_COLOR_], COLOR_METAL
    cmp bl, 0
@@ -420,10 +428,56 @@ stamp_tile:
    lodsw
    mov si, ax
 
-   
    call draw_vector
 
    pop bp
+ret
+
+save_tile:
+   mov di, _MAP_
+   mov ax, [_CUR_Y_]
+   imul ax, GRID_V_LINES-1
+   add ax, [_CUR_X_]
+   add di, ax
+   mov al, [_TOOL_]
+   mov byte [di], al
+ret
+
+init_map:
+   mov di, _MAP_
+   mov cx, GRID_H_LINES*GRID_V_LINES
+   .init_loop:
+      mov byte [di], 0xff
+      inc di
+   loop .init_loop
+ret
+
+load_map:
+   mov si, _MAP_
+   mov bp, 320*8+8
+   mov cx, GRID_H_LINES-1
+   .h_loop:
+      push cx
+
+      mov cx, GRID_V_LINES-1
+      .v_line_loop:
+         mov al, [si]
+         cmp al, 255
+         jz .skip_tile
+         mov byte [_TOOL_], al
+         pusha
+         call stamp_tile
+         popa
+         .skip_tile:
+         add bp, 16
+         inc si
+      loop .v_line_loop
+
+      pop cx
+      add bp, 320*15+16
+   loop .h_loop
+
+   mov byte [_TOOL_], 0
 ret
 
 move_cursor:
@@ -642,11 +696,7 @@ db 138, 10, 146, 16
 db 0
 
 ToolsList:
-dw XVector
-dw RailroadTracksHRailVector, RailroadTracksVRailVector
-dw RailroadTracksTurn3Vector, RailroadTracksTurn6Vector, RailroadTracksTurn9Vector, RailroadTracksTurn12Vector
-dw Infra1Vector, Infra2Vector
-dw ForestVector, MountainVector
+dw RailroadTracksHRailVector, Infra1Vector, ForestVector, MountainVector
 dw 0
 
 XVector:
@@ -721,8 +771,3 @@ ForestVector:
 db 8
 db 7, 15, 7, 12, 12, 9, 12, 6, 9, 4, 5, 4, 3, 7, 5, 10, 7, 11
 db 0
-
-LevelData:
-; 76543210 
-;    '--|'- empty/solid
-;       '-- up/down/left/right
