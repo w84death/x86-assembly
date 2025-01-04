@@ -39,11 +39,16 @@ KB_RIGHT equ 0x4D
 KB_ENTER equ 0x1C
 KB_SPACE equ 0x39
 
-COLOR_BACKGROUND equ 0xC3
-COLOR_CURSOR equ 0x62
-COLOR_CURSOR_RED equ 0x0C
+GRID_H_LINES equ 11
+GRID_V_LINES equ 20
+COLOR_BACKGROUND equ 0xEF
+COLOR_CURSOR equ 0x1F
+COLOR_CURSOR_ERR equ 0x6F
+COLOR_CURSOR_OK equ 0x49
 COLOR_GRADIENT_START equ 0x1414
 COLOR_GRADIENT_END equ 0x1010
+COLOR_GRID equ 0xC2
+COLOR_STAMP equ 0x76
 
 ; =========================================== INITIALIZATION ===================
 
@@ -120,7 +125,7 @@ check_keyboard:
       call prepare_game
       jmp .done
    .go_game_enter:
-      ; todo
+      call stamp_tile
       jmp .done
    .pressed_up:
       dec word [_CUR_TEST_Y_]
@@ -144,12 +149,30 @@ cmp byte [_GAME_STATE_], STATE_QUIT
 je exit
 
 cmp byte [_GAME_STATE_], STATE_INTRO
-call draw_intro
+je draw_intro
 
 cmp byte [_GAME_STATE_], STATE_GAME
-call draw_game
+je draw_game
 
 jmp wait_for_tick
+
+draw_intro:
+      mov ax, [_GAME_TICK_]
+   test ax, 0x10
+   jnz .done
+
+   mov al, [_VECTOR_COLOR_]
+   cmp al, 0x1f
+   jge .done
+   inc al
+
+   mov byte [_VECTOR_COLOR_], al
+   call draw_vector
+   .done:
+   jmp wait_for_tick
+
+draw_game:
+   jmp wait_for_tick
 
 ; =========================================== GAME TICK ========================
 
@@ -215,7 +238,7 @@ prepare_intro:
       dec dl
       jnz .draw_gradient
 
-   mov byte [_VECTOR_COLOR_], 0x1a
+   mov byte [_VECTOR_COLOR_], 0xA3
    mov bp, 320*165+85
    mov si, PressEnterVector
    call draw_vector
@@ -226,27 +249,15 @@ prepare_intro:
    call draw_vector
 ret
 
-draw_intro:
-   mov ax, [_GAME_TICK_]
-   test ax, 0x10
-   jnz .done
-
-   mov al, [_VECTOR_COLOR_]
-   cmp al, 0x1f
-   jge .done
-   inc al
-
-   mov byte [_VECTOR_COLOR_], al
-   call draw_vector
-   .done:
-ret
-
 prepare_game:
    xor di, di
    mov al, COLOR_BACKGROUND
    mov ah, al
    mov cx, 320*200/2
    rep stosw
+
+   call draw_grid
+
    mov word [_CUR_X_], 9
    mov word [_CUR_Y_], 5
    mov word [_CUR_TEST_X_], 9
@@ -256,30 +267,73 @@ prepare_game:
    call draw_cursor
 ret
 
-draw_game:
+draw_grid:
+   pusha
+   mov di, 320*8+8
+   push di    
+   mov al, COLOR_GRID
+   mov ah, al
+   .draw_horizontal_lines:
+      mov cx, GRID_H_LINES
+      .h_line_loop:
+         push cx
+         mov cx, 320/2-8
+         rep stosw
+         pop cx
+         add di, 320*15+16
+      loop .h_line_loop
+   .draw_vertical_lines:
+      pop di
+      mov cx, GRID_V_LINES
+      .v_line_loop:
+         push cx
+         mov cx, 160
+         .draw_v:
+            stosw
+            add di, 318
+         loop .draw_v
+         pop cx
+         add di, 320*45-48
+      loop .v_line_loop
+   popa
+ret
+
+stamp_tile:
+   mov ax, [_CUR_Y_]
+   shl ax, 4
+   imul ax, 320
+   mov bx, [_CUR_X_]
+   shl bx, 4
+   add ax, bx
+   add ax, 320*8+8
+   mov bp, ax   
+   mov byte [_VECTOR_COLOR_], COLOR_STAMP
+   mov si, RailroadVector
+   call draw_vector
+   mov cl, COLOR_CURSOR_OK
+   call draw_cursor
 ret
 
 move_cursor:
-   mov cl, COLOR_BACKGROUND
+   mov cl, COLOR_GRID
    call draw_cursor
    mov cl, COLOR_CURSOR
    mov ax, [_CUR_TEST_X_]
    cmp ax, 0
    jl .err
-   cmp ax, 320/16-1
-   jge .err
+   cmp ax, GRID_V_LINES-2
+   jg .err
    mov [_CUR_X_], ax
-   ; jmp .done
 
    mov ax, [_CUR_TEST_Y_]
    cmp ax, 0
    jl .err
-   cmp ax, 200/16-1
-   jge .err
+   cmp ax, GRID_H_LINES-2
+   jg .err
    mov [_CUR_Y_], ax
    jmp .done
    .err:
-      mov cl, COLOR_CURSOR_RED
+      mov cl, COLOR_CURSOR_ERR
       mov ax, [_CUR_X_]
       mov [_CUR_TEST_X_], ax
       mov ax, [_CUR_Y_]
@@ -397,9 +451,9 @@ db 0
 
 XVector:
 db 1
-db 1, 1, 16, 16
+db 0, 0, 16, 16
 db 1
-db 16, 1, 1, 16
+db 16, 0, 0, 16
 db 0
 
 P1XVector:
@@ -448,4 +502,18 @@ db 5
 db 136, 16, 130, 3, 135, 4, 137, 5, 139, 10, 134, 10
 db 1
 db 138, 10, 146, 16
+db 0
+
+
+RailroadVector:
+db 1
+db 0, 6, 16, 6
+db 1
+db 0, 10, 16, 10
+db 1
+db 4, 4, 4, 12
+db 1
+db 8, 4, 8, 12
+db 1
+db 12, 4, 12, 12
 db 0
