@@ -21,6 +21,7 @@ _SCORE_ equ _BASE_ + 0x03           ; 1 byte
 _CUR_X_  equ _BASE_ + 0x04          ; 2 bytes
 _CUR_Y_  equ _BASE_ + 0x06          ; 2 bytes
 _VECTOR_COLOR_ equ _BASE_ + 0x08    ; 1 byte
+_CURSOR_COLOR_ equ _BASE_ + 0x09    ; 1 byte
 
 _SPRITES_ equ 0x3000
 _LEVEL_ equ 0x4000
@@ -51,13 +52,12 @@ mov es, ax
 xor di, di          ; Set DI to 0
 
 mov byte [_GAME_TICK_], 0
-mov byte [_SCORE_], 0
 mov byte [_GAME_STATE_], STATE_INTRO
 call prepare_intro
 
 ; =========================================== GAME LOOP ========================
 
-game_loop:
+main_loop:
 
 ; =========================================== KEYBOARD INPUT ===================
 
@@ -73,6 +73,9 @@ check_keyboard:
    je .process_esc
    cmp ah, KB_ENTER
    je .process_enter
+
+   cmp byte [_GAME_STATE_], STATE_GAME
+   jnz .done
    cmp ah, KB_UP
    je .pressed_up
    cmp ah, KB_DOWN
@@ -92,6 +95,8 @@ check_keyboard:
    .process_enter:
       cmp byte [_GAME_STATE_], STATE_INTRO
       jz .go_game
+      cmp byte [_GAME_STATE_], STATE_GAME
+      jz .go_game_enter
       jmp .done
    .go_intro:
       mov byte [_GAME_STATE_], STATE_INTRO
@@ -101,19 +106,24 @@ check_keyboard:
       mov byte [_GAME_STATE_], STATE_GAME
       call prepare_game
       jmp .done
+   .go_game_enter:
+      inc byte [_CURSOR_COLOR_] 
+      jmp .done
+   
    .pressed_up:
       dec word [_CUR_Y_]
-      jmp .done
+      jmp .done_processed
    .pressed_down:
       inc word [_CUR_Y_]
-      jmp .done
+      jmp .done_processed
    .pressed_left:
       dec word [_CUR_X_]
-      jmp .done
+      jmp .done_processed
    .pressed_right:
       inc word [_CUR_X_]
-      jmp .done
-
+      jmp .done_processed
+   .done_processed:
+      call draw_cursor
    .done:
 
 ; =========================================== GAME STATES ======================
@@ -134,7 +144,7 @@ draw_intro:
    jmp wait_for_tick
 
 draw_game:
-   call draw_cursor
+   
    
    jmp wait_for_tick
 
@@ -153,7 +163,7 @@ inc word [_GAME_TICK_]  ; Increment game tick
 
 ; =========================================== ESC OR LOOP ======================
 
-jmp game_loop
+jmp main_loop
 
 ; =========================================== EXIT TO DOS ======================
 
@@ -212,18 +222,24 @@ prepare_game:
    mov ax, 0x1414
    mov cx, 320*200/2
    rep stosw
-   mov word [_CUR_X_], 160
-   mov word [_CUR_Y_], 100
+   mov word [_CUR_X_], 160/16
+   mov word [_CUR_Y_], 100/16
+   mov byte [_SCORE_], 0
+   call draw_cursor
 ret
 
 draw_cursor:
    mov ax, [_CUR_Y_]
+   shl ax, 4
    imul ax, 320
-   add ax, [_CUR_X_]
-   mov di, ax
-
-   mov al, 0xf
-   stosb
+   mov bx, [_CUR_X_]
+   shl bx, 4
+   add ax, bx
+   mov bp, ax
+   mov al, [_CURSOR_COLOR_]
+   mov byte [_VECTOR_COLOR_], al
+   mov si, TestVector
+   call draw_vector
 ret
 
 
@@ -326,4 +342,9 @@ db 3
 db 18, 35, 18, 19, 24, 11, 24, 2
 db 3
 db 24, 35, 24, 19, 18, 11, 18, 2
+db 0
+
+TestVector:
+db 4
+db 0, 0, 16, 0, 16, 16, 0, 16, 0, 0
 db 0
