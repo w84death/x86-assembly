@@ -41,13 +41,14 @@ KB_SPACE equ 0x39
 
 GRID_H_LINES equ 11
 GRID_V_LINES equ 20
-COLOR_BACKGROUND equ 0xEF
+COLOR_BACKGROUND equ 0xDE
+COLOR_GRID equ 0xAF
+COLOR_TEXT equ 0x4E
 COLOR_CURSOR equ 0x1F
 COLOR_CURSOR_ERR equ 0x6F
 COLOR_CURSOR_OK equ 0x49
 COLOR_GRADIENT_START equ 0x1414
 COLOR_GRADIENT_END equ 0x1010
-COLOR_GRID equ 0xC2
 COLOR_STAMP equ 0x76
 
 ; =========================================== INITIALIZATION ===================
@@ -238,7 +239,7 @@ prepare_intro:
       dec dl
       jnz .draw_gradient
 
-   mov byte [_VECTOR_COLOR_], 0xA3
+   mov byte [_VECTOR_COLOR_], COLOR_TEXT
    mov bp, 320*165+85
    mov si, PressEnterVector
    call draw_vector
