@@ -20,8 +20,9 @@ _GAME_STATE_ equ _BASE_ + 0x02      ; 1 byte
 _SCORE_ equ _BASE_ + 0x03           ; 1 byte
 _CUR_X_  equ _BASE_ + 0x04          ; 2 bytes
 _CUR_Y_  equ _BASE_ + 0x06          ; 2 bytes
-_VECTOR_COLOR_ equ _BASE_ + 0x08    ; 1 byte
-_CURSOR_COLOR_ equ _BASE_ + 0x09    ; 1 byte
+_CUR_NEWX_  equ _BASE_ + 0x08       ; 2 bytes
+_CUR_NEWY_  equ _BASE_ + 0x0A       ; 2 bytes
+_VECTOR_COLOR_ equ _BASE_ + 0x0C    ; 1 byte
 
 _SPRITES_ equ 0x3000
 _LEVEL_ equ 0x4000
@@ -42,6 +43,10 @@ KB_DOWN equ 0x50
 KB_LEFT equ 0x4B
 KB_RIGHT equ 0x4D
 KB_ENTER equ 0x1C
+KB_SPACE equ 0x39
+
+COLOR_BACKGROUND equ 0x14
+COLOR_CURSOR equ 0x0f
 
 ; =========================================== INITIALIZATION ===================
 
@@ -76,6 +81,8 @@ check_keyboard:
 
    cmp byte [_GAME_STATE_], STATE_GAME
    jnz .done
+   cmp ah, KB_SPACE
+   je .process_space
    cmp ah, KB_UP
    je .pressed_up
    cmp ah, KB_DOWN
@@ -98,6 +105,9 @@ check_keyboard:
       cmp byte [_GAME_STATE_], STATE_GAME
       jz .go_game_enter
       jmp .done
+   .process_space:
+      ; todo
+      jmp .done
    .go_intro:
       mov byte [_GAME_STATE_], STATE_INTRO
       call prepare_intro
@@ -107,23 +117,22 @@ check_keyboard:
       call prepare_game
       jmp .done
    .go_game_enter:
-      inc byte [_CURSOR_COLOR_] 
+      ; todo
       jmp .done
-   
    .pressed_up:
-      dec word [_CUR_Y_]
+      dec word [_CUR_NEWY_]
       jmp .done_processed
    .pressed_down:
-      inc word [_CUR_Y_]
+      inc word [_CUR_NEWY_]
       jmp .done_processed
    .pressed_left:
-      dec word [_CUR_X_]
+      dec word [_CUR_NEWX_]
       jmp .done_processed
    .pressed_right:
-      inc word [_CUR_X_]
+      inc word [_CUR_NEWX_]
       jmp .done_processed
    .done_processed:
-      call draw_cursor
+      call move_cursor
    .done:
 
 ; =========================================== GAME STATES ======================
@@ -144,8 +153,7 @@ draw_intro:
    jmp wait_for_tick
 
 draw_game:
-   
-   
+   ; todo
    jmp wait_for_tick
 
 ; =========================================== GAME TICK ========================
@@ -219,12 +227,28 @@ ret
 
 prepare_game:
    xor di, di
-   mov ax, 0x1414
+   mov al, COLOR_BACKGROUND
+   mov ah, al
    mov cx, 320*200/2
    rep stosw
    mov word [_CUR_X_], 160/16
    mov word [_CUR_Y_], 100/16
+   mov word [_CUR_NEWX_], 160/16
+   mov word [_CUR_NEWY_], 100/16
    mov byte [_SCORE_], 0
+   mov cl, COLOR_CURSOR
+   call draw_cursor
+ret
+
+move_cursor:
+   mov cl, COLOR_BACKGROUND
+   call draw_cursor
+   ; todo: check if new position is valid
+   mov ax, [_CUR_NEWX_]
+   mov [_CUR_X_], ax
+   mov ax, [_CUR_NEWY_]
+   mov [_CUR_Y_], ax
+   mov cl, COLOR_CURSOR
    call draw_cursor
 ret
 
@@ -235,13 +259,11 @@ draw_cursor:
    mov bx, [_CUR_X_]
    shl bx, 4
    add ax, bx
-   mov bp, ax
-   mov al, [_CURSOR_COLOR_]
-   mov byte [_VECTOR_COLOR_], al
+   mov bp, ax   
+   mov byte [_VECTOR_COLOR_], cl
    mov si, TestVector
    call draw_vector
 ret
-
 
 ; =========================================== DRAW VECTOR ======================
 draw_vector:   
