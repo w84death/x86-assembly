@@ -40,6 +40,7 @@ KB_RIGHT equ 0x4D
 KB_ENTER equ 0x1C
 KB_SPACE equ 0x39
 
+TOOLS equ 4
 GRID_H_LINES equ 11
 GRID_V_LINES equ 20
 COLOR_BACKGROUND equ 0xDE
@@ -315,7 +316,7 @@ draw_tools:
    mov dl, [_TOOL_]
    mov bp, 320*177+16
    mov byte [_TOOL_], 0
-   mov cx, 3
+   mov cx, TOOLS
    .tools_loop:
       push cx
       call stamp_tile
@@ -347,6 +348,8 @@ stamp_tile:
    je .stamp_track_v
    cmp byte [_TOOL_], 2
    je .stamp_x
+   cmp byte [_TOOL_], 3
+   je .stamp_track_3
    jmp .done
 
    .stamp_track_h: 
@@ -368,6 +371,12 @@ stamp_tile:
    .stamp_x:
    mov byte [_VECTOR_COLOR_], COLOR_METAL
    mov si, XVector
+   jmp .done
+
+   .stamp_track_3:
+   mov byte [_VECTOR_COLOR_], COLOR_METAL
+   mov si, RailroadTracksTurn3Vector
+   jmp .done
 
    .done:
    call draw_vector
@@ -420,7 +429,7 @@ ret
 change_tool:
    mov dl, [_TOOL_]
    inc dl
-   cmp dl, 3
+   cmp dl, TOOLS
    jl .ok
       xor dl, dl
    .ok:
@@ -430,7 +439,7 @@ ret
 
 update_tools_selector:
    mov di, 320*195+16
-   mov cx, 32
+   mov cx, 180
    mov ax, COLOR_BACKGROUND
    mov ah, al
    rep stosw
@@ -625,4 +634,13 @@ db 1
 db 4, 8, 12, 8
 db 1
 db 4, 12, 12, 12
+db 0
+
+; up ri do le
+; 0  0  1  1
+RailroadTracksTurn3Vector:
+db 1
+db 0, 5, 10, 16
+db 1
+db 0, 9, 6, 16
 db 0
