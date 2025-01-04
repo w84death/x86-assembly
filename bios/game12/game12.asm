@@ -267,6 +267,7 @@ prepare_game:
    rep stosw
 
    call draw_grid
+   mov byte [_TOOL_], 0
    call draw_tools
 
    mov word [_CUR_X_], 9
@@ -274,7 +275,7 @@ prepare_game:
    mov word [_CUR_TEST_X_], 9
    mov word [_CUR_TEST_Y_], 5
    mov byte [_SCORE_], 0
-   mov byte [_TOOL_], 0
+
    mov cl, COLOR_CURSOR
    call draw_cursor
 ret
@@ -323,6 +324,7 @@ draw_tools:
       pop cx
    loop .tools_loop
    mov byte [_TOOL_], dl
+   call update_tools_selector
 ret
 
 get_cursor_pos:
@@ -423,7 +425,10 @@ change_tool:
       xor dl, dl
    .ok:
    mov byte [_TOOL_], dl
-   
+   call update_tools_selector
+ret
+
+update_tools_selector:
    mov di, 320*195+16
    mov cx, 32
    mov ax, COLOR_BACKGROUND
