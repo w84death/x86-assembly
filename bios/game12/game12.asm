@@ -17,6 +17,7 @@ _CUR_Y_  equ _BASE_ + 0x06          ; 2 bytes
 _CUR_TEST_X_  equ _BASE_ + 0x08       ; 2 bytes
 _CUR_TEST_Y_  equ _BASE_ + 0x0A       ; 2 bytes
 _VECTOR_COLOR_ equ _BASE_ + 0x0C    ; 1 byte
+_TOOL_ equ _BASE_ + 0x0D            ; 1 byte
 
 _SPRITES_ equ 0x3000
 _LEVEL_ equ 0x4000
@@ -42,14 +43,15 @@ KB_SPACE equ 0x39
 GRID_H_LINES equ 11
 GRID_V_LINES equ 20
 COLOR_BACKGROUND equ 0xDE
-COLOR_GRID equ 0xAF
+COLOR_GRID equ 0xDD
 COLOR_TEXT equ 0x4E
 COLOR_CURSOR equ 0x1F
 COLOR_CURSOR_ERR equ 0x6F
 COLOR_CURSOR_OK equ 0x49
 COLOR_GRADIENT_START equ 0x1414
 COLOR_GRADIENT_END equ 0x1010
-COLOR_STAMP equ 0x76
+COLOR_METAL equ 0xA3
+COLOR_WOOD equ 0xD3
 
 ; =========================================== INITIALIZATION ===================
 
@@ -113,7 +115,8 @@ check_keyboard:
       jz .go_game_enter
       jmp .done
    .process_space:
-      ; todo
+      cmp byte [_GAME_STATE_], STATE_GAME
+      jz .go_game_space
       jmp .done
    .go_intro:
       mov byte [_GAME_STATE_], STATE_INTRO
@@ -126,7 +129,13 @@ check_keyboard:
       call prepare_game
       jmp .done
    .go_game_enter:
+      call change_tool
+      jmp .done
+   .go_game_space:
+      call get_cursor_pos
       call stamp_tile
+      mov cl, COLOR_CURSOR_OK
+      call draw_cursor
       jmp .done
    .pressed_up:
       dec word [_CUR_TEST_Y_]
@@ -258,12 +267,14 @@ prepare_game:
    rep stosw
 
    call draw_grid
+   call draw_tools
 
    mov word [_CUR_X_], 9
    mov word [_CUR_Y_], 5
    mov word [_CUR_TEST_X_], 9
    mov word [_CUR_TEST_Y_], 5
    mov byte [_SCORE_], 0
+   mov byte [_TOOL_], 0
    mov cl, COLOR_CURSOR
    call draw_cursor
 ret
@@ -299,7 +310,22 @@ draw_grid:
    popa
 ret
 
-stamp_tile:
+draw_tools:
+   mov dl, [_TOOL_]
+   mov bp, 320*177+16
+   mov byte [_TOOL_], 0
+   mov cx, 3
+   .tools_loop:
+      push cx
+      call stamp_tile
+      inc byte [_TOOL_]
+      add bp, 24
+      pop cx
+   loop .tools_loop
+   mov byte [_TOOL_], dl
+ret
+
+get_cursor_pos:
    mov ax, [_CUR_Y_]
    shl ax, 4
    imul ax, 320
@@ -307,12 +333,44 @@ stamp_tile:
    shl bx, 4
    add ax, bx
    add ax, 320*8+8
-   mov bp, ax   
-   mov byte [_VECTOR_COLOR_], COLOR_STAMP
-   mov si, RailroadVector
+   mov bp, ax
+ret
+
+stamp_tile:
+   push bp
+
+   cmp byte [_TOOL_], 0
+   je .stamp_track_h
+   cmp byte [_TOOL_], 1
+   je .stamp_track_v
+   cmp byte [_TOOL_], 2
+   je .stamp_x
+   jmp .done
+
+   .stamp_track_h: 
+   mov byte [_VECTOR_COLOR_], COLOR_WOOD
+   mov si, RailroadTracksHBaseVector
    call draw_vector
-   mov cl, COLOR_CURSOR_OK
-   call draw_cursor
+   mov byte [_VECTOR_COLOR_], COLOR_METAL
+   mov si, RailroadTracksHRailVector
+   jmp .done
+
+   .stamp_track_v: 
+   mov byte [_VECTOR_COLOR_], COLOR_WOOD
+   mov si, RailroadTracksVBaseVector
+   call draw_vector
+   mov byte [_VECTOR_COLOR_], COLOR_METAL
+   mov si, RailroadTracksVRailVector
+   jmp .done
+
+   .stamp_x:
+   mov byte [_VECTOR_COLOR_], COLOR_METAL
+   mov si, XVector
+
+   .done:
+   call draw_vector
+
+   pop bp
 ret
 
 move_cursor:
@@ -357,7 +415,33 @@ draw_cursor:
    call draw_vector
 ret
 
+change_tool:
+   mov dl, [_TOOL_]
+   inc dl
+   cmp dl, 3
+   jl .ok
+      xor dl, dl
+   .ok:
+   mov byte [_TOOL_], dl
+   
+   mov di, 320*195+16
+   mov cx, 32
+   mov ax, COLOR_BACKGROUND
+   mov ah, al
+   rep stosw
+
+   mov di, 320*195+16
+   xor bx, bx
+   mov bl, dl
+   imul bx, 24
+   add di, bx
+   mov cx, 8
+   mov ax, 0x1f1f
+   rep stosw
+ret
+
 ; =========================================== DRAW VECTOR ======================
+
 draw_vector:   
   pusha 
   .read_group:
@@ -430,7 +514,7 @@ draw_line:
     xchg    ax,bx
     xchg    si,di
  .r2:    mov [.ct],si
- .l0:    mov word [es:bp], cx
+ .l0:    mov byte [es:bp], cl
     add bp,ax
     sub dx,di
     jnc .r3
@@ -448,13 +532,6 @@ draw_line:
 CursorVector:
 db 4
 db 0, 0, 16, 0, 16, 16, 0, 16, 0, 0
-db 0
-
-XVector:
-db 1
-db 0, 0, 16, 16
-db 1
-db 16, 0, 0, 16
 db 0
 
 P1XVector:
@@ -506,15 +583,41 @@ db 138, 10, 146, 16
 db 0
 
 
-RailroadVector:
+XVector:
+db 1
+db 0, 0, 16, 16
+db 1
+db 16, 0, 0, 16
+db 0
+
+RailroadTracksHRailVector:
 db 1
 db 0, 6, 16, 6
 db 1
 db 0, 10, 16, 10
+db 0
+
+RailroadTracksHBaseVector:
 db 1
 db 4, 4, 4, 12
 db 1
 db 8, 4, 8, 12
 db 1
 db 12, 4, 12, 12
+db 0
+
+RailroadTracksVRailVector:
+db 1
+db 6, 0, 6, 16
+db 1
+db 10, 0, 10, 16
+db 0
+
+RailroadTracksVBaseVector:
+db 1
+db 4, 4, 12, 4
+db 1
+db 4, 8, 12, 8
+db 1
+db 4, 12, 12, 12
 db 0
