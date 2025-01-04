@@ -151,6 +151,17 @@ jmp wait_for_tick
 
 draw_intro:
    ; animate "PRESS ENTER TO START"
+
+   mov ax, [_GAME_TICK_]
+   test ax, 0x10
+   jnz .done
+   mov al, [_VECTOR_COLOR_]
+   cmp al, 0x1f
+   jge .done
+   inc al
+   mov byte [_VECTOR_COLOR_], al
+   call draw_vector
+   .done:
    jmp wait_for_tick
 
 draw_game:
@@ -200,28 +211,29 @@ exit:
 
 prepare_intro:
    xor di, di
-   mov ax, 0x9c9c             ; Set starting color
-   mov dl, 0x0a               ; 10 bars to draw
+   mov ax, 0x1414             ; Set starting color
+   mov dl, 0x10               ; 10 bars to draw
    .draw_gradient:
-      mov cx, 320*10          ; Each bar 10 pixels high
+      mov cx, 320*4          ; Each bar 10 pixels high
       rep stosw               ; Write to the VGA memory
-      inc ax                  ; Increment color index for next bar
+      cmp dl, 0x09
+      jg .draw_top
+      jl .draw_bottom
+      mov ax, 0x1010
+      mov cx, 320*36
+      rep stosw
+      .draw_bottom:
+      inc ax
+      jmp .cont
+      .draw_top:
+      dec ax                  ; Increment color index for next bar
+      .cont:
       xchg al, ah             ; Swap colors
       dec dl
       jnz .draw_gradient
-      
-   mov ax, 20
-   mov bx, 300
-   mov dl, 80
-   mov dh, 80
-   mov cl, 0x14
-   call draw_line
-   add dl, 40
-   add dh, 40
-   call draw_line
 
-   mov byte [_VECTOR_COLOR_], 0xf
-   mov bp, 320*81+150
+   mov byte [_VECTOR_COLOR_], 0x10
+   mov bp, 320*80+150
    mov si, P1XVector
    call draw_vector
 ret
@@ -232,10 +244,10 @@ prepare_game:
    mov ah, al
    mov cx, 320*200/2
    rep stosw
-   mov word [_CUR_X_], 160/16
-   mov word [_CUR_Y_], 100/16
-   mov word [_CUR_NEWX_], 160/16
-   mov word [_CUR_NEWY_], 100/16
+   mov word [_CUR_X_], 9
+   mov word [_CUR_Y_], 5
+   mov word [_CUR_NEWX_], 9
+   mov word [_CUR_NEWY_], 5
    mov byte [_SCORE_], 0
    mov cl, COLOR_CURSOR
    call draw_cursor
