@@ -344,72 +344,26 @@ ret
 stamp_tile:
    push bp
 
-   cmp byte [_TOOL_], 0
-   je .stamp_track_h
-   cmp byte [_TOOL_], 1
-   je .stamp_track_v
-   cmp byte [_TOOL_], 2
-   je .stamp_x
-   cmp byte [_TOOL_], 3
-   je .stamp_track_3
-   cmp byte [_TOOL_], 4
-   je .stamp_track_6
-   cmp byte [_TOOL_], 5
-   je .stamp_track_9
-   cmp byte [_TOOL_], 6
-   je .stamp_track_12
-   cmp byte [_TOOL_], 7
-   je .stamp_locomotive_h
-   cmp byte [_TOOL_], 8
-   je .stamp_locomotive_v
-   jmp .done
-
-   .stamp_track_h: 
+   xor bx, bx
+   mov byte bl, [_TOOL_]   
+   
    mov byte [_VECTOR_COLOR_], COLOR_METAL
-   mov si, RailroadTracksHRailVector
-   jmp .done
+   cmp bl, 0
+   jg .skip_black_change
+      mov byte [_VECTOR_COLOR_], COLOR_WOOD
+   .skip_black_change:
+   cmp bl, TOOLS-2
+   jl .skip_steel_change
+      mov byte [_VECTOR_COLOR_], COLOR_STEEL
+   .skip_steel_change:
+   
+   shl bx, 1
+   mov si, ToolsList   
+   add si, bx
+   lodsw
+   mov si, ax
 
-   .stamp_track_v: 
-   mov byte [_VECTOR_COLOR_], COLOR_METAL
-   mov si, RailroadTracksVRailVector
-   jmp .done
-
-   .stamp_x:
-   mov byte [_VECTOR_COLOR_], COLOR_METAL
-   mov si, XVector
-   jmp .done
-
-   .stamp_track_3:
-   mov byte [_VECTOR_COLOR_], COLOR_METAL
-   mov si, RailroadTracksTurn3Vector
-   jmp .done
-
-   .stamp_track_6:
-   mov byte [_VECTOR_COLOR_], COLOR_METAL
-   mov si, RailroadTracksTurn6Vector
-   jmp .done
-
-   .stamp_track_9:
-   mov byte [_VECTOR_COLOR_], COLOR_METAL
-   mov si, RailroadTracksTurn9Vector
-   jmp .done
-
-   .stamp_track_12:
-   mov byte [_VECTOR_COLOR_], COLOR_METAL
-   mov si, RailroadTracksTurn12Vector
-   jmp .done
-
-   .stamp_locomotive_h:
-   mov byte [_VECTOR_COLOR_], COLOR_STEEL
-   mov si, LocomotiveHVector
-   jmp .done
-
-   .stamp_locomotive_v:
-   mov byte [_VECTOR_COLOR_], COLOR_STEEL
-   mov si, LocomotiveVVector
-   jmp .done
-
-   .done:
+   
    call draw_vector
 
    pop bp
@@ -627,6 +581,12 @@ db 1
 db 138, 10, 146, 16
 db 0
 
+ToolsList:
+dw XVector
+dw RailroadTracksHRailVector, RailroadTracksVRailVector
+dw RailroadTracksTurn3Vector, RailroadTracksTurn6Vector, RailroadTracksTurn9Vector, RailroadTracksTurn12Vector
+dw LocomotiveHVector, LocomotiveVVector
+dw 0
 
 XVector:
 db 1
