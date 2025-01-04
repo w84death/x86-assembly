@@ -39,8 +39,12 @@ KB_LEFT equ 0x4B
 KB_RIGHT equ 0x4D
 KB_ENTER equ 0x1C
 KB_SPACE equ 0x39
+KB_Q equ 0x10
+KB_W equ 0x11
+KB_LSHIFT equ 0x2A
+KB_RSHIFT equ 0x36
 
-TOOLS equ 9
+TOOLS equ 10
 
 GRID_H_LINES equ 11
 GRID_V_LINES equ 20
@@ -55,6 +59,7 @@ COLOR_GRADIENT_END equ 0x1010
 COLOR_METAL equ 0xA3
 COLOR_STEEL equ 0x67
 COLOR_WOOD equ 0xD3
+COLOR_GREEN equ 0x76
 
 ; =========================================== INITIALIZATION ===================
 
@@ -95,6 +100,10 @@ check_keyboard:
    jnz .done
    cmp ah, KB_SPACE
    je .process_space
+   cmp ah, KB_Q
+   je .process_q
+   cmp ah, KB_W
+   je .process_w
    cmp ah, KB_UP
    je .pressed_up
    cmp ah, KB_DOWN
@@ -121,6 +130,14 @@ check_keyboard:
       cmp byte [_GAME_STATE_], STATE_GAME
       jz .go_game_space
       jmp .done
+   .process_q:
+      dec byte [_TOOL_]
+      call verify_change_tool
+      jmp .done
+   .process_w:
+      inc byte [_TOOL_]
+      call verify_change_tool
+      jmp .done
    .go_intro:
       mov byte [_GAME_STATE_], STATE_INTRO
       mov word [_GAME_TICK_], 0x0
@@ -132,7 +149,6 @@ check_keyboard:
       call prepare_game
       jmp .done
    .go_game_enter:
-      call change_tool
       jmp .done
    .go_game_space:
       call get_cursor_pos
@@ -352,10 +368,15 @@ stamp_tile:
    jg .skip_black_change
       mov byte [_VECTOR_COLOR_], COLOR_WOOD
    .skip_black_change:
-   cmp bl, TOOLS-2
+   cmp bl, TOOLS-3
    jl .skip_steel_change
       mov byte [_VECTOR_COLOR_], COLOR_STEEL
    .skip_steel_change:
+
+   cmp bl, TOOLS-1
+   jl .skip_green_change
+      mov byte [_VECTOR_COLOR_], COLOR_GREEN
+   .skip_green_change:
    
    shl bx, 1
    mov si, ToolsList   
@@ -411,13 +432,16 @@ draw_cursor:
    call draw_vector
 ret
 
-change_tool:
+verify_change_tool:
    mov dl, [_TOOL_]
-   inc dl
    cmp dl, TOOLS
    jl .ok
       xor dl, dl
    .ok:
+   cmp dl, 0
+   jge .ok2
+      mov dl, TOOLS-1
+   .ok2:
    mov byte [_TOOL_], dl
    call update_tools_selector
 ret
@@ -586,6 +610,7 @@ dw XVector
 dw RailroadTracksHRailVector, RailroadTracksVRailVector
 dw RailroadTracksTurn3Vector, RailroadTracksTurn6Vector, RailroadTracksTurn9Vector, RailroadTracksTurn12Vector
 dw LocomotiveHVector, LocomotiveVVector
+dw ForestVector
 dw 0
 
 XVector:
@@ -625,9 +650,9 @@ db 0
 
 RailroadTracksTurn9Vector:
 db 1
-db 0, 5, 6, 0
+db 0, 6, 7, 0
 db 1
-db 0, 9, 10, 0
+db 0, 10, 11, 0
 db 0
 
 RailroadTracksTurn12Vector:
@@ -654,3 +679,13 @@ db 7, 3, 7, 14
 db 1
 db 9, 3, 9, 14
 db 0
+
+ForestVector:
+db 8
+db 7, 15, 7, 9, 12, 7, 12, 4, 9, 2, 5, 2, 3, 5, 5, 8, 7, 9
+db 0
+
+LevelData:
+; 76543210 
+;    '--|'- empty/solid
+;       '-- up/down/left/right
