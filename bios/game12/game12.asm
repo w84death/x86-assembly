@@ -40,7 +40,8 @@ KB_RIGHT equ 0x4D
 KB_ENTER equ 0x1C
 KB_SPACE equ 0x39
 
-TOOLS equ 4
+TOOLS equ 9
+
 GRID_H_LINES equ 11
 GRID_V_LINES equ 20
 COLOR_BACKGROUND equ 0xDE
@@ -52,6 +53,7 @@ COLOR_CURSOR_OK equ 0x49
 COLOR_GRADIENT_START equ 0x1414
 COLOR_GRADIENT_END equ 0x1010
 COLOR_METAL equ 0xA3
+COLOR_STEEL equ 0x67
 COLOR_WOOD equ 0xD3
 
 ; =========================================== INITIALIZATION ===================
@@ -350,20 +352,24 @@ stamp_tile:
    je .stamp_x
    cmp byte [_TOOL_], 3
    je .stamp_track_3
+   cmp byte [_TOOL_], 4
+   je .stamp_track_6
+   cmp byte [_TOOL_], 5
+   je .stamp_track_9
+   cmp byte [_TOOL_], 6
+   je .stamp_track_12
+   cmp byte [_TOOL_], 7
+   je .stamp_locomotive_h
+   cmp byte [_TOOL_], 8
+   je .stamp_locomotive_v
    jmp .done
 
    .stamp_track_h: 
-   mov byte [_VECTOR_COLOR_], COLOR_WOOD
-   mov si, RailroadTracksHBaseVector
-   call draw_vector
    mov byte [_VECTOR_COLOR_], COLOR_METAL
    mov si, RailroadTracksHRailVector
    jmp .done
 
    .stamp_track_v: 
-   mov byte [_VECTOR_COLOR_], COLOR_WOOD
-   mov si, RailroadTracksVBaseVector
-   call draw_vector
    mov byte [_VECTOR_COLOR_], COLOR_METAL
    mov si, RailroadTracksVRailVector
    jmp .done
@@ -376,6 +382,31 @@ stamp_tile:
    .stamp_track_3:
    mov byte [_VECTOR_COLOR_], COLOR_METAL
    mov si, RailroadTracksTurn3Vector
+   jmp .done
+
+   .stamp_track_6:
+   mov byte [_VECTOR_COLOR_], COLOR_METAL
+   mov si, RailroadTracksTurn6Vector
+   jmp .done
+
+   .stamp_track_9:
+   mov byte [_VECTOR_COLOR_], COLOR_METAL
+   mov si, RailroadTracksTurn9Vector
+   jmp .done
+
+   .stamp_track_12:
+   mov byte [_VECTOR_COLOR_], COLOR_METAL
+   mov si, RailroadTracksTurn12Vector
+   jmp .done
+
+   .stamp_locomotive_h:
+   mov byte [_VECTOR_COLOR_], COLOR_STEEL
+   mov si, LocomotiveHVector
+   jmp .done
+
+   .stamp_locomotive_v:
+   mov byte [_VECTOR_COLOR_], COLOR_STEEL
+   mov si, LocomotiveVVector
    jmp .done
 
    .done:
@@ -498,7 +529,7 @@ ret
 ; Spektre @ https://stackoverflow.com/questions/71390507/line-drawing-algorithm-in-assembly#71391899
 draw_line:
   pusha       
-    push    ax
+    push ax
     mov si,bx
     sub si,ax
     sub ah,ah
@@ -611,15 +642,6 @@ db 1
 db 0, 10, 16, 10
 db 0
 
-RailroadTracksHBaseVector:
-db 1
-db 4, 4, 4, 12
-db 1
-db 8, 4, 8, 12
-db 1
-db 12, 4, 12, 12
-db 0
-
 RailroadTracksVRailVector:
 db 1
 db 6, 0, 6, 16
@@ -627,20 +649,48 @@ db 1
 db 10, 0, 10, 16
 db 0
 
-RailroadTracksVBaseVector:
-db 1
-db 4, 4, 12, 4
-db 1
-db 4, 8, 12, 8
-db 1
-db 4, 12, 12, 12
-db 0
-
-; up ri do le
-; 0  0  1  1
 RailroadTracksTurn3Vector:
 db 1
 db 0, 5, 10, 16
 db 1
 db 0, 9, 6, 16
+db 0
+
+RailroadTracksTurn6Vector:
+db 1
+db 6, 16, 16, 5
+db 1
+db 10, 16, 16, 9
+db 0
+
+RailroadTracksTurn9Vector:
+db 1
+db 0, 5, 6, 0
+db 1
+db 0, 9, 10, 0
+db 0
+
+RailroadTracksTurn12Vector:
+db 1
+db 6, 0, 16, 9
+db 1
+db 10, 0, 16, 5
+db 0
+
+LocomotiveHVector:
+db 4
+db 1, 4, 15, 4, 15, 12, 1, 12, 1, 4
+db 1
+db 3, 7, 14, 7
+db 1
+db 3, 9, 14, 9
+db 0
+
+LocomotiveVVector:
+db 4
+db 4, 1, 4, 15, 12, 15, 12, 1, 4, 1
+db 1
+db 7, 3, 7, 14
+db 1
+db 9, 3, 9, 14
 db 0
