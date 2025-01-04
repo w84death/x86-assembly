@@ -47,6 +47,7 @@ KB_SPACE equ 0x39
 
 COLOR_BACKGROUND equ 0x14
 COLOR_CURSOR equ 0x0f
+COLOR_CURSOR_RED equ 0x04
 
 ; =========================================== INITIALIZATION ===================
 
@@ -243,12 +244,29 @@ ret
 move_cursor:
    mov cl, COLOR_BACKGROUND
    call draw_cursor
-   ; todo: check if new position is valid
-   mov ax, [_CUR_NEWX_]
-   mov [_CUR_X_], ax
-   mov ax, [_CUR_NEWY_]
-   mov [_CUR_Y_], ax
    mov cl, COLOR_CURSOR
+   mov ax, [_CUR_NEWX_]
+   cmp ax, 0
+   jl .err
+   cmp ax, 320/16-1
+   jge .err
+   mov [_CUR_X_], ax
+   ; jmp .done
+
+   mov ax, [_CUR_NEWY_]
+   cmp ax, 0
+   jl .err
+   cmp ax, 200/16-1
+   jge .err
+   mov [_CUR_Y_], ax
+   jmp .done
+   .err:
+      mov cl, COLOR_CURSOR_RED
+      mov ax, [_CUR_X_]
+      mov [_CUR_NEWX_], ax
+      mov ax, [_CUR_Y_]
+      mov [_CUR_NEWY_], ax
+   .done:
    call draw_cursor
 ret
 
@@ -259,6 +277,7 @@ draw_cursor:
    mov bx, [_CUR_X_]
    shl bx, 4
    add ax, bx
+   add ax, 320*8+8
    mov bp, ax   
    mov byte [_VECTOR_COLOR_], cl
    mov si, TestVector
