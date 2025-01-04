@@ -5,12 +5,6 @@
 ; 01/2025
 ;
 
-; TODO:
-; - extracting sprite data to memory
-; - extracting level data to memory
-; - drawing sprite
-; - drawing level
-
 org 0x100
 use16
 
@@ -20,8 +14,8 @@ _GAME_STATE_ equ _BASE_ + 0x02      ; 1 byte
 _SCORE_ equ _BASE_ + 0x03           ; 1 byte
 _CUR_X_  equ _BASE_ + 0x04          ; 2 bytes
 _CUR_Y_  equ _BASE_ + 0x06          ; 2 bytes
-_CUR_NEWX_  equ _BASE_ + 0x08       ; 2 bytes
-_CUR_NEWY_  equ _BASE_ + 0x0A       ; 2 bytes
+_CUR_TEST_X_  equ _BASE_ + 0x08       ; 2 bytes
+_CUR_TEST_Y_  equ _BASE_ + 0x0A       ; 2 bytes
 _VECTOR_COLOR_ equ _BASE_ + 0x0C    ; 1 byte
 
 _SPRITES_ equ 0x3000
@@ -45,9 +39,11 @@ KB_RIGHT equ 0x4D
 KB_ENTER equ 0x1C
 KB_SPACE equ 0x39
 
-COLOR_BACKGROUND equ 0x14
-COLOR_CURSOR equ 0x0f
-COLOR_CURSOR_RED equ 0x04
+COLOR_BACKGROUND equ 0xC3
+COLOR_CURSOR equ 0x62
+COLOR_CURSOR_RED equ 0x0C
+COLOR_GRADIENT_START equ 0x1414
+COLOR_GRADIENT_END equ 0x1010
 
 ; =========================================== INITIALIZATION ===================
 
@@ -56,6 +52,10 @@ int 0x10            ; Video BIOS interrupt
 mov ax, 0xA000
 mov es, ax
 xor di, di          ; Set DI to 0
+
+mov ax, 0x9000
+mov ss, ax
+mov sp, 0xFFFF
 
 mov byte [_GAME_TICK_], 0
 mov byte [_GAME_STATE_], STATE_INTRO
@@ -111,26 +111,28 @@ check_keyboard:
       jmp .done
    .go_intro:
       mov byte [_GAME_STATE_], STATE_INTRO
+      mov word [_GAME_TICK_], 0x0
       call prepare_intro
       jmp .done
    .go_game:
       mov byte [_GAME_STATE_], STATE_GAME
+      mov word [_GAME_TICK_], 0x0
       call prepare_game
       jmp .done
    .go_game_enter:
       ; todo
       jmp .done
    .pressed_up:
-      dec word [_CUR_NEWY_]
+      dec word [_CUR_TEST_Y_]
       jmp .done_processed
    .pressed_down:
-      inc word [_CUR_NEWY_]
+      inc word [_CUR_TEST_Y_]
       jmp .done_processed
    .pressed_left:
-      dec word [_CUR_NEWX_]
+      dec word [_CUR_TEST_X_]
       jmp .done_processed
    .pressed_right:
-      inc word [_CUR_NEWX_]
+      inc word [_CUR_TEST_X_]
       jmp .done_processed
    .done_processed:
       call move_cursor
@@ -142,31 +144,12 @@ cmp byte [_GAME_STATE_], STATE_QUIT
 je exit
 
 cmp byte [_GAME_STATE_], STATE_INTRO
-je draw_intro
+call draw_intro
 
 cmp byte [_GAME_STATE_], STATE_GAME
-je draw_game
+call draw_game
 
 jmp wait_for_tick
-
-draw_intro:
-   ; animate "PRESS ENTER TO START"
-
-   mov ax, [_GAME_TICK_]
-   test ax, 0x10
-   jnz .done
-   mov al, [_VECTOR_COLOR_]
-   cmp al, 0x1f
-   jge .done
-   inc al
-   mov byte [_VECTOR_COLOR_], al
-   call draw_vector
-   .done:
-   jmp wait_for_tick
-
-draw_game:
-   ; todo
-   jmp wait_for_tick
 
 ; =========================================== GAME TICK ========================
 
@@ -211,7 +194,7 @@ exit:
 
 prepare_intro:
    xor di, di
-   mov ax, 0x1414             ; Set starting color
+   mov ax, COLOR_GRADIENT_START             ; Set starting color
    mov dl, 0x10               ; 10 bars to draw
    .draw_gradient:
       mov cx, 320*4          ; Each bar 10 pixels high
@@ -219,7 +202,7 @@ prepare_intro:
       cmp dl, 0x09
       jg .draw_top
       jl .draw_bottom
-      mov ax, 0x1010
+      mov ax, COLOR_GRADIENT_END
       mov cx, 320*36
       rep stosw
       .draw_bottom:
@@ -232,10 +215,30 @@ prepare_intro:
       dec dl
       jnz .draw_gradient
 
+   mov byte [_VECTOR_COLOR_], 0x1a
+   mov bp, 320*165+85
+   mov si, PressEnterVector
+   call draw_vector
+
    mov byte [_VECTOR_COLOR_], 0x10
    mov bp, 320*80+150
    mov si, P1XVector
    call draw_vector
+ret
+
+draw_intro:
+   mov ax, [_GAME_TICK_]
+   test ax, 0x10
+   jnz .done
+
+   mov al, [_VECTOR_COLOR_]
+   cmp al, 0x1f
+   jge .done
+   inc al
+
+   mov byte [_VECTOR_COLOR_], al
+   call draw_vector
+   .done:
 ret
 
 prepare_game:
@@ -246,18 +249,21 @@ prepare_game:
    rep stosw
    mov word [_CUR_X_], 9
    mov word [_CUR_Y_], 5
-   mov word [_CUR_NEWX_], 9
-   mov word [_CUR_NEWY_], 5
+   mov word [_CUR_TEST_X_], 9
+   mov word [_CUR_TEST_Y_], 5
    mov byte [_SCORE_], 0
    mov cl, COLOR_CURSOR
    call draw_cursor
+ret
+
+draw_game:
 ret
 
 move_cursor:
    mov cl, COLOR_BACKGROUND
    call draw_cursor
    mov cl, COLOR_CURSOR
-   mov ax, [_CUR_NEWX_]
+   mov ax, [_CUR_TEST_X_]
    cmp ax, 0
    jl .err
    cmp ax, 320/16-1
@@ -265,7 +271,7 @@ move_cursor:
    mov [_CUR_X_], ax
    ; jmp .done
 
-   mov ax, [_CUR_NEWY_]
+   mov ax, [_CUR_TEST_Y_]
    cmp ax, 0
    jl .err
    cmp ax, 200/16-1
@@ -275,9 +281,9 @@ move_cursor:
    .err:
       mov cl, COLOR_CURSOR_RED
       mov ax, [_CUR_X_]
-      mov [_CUR_NEWX_], ax
+      mov [_CUR_TEST_X_], ax
       mov ax, [_CUR_Y_]
-      mov [_CUR_NEWY_], ax
+      mov [_CUR_TEST_Y_], ax
    .done:
    call draw_cursor
 ret
@@ -292,7 +298,7 @@ draw_cursor:
    add ax, 320*8+8
    mov bp, ax   
    mov byte [_VECTOR_COLOR_], cl
-   mov si, TestVector
+   mov si, CursorVector
    call draw_vector
 ret
 
@@ -384,6 +390,18 @@ draw_line:
 
 ; =========================================== DATA =============================
 
+CursorVector:
+db 4
+db 0, 0, 16, 0, 16, 16, 0, 16, 0, 0
+db 0
+
+XVector:
+db 1
+db 1, 1, 16, 16
+db 1
+db 16, 1, 1, 16
+db 0
+
 P1XVector:
 db 4
 db 2, 35, 2, 3, 10, 3, 10, 20, 2, 20
@@ -397,7 +415,37 @@ db 3
 db 24, 35, 24, 19, 18, 11, 18, 2
 db 0
 
-TestVector:
-db 4
-db 0, 0, 16, 0, 16, 16, 0, 16, 0, 0
+PressEnterVector:
+db 6
+db 3, 16, 15, 4, 20, 4, 21, 6, 18, 9, 15, 10, 10, 10
+db 5
+db 17, 16, 26, 4, 31, 4, 32, 7, 28, 10, 23, 10
+db 1
+db 27, 10, 28, 16
+db 3
+db 46, 4, 39, 4, 32, 15, 40, 16
+db 1
+db 37, 8, 43, 9
+db 7
+db 58, 4, 53, 4, 49, 8, 51, 10, 55, 10, 55, 14, 51, 16, 45, 15
+db 7
+db 70, 4, 64, 4, 62, 7, 64, 9, 68, 11, 68, 15, 63, 17, 59, 15
+db 3
+db 88, 4, 81, 4, 80, 16, 88, 16
+db 1
+db 82, 9, 87, 9
+db 3
+db 93, 16, 93, 4, 102, 15, 102, 4
+db 1
+db 106, 4, 115, 4
+db 1
+db 111, 4, 114, 17
+db 3
+db 126, 4, 119, 4, 122, 16, 130, 16
+db 1
+db 121, 9, 128, 9
+db 5
+db 136, 16, 130, 3, 135, 4, 137, 5, 139, 10, 134, 10
+db 1
+db 138, 10, 146, 16
 db 0

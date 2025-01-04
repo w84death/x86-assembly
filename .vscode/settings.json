@@ -4,5 +4,12 @@
         "stosb",
         "stosw",
         "xchg",
+        "lodsb",
+        "lodsw",
+        "popa",
+        "pusha",
+        "Krzysztof",
+        "Krystian",
+        "Jankowski",
     ]
 }
