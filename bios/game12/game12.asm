@@ -46,10 +46,13 @@ KB_DEL equ 0x53
 KB_BACK equ 0x0E
 KB_Q equ 0x10
 KB_W equ 0x11
-KB_LSHIFT equ 0x2A
-KB_RSHIFT equ 0x36
 
 TOOLS equ 0x4
+TOOL_EMPTY equ 0x40
+TOOL_RAILROAD equ 0x0
+TOOL_INFRA equ 0x1
+TOOL_FOREST equ 0x2
+TOOL_MOUNTAINS equ 0x3
 
 MAP_WIDTH equ 64
 MAP_HEIGHT equ 64
@@ -66,7 +69,7 @@ COLOR_GRADIENT_START equ 0x1414
 COLOR_GRADIENT_END equ 0x1010
 COLOR_METAL equ 0xA3
 COLOR_STEEL equ 0x67
-COLOR_WOOD equ 0xD3
+COLOR_RAILS equ 0xD3
 COLOR_GREEN equ 0x74
 COLOR_MOUNTAIN equ 0xAD
 COLOR_INFRA equ 0xA0
@@ -151,10 +154,10 @@ check_keyboard:
       jmp .done
    .process_del:
       call get_cursor_pos
-      call clear_tile
-      mov byte [_TOOL_], 255
+      mov byte [_TOOL_], TOOL_EMPTY
       call save_tile
-      mov byte [_TOOL_], 0
+      mov byte [_TOOL_], TOOL_RAILROAD
+      call clear_tile
       mov cl, COLOR_CURSOR_OK
       call draw_cursor
       jmp .done
@@ -183,7 +186,18 @@ check_keyboard:
       call get_cursor_pos
       call save_tile
       call clear_tile
-      call stamp_tile
+
+      cmp byte [_TOOL_], 0
+      jz .recalculate_railroads
+      
+      call stamp_tile  
+      jmp .skip_recalculate
+
+      .recalculate_railroads:
+      call recalculate_railroads
+      call load_tile
+      .skip_recalculate:
+
       mov cl, COLOR_CURSOR_OK
       call draw_cursor
       jmp .done
@@ -370,7 +384,7 @@ ret
 draw_tools:
    mov dl, [_TOOL_]
    mov bp, 320*177+16
-   mov byte [_TOOL_], 0
+   mov byte [_TOOL_], TOOL_RAILROAD
    mov cx, TOOLS
    .tools_loop:
       push cx
@@ -379,7 +393,7 @@ draw_tools:
       add bp, 24
       pop cx
    loop .tools_loop
-   mov byte [_TOOL_], dl
+   mov byte [_TOOL_], TOOL_RAILROAD
    call update_tools_selector
 ret
 
@@ -416,32 +430,29 @@ stamp_tile:
    
    xor bx, bx
    mov byte bl, [_TOOL_]
-   
-   mov byte [_VECTOR_COLOR_], COLOR_METAL
-   cmp bl, 0
-   jg .skip_black_change
-      mov byte [_VECTOR_COLOR_], COLOR_WOOD
-   .skip_black_change:
+
+   mov byte [_VECTOR_COLOR_], COLOR_RAILS
+
    cmp bl, TOOLS-3
-   jl .skip_steel_change
+   jl .skip2
       rdtsc
       and ax, 0x3
       mov byte [_VECTOR_COLOR_], COLOR_INFRA
       add byte [_VECTOR_COLOR_], al
-   .skip_steel_change:
+   .skip2:
 
    cmp bl, TOOLS-2
-   jl .skip_green_change
+   jl .skip3
       rdtsc
       and ax, 0x7
       mov byte [_VECTOR_COLOR_], COLOR_GREEN
       add byte [_VECTOR_COLOR_], al
-   .skip_green_change:
+   .skip3:
 
    cmp bl, TOOLS-1
-   jl .skip_mountain_change
+   jl .skip4
       mov byte [_VECTOR_COLOR_], COLOR_MOUNTAIN
-   .skip_mountain_change:
+   .skip4:
    
    shl bx, 1
    mov si, ToolsList   
@@ -451,19 +462,64 @@ stamp_tile:
    
    call draw_vector
 
+   .done:
+   popa
+ret
+
+recalculate_railroads:
+   pusha
+   call get_map_pos
+   xor bx, bx
+
+   test byte [si-MAP_WIDTH], 128 ; up
+   jz .next1
+      add bl, 8
+   .next1:
+
+   test byte [si+1], 128 ; right
+   jz .next2
+      add bl, 4
+   .next2:
+
+   test byte [si+MAP_WIDTH], 128 ; down
+   jz .next3
+      add bl, 2
+   .next3:
+
+   test byte [si-1], 128 ; left
+   jz .next4
+      add bl, 1
+   .next4:
+
+   cmp bl, 13
+   jle .skip_clip
+      mov bl, 0
+   .skip_clip:
+
+   add bl, TOOLS  ; move over tools list
+   add bl, 128   ; set railroad bit
+   mov byte [si], bl
    popa
 ret
 
 save_tile:
-   mov di, _MAP_
+   call get_map_pos
+   mov al, [_TOOL_]
+   cmp al, 0
+   jnz .skip_railroads_bit
+      add al, 128
+   .skip_railroads_bit:
+   mov byte [si], al
+ret
+
+get_map_pos:
+   mov si, _MAP_
    mov ax, [_CUR_Y_]
    add al, [_VIEWPORT_Y_]
    imul ax, MAP_WIDTH
    add ax, [_CUR_X_]
    add al, [_VIEWPORT_X_]
-   add di, ax
-   mov al, [_TOOL_]
-   mov byte [di], al
+   add si, ax
 ret
 
 init_map:
@@ -476,14 +532,14 @@ init_map:
       jl .set_empty
       cmp ax, 0x7
       jz .set_mountains
-      .set_tree:
-         mov ax, 0x2
+      .set_forest:
+         mov ax, TOOL_FOREST
          jmp .done
       .set_mountains:
-         mov ax, 0x3
+         mov ax, TOOL_MOUNTAINS
          jmp .done
       .set_empty:
-         mov ax, 0xff      
+         mov ax, TOOL_EMPTY      
       .done:
       mov [di], al
       inc di
@@ -510,7 +566,8 @@ load_map:
       .h_line_loop:
          call clear_tile
          mov al, [si]
-         cmp al, 255
+         and al, 0x7f         ; clear railroad bit
+         cmp al, TOOL_EMPTY
          jz .done
          mov byte [_TOOL_], al
          call stamp_tile
@@ -525,6 +582,17 @@ load_map:
 
    pop ax
    mov byte [_TOOL_], al
+ret
+
+load_tile:
+   pusha
+   call get_map_pos
+   mov al, [si]
+   and al, 0x7f         ; clear railroad bit
+   mov byte [_TOOL_], al
+   call stamp_tile
+   mov byte [_TOOL_], TOOL_RAILROAD
+   popa
 ret
 
 move_cursor:
@@ -790,14 +858,8 @@ db 0
 
 ToolsList:
 dw RailroadTracksHRailVector, Infra1Vector, ForestVector, MountainVector
-dw 0
-
-XVector:
-db 1
-db 0, 0, 16, 16
-db 1
-db 16, 0, 0, 16
-db 0
+RailroadsList:
+dw RailroadTracksHRailVector,RailroadTracksHRailVector,RailroadTracksVRailVector,RailroadTracksTurn3Vector,RailroadTracksHRailVector,RailroadTracksHRailVector,RailroadTracksTurn6Vector,RailroadTracksVRailVector,RailroadTracksVRailVector,RailroadTracksTurn9Vector,RailroadTracksVRailVector,RailroadTracksVRailVector,RailroadTracksTurn12Vector
 
 RailroadTracksHRailVector:
 db 1
