@@ -19,6 +19,8 @@ _CUR_TEST_Y_  equ _BASE_ + 0x0A       ; 2 bytes
 _VECTOR_COLOR_ equ _BASE_ + 0x0C    ; 1 byte
 _TOOL_ equ _BASE_ + 0x0D            ; 1 byte
 _VECTOR_SCALE_ equ _BASE_ + 0x0E    ; 1 byte
+_VIEWPORT_X_ equ _BASE_ + 0x0F      ; 2 bytes
+_VIEWPORT_Y_ equ _BASE_ + 0x11      ; 2 bytes
 _MAP_ equ 0x3000
 
 ; =========================================== GAME STATES ======================
@@ -79,8 +81,10 @@ mov ax, 0x9000
 mov ss, ax
 mov sp, 0xFFFF
 
-mov byte [_GAME_TICK_], 0
-mov byte [_VECTOR_SCALE_], 0
+mov byte [_GAME_TICK_], 0x0
+mov byte [_VECTOR_SCALE_], 0x0
+mov byte [_VIEWPORT_X_], 0x0
+mov byte [_VIEWPORT_Y_], 0x0
 call init_map
 mov byte [_GAME_STATE_], STATE_INTRO
 call prepare_intro
@@ -94,7 +98,7 @@ main_loop:
 check_keyboard:
    mov ah, 01h         ; BIOS keyboard status function
    int 16h             ; Call BIOS interrupt
-   jz .done             ; Jump if Zero Flag is set (no key pressed)
+   jz .done            ; Jump if Zero Flag is set (no key pressed)
 
    mov ah, 00h         ; BIOS keyboard read function
    int 16h             ; Call BIOS interrupt
@@ -442,8 +446,10 @@ ret
 save_tile:
    mov di, _MAP_
    mov ax, [_CUR_Y_]
+   add al, [_VIEWPORT_Y_]
    imul ax, MAP_WIDTH
    add ax, [_CUR_X_]
+   add al, [_VIEWPORT_X_]
    add di, ax
    mov al, [_TOOL_]
    mov byte [di], al
@@ -461,6 +467,13 @@ ret
 load_map:
    mov si, _MAP_
    mov bp, 320*8+8
+
+   xor ax, ax
+   mov al, [_VIEWPORT_Y_]
+   imul ax, MAP_WIDTH
+   add al, [_VIEWPORT_X_]
+   add si, ax
+
    mov cx, VIEWPORT_HEIGHT
    .v_loop:
       push cx
