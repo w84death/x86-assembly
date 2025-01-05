@@ -407,7 +407,7 @@ stamp_tile:
    jg .skip_black_change
       mov byte [_VECTOR_COLOR_], COLOR_WOOD
    .skip_black_change:
-   cmp bl, TOOLS-4
+   cmp bl, TOOLS-3
    jl .skip_steel_change
       mov byte [_VECTOR_COLOR_], COLOR_INFRA
    .skip_steel_change:
