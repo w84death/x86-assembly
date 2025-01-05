@@ -46,8 +46,11 @@ KB_LSHIFT equ 0x2A
 KB_RSHIFT equ 0x36
 
 TOOLS equ 0x4
-GRID_H_LINES equ 11
-GRID_V_LINES equ 20
+
+MAP_WIDTH equ 64
+MAP_HEIGHT equ 64
+VIEWPORT_WIDTH equ 18
+VIEWPORT_HEIGHT equ 10
 
 COLOR_BACKGROUND equ 0xC7
 COLOR_GRID equ 0xC6
@@ -331,7 +334,7 @@ draw_grid:
    mov al, COLOR_GRID
    mov ah, al
    .draw_horizontal_lines:
-      mov cx, GRID_H_LINES
+      mov cx, VIEWPORT_HEIGHT+1
       .h_line_loop:
          push cx
          mov cx, 320/2-8
@@ -341,10 +344,10 @@ draw_grid:
       loop .h_line_loop
    .draw_vertical_lines:
       pop di
-      mov cx, GRID_V_LINES
+      mov cx, VIEWPORT_WIDTH+1
       .v_line_loop:
          push cx
-         mov cx, 160
+         mov cx, VIEWPORT_HEIGHT*16
          .draw_v:
             stosw
             add di, 318
@@ -439,7 +442,7 @@ ret
 save_tile:
    mov di, _MAP_
    mov ax, [_CUR_Y_]
-   imul ax, GRID_V_LINES-1
+   imul ax, MAP_WIDTH
    add ax, [_CUR_X_]
    add di, ax
    mov al, [_TOOL_]
@@ -448,7 +451,7 @@ ret
 
 init_map:
    mov di, _MAP_
-   mov cx, GRID_H_LINES*GRID_V_LINES
+   mov cx, MAP_WIDTH*MAP_HEIGHT
    .init_loop:
       mov byte [di], 0xff
       inc di
@@ -458,12 +461,12 @@ ret
 load_map:
    mov si, _MAP_
    mov bp, 320*8+8
-   mov cx, GRID_H_LINES-1
-   .h_loop:
+   mov cx, VIEWPORT_HEIGHT
+   .v_loop:
       push cx
 
-      mov cx, GRID_V_LINES-1
-      .v_line_loop:
+      mov cx, VIEWPORT_WIDTH
+      .h_line_loop:
          mov al, [si]
          cmp al, 255
          jz .skip_tile
@@ -474,11 +477,11 @@ load_map:
          .skip_tile:
          add bp, 16
          inc si
-      loop .v_line_loop
-
+      loop .h_line_loop
+      add si, MAP_WIDTH-VIEWPORT_WIDTH-1
       pop cx
       add bp, 320*15+16
-   loop .h_loop
+   loop .v_loop
 
    mov byte [_TOOL_], 0
 ret
@@ -490,14 +493,14 @@ move_cursor:
    mov ax, [_CUR_TEST_X_]
    cmp ax, 0
    jl .err
-   cmp ax, GRID_V_LINES-2
+   cmp ax, VIEWPORT_WIDTH-1
    jg .err
    mov [_CUR_X_], ax
 
    mov ax, [_CUR_TEST_Y_]
    cmp ax, 0
    jl .err
-   cmp ax, GRID_H_LINES-2
+   cmp ax, VIEWPORT_HEIGHT-1
    jg .err
    mov [_CUR_Y_], ax
    jmp .done
