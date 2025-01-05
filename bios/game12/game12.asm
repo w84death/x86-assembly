@@ -18,7 +18,7 @@ _CUR_TEST_X_  equ _BASE_ + 0x08       ; 2 bytes
 _CUR_TEST_Y_  equ _BASE_ + 0x0A       ; 2 bytes
 _VECTOR_COLOR_ equ _BASE_ + 0x0C    ; 1 byte
 _TOOL_ equ _BASE_ + 0x0D            ; 1 byte
-
+_VECTOR_SCALE_ equ _BASE_ + 0x0E    ; 1 byte
 _MAP_ equ 0x3000
 
 ; =========================================== GAME STATES ======================
@@ -77,10 +77,10 @@ mov ss, ax
 mov sp, 0xFFFF
 
 mov byte [_GAME_TICK_], 0
+mov byte [_VECTOR_SCALE_], 0
 call init_map
 mov byte [_GAME_STATE_], STATE_INTRO
 call prepare_intro
-
 
 ; =========================================== GAME LOOP ========================
 
@@ -292,13 +292,16 @@ prepare_intro:
    mov si, PressEnterVector
    call draw_vector
 
+   mov byte [_VECTOR_SCALE_], 0x2
    mov byte [_VECTOR_COLOR_], 0x10
-   mov bp, 320*80+150
+   mov bp, 320*20+110
    mov si, P1XVector
    call draw_vector
 ret
 
 prepare_game:
+   mov byte [_VECTOR_SCALE_], 0
+
    xor di, di
    mov al, COLOR_BACKGROUND
    mov ah, al
@@ -554,40 +557,49 @@ update_tools_selector:
 ret
 
 ; =========================================== DRAW VECTOR ======================
+; SI - Vector data
+; BP - Position in VGA memory
 
 draw_vector:   
-  pusha 
-  .read_group:
-    xor cx, cx
-    mov cl, [si]
-    cmp cl, 0x0
-    jz .done
+   pusha 
+   .read_group:
+      xor cx, cx
+      mov cl, [si]
+      cmp cl, 0x0
+      jz .done
 
-    inc si
+      inc si
 
-    .read_line:
-    push cx
+      .read_line:
+      push cx
 
-    xor ax, ax
-    mov al, [si]
-    add ax, bp
-    
-    xor bx, bx
-    mov bl, [si+2]
-    add bx, bp          ; Move to position
-    mov dl, [si+1]
-    mov dh, [si+3]        
-    mov cl, [_VECTOR_COLOR_]
-    mov ch, cl
-    call draw_line
+      xor cx, cx
+      mov cl, [_VECTOR_SCALE_]
 
-    add si, 2
-    pop cx
-    loop .read_line
-    add si, 2
-    jmp .read_group
-  .done:
-  popa
+      xor ax, ax
+      mov al, [si]
+      shl ax, cl
+      add ax, bp
+      xor bx, bx
+      mov bl, [si+2]
+      shl bx, cl
+      add bx, bp          ; Move to position
+      mov dl, [si+1]
+      shl dl, cl
+      mov dh, [si+3]     
+      shl dh, cl  
+      mov cl, [_VECTOR_COLOR_]
+      mov ch, cl
+      
+      call draw_line
+
+      add si, 2
+      pop cx
+      loop .read_line
+      add si, 2
+      jmp .read_group
+   .done:
+   popa
 ret
 
 ; =========================================== DRAWING LINE ====================
