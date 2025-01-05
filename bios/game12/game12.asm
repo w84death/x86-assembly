@@ -19,8 +19,10 @@ _CUR_TEST_Y_  equ _BASE_ + 0x0A       ; 2 bytes
 _VECTOR_COLOR_ equ _BASE_ + 0x0C    ; 1 byte
 _TOOL_ equ _BASE_ + 0x0D            ; 1 byte
 _VECTOR_SCALE_ equ _BASE_ + 0x0E    ; 1 byte
-_VIEWPORT_X_ equ _BASE_ + 0x0F      ; 2 bytes
-_VIEWPORT_Y_ equ _BASE_ + 0x11      ; 2 bytes
+_VIEWPORT_X_ equ _BASE_ + 0x0F      ; 1 bytes
+_VIEWPORT_Y_ equ _BASE_ + 0x10      ; 1 bytes
+_RNG_ equ _BASE_ + 0x11             ; 2 bytes
+
 _MAP_ equ 0x3000
 
 ; =========================================== GAME STATES ======================
@@ -82,9 +84,10 @@ mov ss, ax
 mov sp, 0xFFFF
 
 mov byte [_GAME_TICK_], 0x0
+mov word [_RNG_], 0x42
 mov byte [_VECTOR_SCALE_], 0x0
-mov byte [_VIEWPORT_X_], 0x0
-mov byte [_VIEWPORT_Y_], 0x0
+mov byte [_VIEWPORT_X_], 0x20
+mov byte [_VIEWPORT_Y_], 0x20
 call init_map
 mov byte [_GAME_STATE_], STATE_INTRO
 call prepare_intro
@@ -296,7 +299,7 @@ prepare_intro:
       jnz .draw_gradient
 
    mov byte [_VECTOR_COLOR_], COLOR_TEXT
-   mov bp, 320*165+85
+   mov bp, 320*170+85
    mov si, PressEnterVector
    call draw_vector
 
@@ -410,7 +413,7 @@ ret
 
 stamp_tile:
    pusha
-
+   
    xor bx, bx
    mov byte bl, [_TOOL_]
    
@@ -445,7 +448,7 @@ stamp_tile:
    add si, bx
    lodsw
    mov si, ax
-
+   
    call draw_vector
 
    popa
@@ -467,7 +470,22 @@ init_map:
    mov di, _MAP_
    mov cx, MAP_WIDTH*MAP_HEIGHT
    .init_loop:
-      mov byte [di], 0xff
+      call get_random
+      and ax, 0xf
+      cmp ax, 0x7
+      jl .set_empty
+      cmp ax, 0x7
+      jz .set_mountains
+      .set_tree:
+         mov ax, 0x2
+         jmp .done
+      .set_mountains:
+         mov ax, 0x3
+         jmp .done
+      .set_empty:
+         mov ax, 0xff      
+      .done:
+      mov [di], al
       inc di
    loop .init_loop
 ret
@@ -657,6 +675,14 @@ draw_vector:
    popa
 ret
 
+get_random:
+   mov ax, [_RNG_]
+   inc ax
+   rol ax, 1
+   xor ax, 0x1337
+   mov [_RNG_], ax
+ret
+
 ; =========================================== DRAWING LINE ====================
 ; X0 - AX, Y0 - DL
 ; X1 - BX, Y1 - DH
@@ -716,9 +742,9 @@ db 0
 
 P1XVector:
 db 4
-db 2, 35, 2, 3, 10, 3, 10, 20, 2, 20
+db 2, 35, 2, 2, 10, 2, 10, 20, 2, 20
 db 1
-db 11, 4, 14, 4
+db 11, 5, 14, 5
 db 1
 db 14, 35, 14, 2
 db 3
@@ -757,7 +783,7 @@ db 126, 4, 119, 4, 122, 16, 130, 16
 db 1
 db 121, 9, 128, 9
 db 5
-db 136, 16, 130, 3, 135, 4, 137, 5, 139, 10, 134, 10
+db 136, 16, 130, 4, 135, 4, 137, 4, 139, 10, 134, 10
 db 1
 db 138, 10, 146, 16
 db 0
