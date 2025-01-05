@@ -110,6 +110,7 @@ check_keyboard:
 
    cmp byte [_GAME_STATE_], STATE_GAME
    jnz .done
+
    cmp ah, KB_SPACE
    je .process_space
    cmp ah, KB_DEL
@@ -128,7 +129,6 @@ check_keyboard:
    je .pressed_left
    cmp ah, KB_RIGHT
    je .pressed_right
-   
    jmp .done
 
    .process_esc:
@@ -174,6 +174,7 @@ check_keyboard:
       call prepare_game
       jmp .done
    .go_game_enter:
+      
       jmp .done
    .go_game_space:
       call get_cursor_pos
@@ -341,10 +342,10 @@ draw_grid:
       mov cx, VIEWPORT_HEIGHT+1
       .h_line_loop:
          push cx
-         mov cx, 320/2-8
+         mov cx, VIEWPORT_WIDTH*16/2
          rep stosw
          pop cx
-         add di, 320*15+16
+         add di, 320*16-VIEWPORT_WIDTH*16
       loop .h_line_loop
    .draw_vertical_lines:
       pop di
@@ -353,7 +354,8 @@ draw_grid:
          push cx
          mov cx, VIEWPORT_HEIGHT*16
          .draw_v:
-            stosw
+            stosb
+            inc di
             add di, 318
          loop .draw_v
          pop cx
@@ -390,21 +392,24 @@ get_cursor_pos:
 ret
 
 clear_tile:
+   pusha
    mov di, bp
+   add di, 321
    mov ax, COLOR_BACKGROUND
    mov ah, al
-   mov cx, 16
-   .h_line_loop:
+   mov cx, 15
+   .v_line_loop:
       push cx
-      mov cx, 8
-      rep stosw
+      mov cx, 15
+      rep stosb
       pop cx
-      add di, 304
-   loop .h_line_loop
+      add di, 320-15
+   loop .v_line_loop
+   popa
 ret
 
 stamp_tile:
-   push bp
+   pusha
 
    xor bx, bx
    mov byte bl, [_TOOL_]
@@ -416,12 +421,15 @@ stamp_tile:
    .skip_black_change:
    cmp bl, TOOLS-3
    jl .skip_steel_change
+      rdtsc
+      and ax, 0x3
       mov byte [_VECTOR_COLOR_], COLOR_INFRA
+      add byte [_VECTOR_COLOR_], al
    .skip_steel_change:
 
    cmp bl, TOOLS-2
    jl .skip_green_change
-      mov ax, [_GAME_TICK_]
+      rdtsc
       and ax, 0x7
       mov byte [_VECTOR_COLOR_], COLOR_GREEN
       add byte [_VECTOR_COLOR_], al
@@ -440,7 +448,7 @@ stamp_tile:
 
    call draw_vector
 
-   pop bp
+   popa
 ret
 
 save_tile:
@@ -465,10 +473,12 @@ init_map:
 ret
 
 load_map:
+   xor ax, ax
+   mov al, [_TOOL_]
+   push ax
    mov si, _MAP_
    mov bp, 320*8+8
 
-   xor ax, ax
    mov al, [_VIEWPORT_Y_]
    imul ax, MAP_WIDTH
    add al, [_VIEWPORT_X_]
@@ -480,23 +490,23 @@ load_map:
 
       mov cx, VIEWPORT_WIDTH
       .h_line_loop:
+         call clear_tile
          mov al, [si]
          cmp al, 255
-         jz .skip_tile
+         jz .done
          mov byte [_TOOL_], al
-         pusha
          call stamp_tile
-         popa
-         .skip_tile:
+         .done:
          add bp, 16
          inc si
       loop .h_line_loop
-      add si, MAP_WIDTH-VIEWPORT_WIDTH-1
+      add si, MAP_WIDTH-VIEWPORT_WIDTH
       pop cx
-      add bp, 320*15+16
+      add bp, 320*15+32
    loop .v_loop
 
-   mov byte [_TOOL_], 0
+   pop ax
+   mov byte [_TOOL_], al
 ret
 
 move_cursor:
@@ -505,24 +515,53 @@ move_cursor:
    mov cl, COLOR_CURSOR
    mov ax, [_CUR_TEST_X_]
    cmp ax, 0
-   jl .err
+   jl .left_end
    cmp ax, VIEWPORT_WIDTH-1
-   jg .err
+   jg .right_end
    mov [_CUR_X_], ax
 
    mov ax, [_CUR_TEST_Y_]
    cmp ax, 0
-   jl .err
+   jl .top_end
    cmp ax, VIEWPORT_HEIGHT-1
-   jg .err
+   jg .bottom_end
    mov [_CUR_Y_], ax
    jmp .done
+   
+   .top_end:
+      cmp byte [_VIEWPORT_Y_], 0
+      je .err
+      dec byte [_VIEWPORT_Y_]
+      jmp .done_end
+   .bottom_end:
+      cmp byte [_VIEWPORT_Y_], MAP_HEIGHT-VIEWPORT_HEIGHT-1
+      je .err
+      inc byte [_VIEWPORT_Y_]
+      jmp .done_end
+   .left_end:
+      cmp byte [_VIEWPORT_X_], 0
+      je .err
+      dec byte [_VIEWPORT_X_]
+      jmp .done_end
+   .right_end:
+      cmp byte [_VIEWPORT_X_], MAP_WIDTH-VIEWPORT_WIDTH-1
+      je .err
+      inc byte [_VIEWPORT_X_]
+      jmp .done_end
    .err:
       mov cl, COLOR_CURSOR_ERR
       mov ax, [_CUR_X_]
       mov [_CUR_TEST_X_], ax
       mov ax, [_CUR_Y_]
       mov [_CUR_TEST_Y_], ax
+      jmp .done
+   .done_end:
+      mov ax, [_CUR_X_]
+      mov [_CUR_TEST_X_], ax
+      mov ax, [_CUR_Y_]
+      mov [_CUR_TEST_Y_], ax
+      call load_map 
+      mov cl, COLOR_CURSOR  
    .done:
    call draw_cursor
 ret
@@ -736,23 +775,23 @@ db 0
 
 RailroadTracksHRailVector:
 db 1
-db 0, 6, 16, 6
+db 1, 6, 16, 6
 db 1
-db 0, 10, 16, 10
+db 1, 10, 16, 10
 db 0
 
 RailroadTracksVRailVector:
 db 1
-db 6, 0, 6, 16
+db 6, 1, 6, 16
 db 1
-db 10, 0, 10, 16
+db 10, 1, 10, 16
 db 0
 
 RailroadTracksTurn3Vector:
 db 1
-db 0, 5, 10, 16
+db 1, 5, 10, 16
 db 1
-db 0, 9, 6, 16
+db 1, 9, 6, 16
 db 0
 
 RailroadTracksTurn6Vector:
@@ -764,16 +803,16 @@ db 0
 
 RailroadTracksTurn9Vector:
 db 1
-db 0, 6, 7, 0
+db 1, 6, 7, 1
 db 1
-db 0, 10, 11, 0
+db 1, 10, 11, 1
 db 0
 
 RailroadTracksTurn12Vector:
 db 1
-db 6, 0, 16, 9
+db 6, 1, 16, 9
 db 1
-db 10, 0, 16, 5
+db 10, 1, 16, 5
 db 0
 
 Infra1Vector:
