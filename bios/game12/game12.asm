@@ -491,7 +491,7 @@ recalculate_railroads:
       add bl, 1
    .next4:
 
-   cmp bl, 13
+   cmp bl, 12
    jle .skip_clip
       mov bl, 0
    .skip_clip:
