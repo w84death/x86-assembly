@@ -154,9 +154,12 @@ check_keyboard:
       jmp .done
    .process_del:
       call get_cursor_pos
+      mov al, [_TOOL_]
+      push ax
       mov byte [_TOOL_], TOOL_EMPTY
       call save_tile
-      mov byte [_TOOL_], TOOL_RAILROAD
+      pop ax
+      mov byte [_TOOL_], al
       call clear_tile
       mov cl, COLOR_CURSOR_OK
       call draw_cursor
