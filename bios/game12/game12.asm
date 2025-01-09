@@ -22,7 +22,7 @@ _VECTOR_SCALE_ equ _BASE_ + 0x0E    ; 1 byte
 _VIEWPORT_X_ equ _BASE_ + 0x0F      ; 1 bytes
 _VIEWPORT_Y_ equ _BASE_ + 0x10      ; 1 bytes
 _RNG_ equ _BASE_ + 0x11             ; 2 bytes
-
+_BRUSH_ equ _BASE_ + 0x13           ; 1 byte
 _MAP_ equ 0x3000
 
 ; =========================================== GAME STATES ======================
@@ -73,6 +73,7 @@ COLOR_RAILS equ 0xD3
 COLOR_GREEN equ 0x74
 COLOR_MOUNTAIN equ 0xAD
 COLOR_INFRA equ 0xA0
+COLOR_SELECTOR equ 0x1f1f
 
 ; =========================================== INITIALIZATION ===================
 
@@ -91,6 +92,7 @@ mov word [_RNG_], 0x42
 mov byte [_VECTOR_SCALE_], 0x0
 mov byte [_VIEWPORT_X_], 0x20
 mov byte [_VIEWPORT_Y_], 0x20
+mov byte [_TOOL_], 0x0
 call init_map
 mov byte [_GAME_STATE_], STATE_INTRO
 call prepare_intro
@@ -193,6 +195,8 @@ check_keyboard:
       cmp byte [_TOOL_], 0
       jz .recalculate_railroads
       
+      mov al, [_TOOL_]
+      mov byte [_BRUSH_], al
       call stamp_tile  
       jmp .skip_recalculate
 
@@ -385,18 +389,16 @@ draw_grid:
 ret
 
 draw_tools:
-   mov dl, [_TOOL_]
    mov bp, 320*177+16
-   mov byte [_TOOL_], TOOL_RAILROAD
+   mov byte [_BRUSH_], 0
    mov cx, TOOLS
    .tools_loop:
       push cx
       call stamp_tile
-      inc byte [_TOOL_]
+      inc byte [_BRUSH_]
       add bp, 24
       pop cx
    loop .tools_loop
-   mov byte [_TOOL_], TOOL_RAILROAD
    call update_tools_selector
 ret
 
@@ -432,7 +434,7 @@ stamp_tile:
    pusha
    
    xor bx, bx
-   mov byte bl, [_TOOL_]
+   mov byte bl, [_BRUSH_]
 
    mov byte [_VECTOR_COLOR_], COLOR_RAILS
 
@@ -572,7 +574,7 @@ load_map:
          and al, 0x7f         ; clear railroad bit
          cmp al, TOOL_EMPTY
          jz .done
-         mov byte [_TOOL_], al
+         mov byte [_BRUSH_], al
          call stamp_tile
          .done:
          add bp, 16
@@ -592,9 +594,8 @@ load_tile:
    call get_map_pos
    mov al, [si]
    and al, 0x7f         ; clear railroad bit
-   mov byte [_TOOL_], al
+   mov byte [_BRUSH_], al
    call stamp_tile
-   mov byte [_TOOL_], TOOL_RAILROAD
    popa
 ret
 
@@ -696,7 +697,7 @@ update_tools_selector:
    imul bx, 24
    add di, bx
    mov cx, 8
-   mov ax, 0x1f1f
+   mov ax, COLOR_SELECTOR
    rep stosw
 ret
 
