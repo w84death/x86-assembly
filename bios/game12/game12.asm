@@ -359,7 +359,7 @@ ret
 
 prepare_game:
    mov byte [_VECTOR_SCALE_], 0
-
+   
    xor di, di
    mov al, COLOR_BACKGROUND
    mov ah, al
@@ -381,6 +381,8 @@ prepare_game:
    call draw_cursor
 
    call draw_train
+
+   call draw_header
 ret
 
 draw_grid:
@@ -429,6 +431,24 @@ draw_tools:
    call update_tools_selector
 ret
 
+draw_header:
+   mov dh, 0x0
+   mov dl, 0xb
+   xor bx, bx
+   mov ah, 0x02
+   int 0x10                ; Set cursor position
+   mov ah, 0x0E            ; BIOS teletype
+   mov bl, 0x0E            ; Yellow color
+   mov si, HeaderText      ; Point SI to string
+   .loop:
+      lodsb                    ; Load byte at SI into AL, increment SI
+      cmp al, '$'            ; Check for terminator
+      je .done               ; If terminator, exit
+      int 0x10              ; Print character
+      jmp .loop             ; Continue loop
+   .done:
+      ret
+
 convert_cur_pos_to_screen:
    mov ax, [_CUR_Y_]
    shl ax, 4
@@ -471,7 +491,6 @@ ret
 
 stamp_tile:
    pusha
-   
    xor bx, bx
    mov byte bl, [_BRUSH_]
 
@@ -945,6 +964,10 @@ draw_line:
 
 
 ; =========================================== DATA =============================
+HeaderText:
+db 'ASM GAME 12 by P1X$'
+FooterText:
+db 'Q/W TOOL, SPACE, DELETE$'
 
 P1XVector:
 db 4
