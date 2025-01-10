@@ -169,14 +169,16 @@ check_keyboard:
       jz .go_game_space
       jmp .done
    .process_del:
-      call get_cursor_pos
+      call set_pos_to_cursor
+      call convert_xy_to_screen
       mov al, [_TOOL_]
       push ax
       mov byte [_TOOL_], TOOL_EMPTY
-      call save_tile
+      call set_pos_to_cursor_w_offset
+      call save_tile_to_map
       pop ax
       mov byte [_TOOL_], al
-      call clear_tile
+      call clear_tile_on_screen
       mov cl, COLOR_CURSOR_OK
       call draw_cursor
       jmp .done
@@ -199,24 +201,28 @@ check_keyboard:
       call prepare_game
       jmp .done
    .go_game_enter:
-      
+      call train_ai
       jmp .done
    .go_game_space:
-      call get_cursor_pos
-      call save_tile
-      call clear_tile
+      call set_pos_to_cursor_w_offset
+      call save_tile_to_map
+      call set_pos_to_cursor
+      call convert_xy_to_screen
+      call clear_tile_on_screen
 
       cmp byte [_TOOL_], 0
-      jz .recalculate_railroads
+      jz .recalculate_railroad
       
       mov al, [_TOOL_]
       mov byte [_BRUSH_], al
       call stamp_tile  
       jmp .skip_recalculate
 
-      .recalculate_railroads:
-      call recalculate_railroads
-      call load_tile
+      .recalculate_railroad:
+      call set_pos_to_cursor_w_offset
+      call recalculate_railroad_at_pos
+      call convert_xy_pos_to_map
+      call load_tile_from_map
       .skip_recalculate:
 
       mov cl, COLOR_CURSOR_OK
@@ -268,8 +274,12 @@ draw_intro:
    jmp wait_for_tick
 
 draw_game:
-   
-   jmp wait_for_tick
+   mov ax, [_GAME_TICK_]
+   shr ax, 1
+   and ax, 0x4
+   cmp ax, 0x4
+   jnz wait_for_tick
+   call train_ai
 
 ; =========================================== GAME TICK ========================
 
@@ -419,7 +429,7 @@ draw_tools:
    call update_tools_selector
 ret
 
-get_cursor_pos:
+convert_cur_pos_to_screen:
    mov ax, [_CUR_Y_]
    shl ax, 4
    imul ax, 320
@@ -430,7 +440,19 @@ get_cursor_pos:
    mov bp, ax
 ret
 
-clear_tile:
+set_pos_to_cursor_w_offset:
+   mov ax, [_CUR_Y_]
+   add ax, [_VIEWPORT_Y_]
+   mov bx, [_CUR_X_]
+   add bx, [_VIEWPORT_X_]
+ret
+
+set_pos_to_cursor:
+   mov ax, [_CUR_Y_]
+   mov bx, [_CUR_X_]
+ret
+
+clear_tile_on_screen:
    pusha
    mov di, bp
    add di, 321
@@ -488,9 +510,9 @@ stamp_tile:
    popa
 ret
 
-recalculate_railroads:
+recalculate_railroad_at_pos:
    pusha
-   call get_map_pos
+   call convert_xy_pos_to_map
    xor bx, bx
 
    test byte [si-MAP_WIDTH], 128 ; up
@@ -524,8 +546,8 @@ recalculate_railroads:
    popa
 ret
 
-save_tile:
-   call get_map_pos
+save_tile_to_map:
+   call convert_xy_pos_to_map
    mov al, [_TOOL_]
    cmp al, 0
    jnz .skip_railroads_bit
@@ -534,13 +556,10 @@ save_tile:
    mov byte [si], al
 ret
 
-get_map_pos:
+convert_xy_pos_to_map:
    mov si, _MAP_
-   mov ax, [_CUR_Y_]
-   add ax, [_VIEWPORT_Y_]
    imul ax, MAP_WIDTH
-   add ax, [_CUR_X_]
-   add ax, [_VIEWPORT_X_]
+   add ax, bx
    add si, ax
 ret
 
@@ -593,7 +612,7 @@ load_map:
 
       mov cx, VIEWPORT_WIDTH
       .h_line_loop:
-         call clear_tile
+         call clear_tile_on_screen
          mov al, [si]
          and al, 0x7f         ; clear railroad bit
          cmp al, TOOL_EMPTY
@@ -613,13 +632,15 @@ load_map:
    mov byte [_TOOL_], al
 ret
 
-load_tile:
+load_tile_from_map:
    pusha
-   call get_map_pos
    mov al, [si]
    and al, 0x7f         ; clear railroad bit
-   mov byte [_BRUSH_], al
-   call stamp_tile
+   cmp al, TOOL_EMPTY
+   jz .done
+      mov byte [_BRUSH_], al
+      call stamp_tile
+   .done:
    popa
 ret
 
@@ -685,11 +706,11 @@ draw_cursor:
    mov bx, [_CUR_X_]
    mov byte [_VECTOR_COLOR_], cl
    mov si, CursorVector
-   call pos2bp
+   call convert_xy_to_screen
    call draw_vector
 ret
  
-pos2bp:
+convert_xy_to_screen:
    shl ax, 4
    imul ax, 320
    shl bx, 4
@@ -729,6 +750,38 @@ update_tools_selector:
    rep stosw
 ret
 
+train_ai:
+
+ mov ax, [_TRAIN_Y_]
+      sub ax, [_VIEWPORT_Y_]
+      mov bx, [_TRAIN_X_]
+      sub bx, [_VIEWPORT_X_]
+      
+      cmp bx, 0
+      jl .outside_viewport
+      cmp bx, VIEWPORT_WIDTH
+      jge .outside_viewport
+      cmp ax, 0
+      jl .outside_viewport
+      cmp ax, VIEWPORT_HEIGHT
+      jge .outside_viewport
+
+
+      call convert_xy_to_screen
+      call clear_tile_on_screen
+      
+      mov si, _MAP_
+      mov ax, [_TRAIN_Y_]
+      mov bx, [_TRAIN_X_]
+      imul ax, MAP_WIDTH
+      add ax, bx
+      add si, ax
+      call load_tile_from_map
+
+      .outside_viewport:
+      call move_train
+ret
+
 draw_train:
    mov ax, [_TRAIN_Y_]
    sub ax, [_VIEWPORT_Y_]
@@ -744,13 +797,47 @@ draw_train:
    cmp ax, VIEWPORT_HEIGHT
    jge .do_not_draw_train
 
-   call pos2bp
+   call convert_xy_to_screen
 
    mov byte [_VECTOR_COLOR_], COLOR_TRAIN
    mov si, TrainVector
    call draw_vector
 
    .do_not_draw_train:
+ret
+
+
+move_train:
+   mov si, _MAP_
+   mov ax, [_TRAIN_Y_]
+   mov bx, [_TRAIN_X_]
+   imul ax, MAP_WIDTH
+   add ax, bx
+   add si, ax
+   
+   .test_right:
+   test byte [si+1], 128
+   jz .test_left
+   inc word [_TRAIN_X_]
+   jmp .train_moved
+   .test_left:
+   test byte [si-1], 128
+   jz .test_up
+   dec word [_TRAIN_X_]
+   jmp .train_moved
+   .test_up:
+   test byte [si-MAP_WIDTH], 128
+   jz .test_down
+   dec word [_TRAIN_Y_]
+   jmp .train_moved
+   .test_down:
+   test byte [si+MAP_WIDTH], 128
+   jz .done
+   inc word [_TRAIN_Y_]
+
+   .train_moved:
+   call draw_train
+   .done:
 ret
 
 ; =========================================== DRAW VECTOR ======================
