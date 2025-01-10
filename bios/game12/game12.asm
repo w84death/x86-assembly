@@ -4,6 +4,14 @@
 ; MIT License
 ; 01/2025
 ;
+; Idea 1:
+; - build railroads from center to any of the 4 sides
+; - removing tree from map will move the train forward
+; - tran can't move on mountains, infrastructure
+; - if train reaches the end of railroads, game over
+; - if train reaches the edge destination, game won
+; - balance between removing trees and building longer railroads
+;
 
 org 0x100
 use16
