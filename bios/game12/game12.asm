@@ -228,6 +228,7 @@ check_keyboard:
       jmp .done_processed
    .done_processed:
       call move_cursor
+      call draw_train
    .done:
 
 ; =========================================== GAME STATES ======================
@@ -259,30 +260,7 @@ draw_intro:
    jmp wait_for_tick
 
 draw_game:
-  
-   mov ax, [_TRAIN_Y_]
-   sub ax, [_VIEWPORT_Y_]
-   mov bx, [_TRAIN_X_]
-   sub bx, [_VIEWPORT_X_]
    
-
-   cmp bx, 0
-   jl .skip_train
-   cmp bx, VIEWPORT_WIDTH
-   jge .skip_train
-   cmp ax, 0
-   jl .skip_train
-   cmp ax, VIEWPORT_HEIGHT
-   jge .skip_train
-
-   call pos2bp
-
-
-   mov byte [_VECTOR_COLOR_], COLOR_TRAIN
-   mov si, TrainVector
-   call draw_vector
-
-   .skip_train:
    jmp wait_for_tick
 
 ; =========================================== GAME TICK ========================
@@ -383,6 +361,8 @@ prepare_game:
 
    mov cl, COLOR_CURSOR
    call draw_cursor
+
+   call draw_train
 ret
 
 draw_grid:
@@ -739,6 +719,30 @@ update_tools_selector:
    mov cx, 8
    mov ax, COLOR_TOOLS_SELECTOR
    rep stosw
+ret
+
+draw_train:
+   mov ax, [_TRAIN_Y_]
+   sub ax, [_VIEWPORT_Y_]
+   mov bx, [_TRAIN_X_]
+   sub bx, [_VIEWPORT_X_]
+   
+   cmp bx, 0
+   jl .do_not_draw_train
+   cmp bx, VIEWPORT_WIDTH
+   jge .do_not_draw_train
+   cmp ax, 0
+   jl .do_not_draw_train
+   cmp ax, VIEWPORT_HEIGHT
+   jge .do_not_draw_train
+
+   call pos2bp
+
+   mov byte [_VECTOR_COLOR_], COLOR_TRAIN
+   mov si, TrainVector
+   call draw_vector
+
+   .do_not_draw_train:
 ret
 
 ; =========================================== DRAW VECTOR ======================
