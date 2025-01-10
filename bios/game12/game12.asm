@@ -19,11 +19,15 @@ _CUR_TEST_Y_  equ _BASE_ + 0x0A       ; 2 bytes
 _VECTOR_COLOR_ equ _BASE_ + 0x0C    ; 1 byte
 _TOOL_ equ _BASE_ + 0x0D            ; 1 byte
 _VECTOR_SCALE_ equ _BASE_ + 0x0E    ; 1 byte
-_VIEWPORT_X_ equ _BASE_ + 0x0F      ; 1 bytes
-_VIEWPORT_Y_ equ _BASE_ + 0x10      ; 1 bytes
-_RNG_ equ _BASE_ + 0x11             ; 2 bytes
-_BRUSH_ equ _BASE_ + 0x13           ; 1 byte
-_MAP_ equ 0x3000
+_VIEWPORT_X_ equ _BASE_ + 0x0F      ; 2 bytes
+_VIEWPORT_Y_ equ _BASE_ + 0x11      ; 2 bytes
+_RNG_ equ _BASE_ + 0x13             ; 2 bytes
+_BRUSH_ equ _BASE_ + 0x15           ; 1 byte
+_TRAIN_X_ equ _BASE_ + 0x16           ; 2 byte
+_TRAIN_Y_ equ _BASE_ + 0x18           ; 2 byte
+
+_TRAINS_ equ 0x2000                 ; Trains aka entities
+_MAP_ equ 0x3000                    ; Map data 64x64
 
 ; =========================================== GAME STATES ======================
 
@@ -53,6 +57,7 @@ TOOL_RAILROAD equ 0x0
 TOOL_INFRA equ 0x1
 TOOL_FOREST equ 0x2
 TOOL_MOUNTAINS equ 0x3
+TOOL_TRAIN equ 0x4
 
 MAP_WIDTH equ 64
 MAP_HEIGHT equ 64
@@ -62,7 +67,7 @@ VIEWPORT_HEIGHT equ 10
 COLOR_BACKGROUND equ 0xC7
 COLOR_GRID equ 0xC6
 COLOR_TEXT equ 0x4E
-COLOR_CURSOR equ 0x1F
+COLOR_CURSOR equ 0x1E
 COLOR_CURSOR_ERR equ 0x6F
 COLOR_CURSOR_OK equ 0x49
 COLOR_GRADIENT_START equ 0x1414
@@ -73,7 +78,8 @@ COLOR_RAILS equ 0xD3
 COLOR_GREEN equ 0x74
 COLOR_MOUNTAIN equ 0xAD
 COLOR_INFRA equ 0xA0
-COLOR_SELECTOR equ 0x1f1f
+COLOR_TOOLS_SELECTOR equ 0x1e1e
+COLOR_TRAIN equ 0x1F
 
 ; =========================================== INITIALIZATION ===================
 
@@ -90,8 +96,8 @@ mov sp, 0xFFFF
 mov byte [_GAME_TICK_], 0x0
 mov word [_RNG_], 0x42
 mov byte [_VECTOR_SCALE_], 0x0
-mov byte [_VIEWPORT_X_], 0x20
-mov byte [_VIEWPORT_Y_], 0x20
+mov word [_VIEWPORT_X_], 20
+mov word [_VIEWPORT_Y_], 27
 mov byte [_TOOL_], 0x0
 call init_map
 mov byte [_GAME_STATE_], STATE_INTRO
@@ -253,6 +259,30 @@ draw_intro:
    jmp wait_for_tick
 
 draw_game:
+  
+   mov ax, [_TRAIN_Y_]
+   sub ax, [_VIEWPORT_Y_]
+   mov bx, [_TRAIN_X_]
+   sub bx, [_VIEWPORT_X_]
+   
+
+   cmp bx, 0
+   jl .skip_train
+   cmp bx, VIEWPORT_WIDTH
+   jge .skip_train
+   cmp ax, 0
+   jl .skip_train
+   cmp ax, VIEWPORT_HEIGHT
+   jge .skip_train
+
+   call pos2bp
+
+
+   mov byte [_VECTOR_COLOR_], COLOR_TRAIN
+   mov si, TrainVector
+   call draw_vector
+
+   .skip_train:
    jmp wait_for_tick
 
 ; =========================================== GAME TICK ========================
@@ -350,7 +380,6 @@ prepare_game:
    mov word [_CUR_Y_], 5
    mov word [_CUR_TEST_X_], 9
    mov word [_CUR_TEST_Y_], 5
-   mov byte [_SCORE_], 0
 
    mov cl, COLOR_CURSOR
    call draw_cursor
@@ -520,10 +549,10 @@ ret
 get_map_pos:
    mov si, _MAP_
    mov ax, [_CUR_Y_]
-   add al, [_VIEWPORT_Y_]
+   add ax, [_VIEWPORT_Y_]
    imul ax, MAP_WIDTH
    add ax, [_CUR_X_]
-   add al, [_VIEWPORT_X_]
+   add ax, [_VIEWPORT_X_]
    add si, ax
 ret
 
@@ -549,6 +578,13 @@ init_map:
       mov [di], al
       inc di
    loop .init_loop
+
+   ; insert railroads and train
+   mov di, _MAP_
+   add di, MAP_WIDTH*31+31
+   mov byte [di], TOOL_RAILROAD+128
+   mov word [_TRAIN_X_], 31
+   mov word [_TRAIN_Y_], 31
 ret
 
 load_map:
@@ -558,9 +594,9 @@ load_map:
    mov si, _MAP_
    mov bp, 320*8+8
 
-   mov al, [_VIEWPORT_Y_]
+   mov ax, [_VIEWPORT_Y_]
    imul ax, MAP_WIDTH
-   add al, [_VIEWPORT_X_]
+   add ax, [_VIEWPORT_X_]
    add si, ax
 
    mov cx, VIEWPORT_HEIGHT
@@ -619,24 +655,24 @@ move_cursor:
    jmp .done
    
    .top_end:
-      cmp byte [_VIEWPORT_Y_], 0
+      cmp word [_VIEWPORT_Y_], 0
       je .err
-      dec byte [_VIEWPORT_Y_]
+      dec word [_VIEWPORT_Y_]
       jmp .done_end
    .bottom_end:
-      cmp byte [_VIEWPORT_Y_], MAP_HEIGHT-VIEWPORT_HEIGHT-1
+      cmp word [_VIEWPORT_Y_], MAP_HEIGHT-VIEWPORT_HEIGHT-1
       je .err
-      inc byte [_VIEWPORT_Y_]
+      inc word [_VIEWPORT_Y_]
       jmp .done_end
    .left_end:
-      cmp byte [_VIEWPORT_X_], 0
+      cmp word [_VIEWPORT_X_], 0
       je .err
-      dec byte [_VIEWPORT_X_]
+      dec word [_VIEWPORT_X_]
       jmp .done_end
    .right_end:
-      cmp byte [_VIEWPORT_X_], MAP_WIDTH-VIEWPORT_WIDTH-1
+      cmp word [_VIEWPORT_X_], MAP_WIDTH-VIEWPORT_WIDTH-1
       je .err
-      inc byte [_VIEWPORT_X_]
+      inc word [_VIEWPORT_X_]
       jmp .done_end
    .err:
       mov cl, COLOR_CURSOR_ERR
@@ -658,16 +694,20 @@ ret
 
 draw_cursor:
    mov ax, [_CUR_Y_]
+   mov bx, [_CUR_X_]
+   mov byte [_VECTOR_COLOR_], cl
+   mov si, CursorVector
+   call pos2bp
+   call draw_vector
+ret
+ 
+pos2bp:
    shl ax, 4
    imul ax, 320
-   mov bx, [_CUR_X_]
    shl bx, 4
    add ax, bx
    add ax, 320*8+8
    mov bp, ax   
-   mov byte [_VECTOR_COLOR_], cl
-   mov si, CursorVector
-   call draw_vector
 ret
 
 verify_change_tool:
@@ -697,7 +737,7 @@ update_tools_selector:
    imul bx, 24
    add di, bx
    mov cx, 8
-   mov ax, COLOR_SELECTOR
+   mov ax, COLOR_TOOLS_SELECTOR
    rep stosw
 ret
 
@@ -807,11 +847,6 @@ draw_line:
 
 ; =========================================== DATA =============================
 
-CursorVector:
-db 4
-db 0, 0, 16, 0, 16, 16, 0, 16, 0, 0
-db 0
-
 P1XVector:
 db 4
 db 2, 35, 2, 2, 10, 2, 10, 20, 2, 20
@@ -858,6 +893,11 @@ db 5
 db 136, 16, 130, 4, 135, 4, 137, 4, 139, 10, 134, 10
 db 1
 db 138, 10, 146, 16
+db 0
+
+CursorVector:
+db 4
+db 0, 0, 16, 0, 16, 16, 0, 16, 0, 0
 db 0
 
 ToolsList:
@@ -929,4 +969,9 @@ db 0
 ForestVector:
 db 8
 db 7, 15, 7, 12, 12, 9, 12, 6, 9, 4, 5, 4, 3, 7, 5, 10, 7, 11
+db 0
+
+TrainVector:
+db 4
+db 4, 4, 12, 4, 12, 12, 4, 12, 4, 4
 db 0
