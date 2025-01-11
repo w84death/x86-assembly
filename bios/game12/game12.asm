@@ -841,20 +841,20 @@ move_cursor:
    call draw_cursor
 
    ;debug
-   call set_pos_to_cursor_w_offset
-   call convert_xy_pos_to_map
-   mov al, [si]
-   and al, 0x7f
-   sub al, TOOLS
-   xor dx,dx
-   inc dh
-   mov bh, 0x0
-   mov ah, 0x02
-   int 0x10 
-   mov ah, 0x0E  
-   add al, 0x30
-   mov bl, 0x1e
-   int 0x10
+   ; call set_pos_to_cursor_w_offset
+   ; call convert_xy_pos_to_map
+   ; mov al, [si]
+   ; and al, 0x7f
+   ; sub al, TOOLS
+   ; xor dx,dx
+   ; inc dh
+   ; mov bh, 0x0
+   ; mov ah, 0x02
+   ; int 0x10 
+   ; mov ah, 0x0E  
+   ; add al, 0x30
+   ; mov bl, 0x1e
+   ; int 0x10
    ;/debug
 ret
 
@@ -1020,14 +1020,14 @@ move_train:
 
    .done:
    ;debug
-   mov al, bl
-   xor dx,dx
-   mov bh, 0x0
-   mov ah, 0x02
-   int 0x10 
-   mov ah, 0x0E  
-   add al, 0x30
-   int 0x10
+   ; mov al, bl
+   ; xor dx,dx
+   ; mov bh, 0x0
+   ; mov ah, 0x02
+   ; int 0x10 
+   ; mov ah, 0x0E  
+   ; add al, 0x30
+   ; int 0x10
    ;/debug
    call draw_train
 
