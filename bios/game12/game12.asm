@@ -33,7 +33,7 @@ _RNG_ equ _BASE_ + 0x13             ; 2 bytes
 _BRUSH_ equ _BASE_ + 0x15           ; 1 byte
 _TRAIN_X_ equ _BASE_ + 0x16           ; 2 byte
 _TRAIN_Y_ equ _BASE_ + 0x18           ; 2 byte
-
+_TRAIN_DIR_MASK_ equ _BASE_ + 0x1A   ; 1 byte
 _TRAINS_ equ 0x2000                 ; Trains aka entities
 _MAP_ equ 0x3000                    ; Map data 64x64
 
@@ -223,6 +223,15 @@ check_keyboard:
       call recalculate_railroad_at_pos
       call convert_xy_pos_to_map
       call load_tile_from_map
+      ; inc ax
+      ; call recalculate_railroad_at_pos
+      ; call convert_xy_pos_to_map
+      ; call load_tile_from_map
+      ; dec ax
+      ; dec ax
+      ; call recalculate_railroad_at_pos
+      ; call convert_xy_pos_to_map
+      ; call load_tile_from_map
       .skip_recalculate:
 
       mov cl, COLOR_CURSOR_OK
@@ -550,6 +559,9 @@ recalculate_railroad_at_pos:
    call convert_xy_pos_to_map
    xor bx, bx
 
+   test byte [si], 128
+   jz .done
+
    test byte [si-MAP_WIDTH], 128 ; up
    jz .next1
       add bl, 8
@@ -576,8 +588,10 @@ recalculate_railroad_at_pos:
    .skip_clip:
 
    add bl, TOOLS  ; move over tools list
-   add bl, 128   ; set railroad bit
+   add bl, 128    ; set railroad bit
    mov byte [si], bl
+
+   .done:
    popa
 ret
 
@@ -592,10 +606,12 @@ save_tile_to_map:
 ret
 
 convert_xy_pos_to_map:
+   push ax
    mov si, _MAP_
    imul ax, MAP_WIDTH
    add ax, bx
    add si, ax
+   pop ax
 ret
 
 init_map:
@@ -627,6 +643,7 @@ init_map:
    mov byte [di], TOOL_RAILROAD+128
    mov word [_TRAIN_X_], 31
    mov word [_TRAIN_Y_], 31
+   mov byte [_TRAIN_DIR_MASK_], 0x1
 ret
 
 load_map:
@@ -734,6 +751,23 @@ move_cursor:
       mov cl, COLOR_CURSOR  
    .done:
    call draw_cursor
+
+   ;debug
+   call set_pos_to_cursor_w_offset
+   call convert_xy_pos_to_map
+   mov al, [si]
+   and al, 0x7f
+   sub al, TOOLS
+   xor dx,dx
+   inc dh
+   mov bh, 0x0
+   mov ah, 0x02
+   int 0x10 
+   mov ah, 0x0E  
+   add al, 0x30
+   mov bl, 0x1e
+   int 0x10
+   ;/debug
 ret
 
 draw_cursor:
@@ -849,30 +883,63 @@ move_train:
    imul ax, MAP_WIDTH
    add ax, bx
    add si, ax
-   
-   .test_right:
-   test byte [si+1], 128
-   jz .test_left
-   inc word [_TRAIN_X_]
-   jmp .train_moved
-   .test_left:
-   test byte [si-1], 128
-   jz .test_up
-   dec word [_TRAIN_X_]
-   jmp .train_moved
+   mov al, [si]
+   and al, 0x7f   ; clear railroad bit
+   sub al, TOOLS  ; move over tools list
+   sub al, [_TRAIN_DIR_MASK_]
+
    .test_up:
+   test al, 8
+   jz .test_right
    test byte [si-MAP_WIDTH], 128
-   jz .test_down
+   jz .test_right
    dec word [_TRAIN_Y_]
+   mov bl, 2
+   jmp .train_moved
+   .test_right:
+   test al, 4
+   jz .test_down
+   test byte [si+1], 128
+   jz .test_down
+   inc word [_TRAIN_X_]
+   mov bl, 1
    jmp .train_moved
    .test_down:
+   test al, 2
+   jz .test_left
    test byte [si+MAP_WIDTH], 128
-   jz .done
+   jz .test_left
    inc word [_TRAIN_Y_]
-
+   mov bl, 8
+   jmp .train_moved
+   .test_left:
+   test al, 1
+   jz .no_move
+   test byte [si-1], 128
+   jz .no_move
+   dec word [_TRAIN_X_]
+   mov bl, 4
+   jmp .train_moved
+  
+   .no_move:
+   mov bl, al
    .train_moved:
-   call draw_train
+   mov byte [_TRAIN_DIR_MASK_], bl
+
    .done:
+   ;debug
+   mov al, bl
+   xor dx,dx
+   mov bh, 0x0
+   mov ah, 0x02
+   int 0x10 
+   mov ah, 0x0E  
+   add al, 0x30
+   int 0x10
+   ;/debug
+   call draw_train
+
+   
 ret
 
 ; =========================================== DRAW VECTOR ======================
