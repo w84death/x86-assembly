@@ -111,6 +111,10 @@ mov byte [_VECTOR_SCALE_], 0x0
 mov word [_VIEWPORT_X_], 20
 mov word [_VIEWPORT_Y_], 27
 mov byte [_TOOL_], 0x0
+mov word [_CUR_X_], 9
+mov word [_CUR_Y_], 5
+mov word [_CUR_TEST_X_], 9
+mov word [_CUR_TEST_Y_], 5
 call init_map
 mov byte [_GAME_STATE_], STATE_INTRO
 call prepare_intro
@@ -303,6 +307,7 @@ draw_map:
    call move_train
    mov dx, 0x1f1f
    call draw_train_on_map
+   call draw_cursor_on_map
    jmp wait_for_tick
 
 ; =========================================== GAME TICK ========================
@@ -402,10 +407,7 @@ prepare_game:
 
    call load_map
 
-   mov word [_CUR_X_], 9
-   mov word [_CUR_Y_], 5
-   mov word [_CUR_TEST_X_], 9
-   mov word [_CUR_TEST_Y_], 5
+
 
    mov cl, COLOR_CURSOR
    call draw_cursor
@@ -488,13 +490,25 @@ prepare_map:
       pop cx
       add di, 320+320-MAP_WIDTH*2      
    loop .draw_row
-   call draw_train_on_map
+ret
+
+draw_cursor_on_map:
+   mov ax, [_CUR_Y_]
+   add ax, [_VIEWPORT_Y_]
+   mov bx, [_CUR_X_]
+   add bx, [_VIEWPORT_X_]
+   mov dx, 0x0404
+   call draw_pixel_on_map
 ret
 
 draw_train_on_map:
-   mov di, 320*36+96
    mov ax, [_TRAIN_Y_]
    mov bx, [_TRAIN_X_]
+   call draw_pixel_on_map
+ret
+
+draw_pixel_on_map:
+   mov di, 320*36+96
    imul ax, 320*2
    shl bx, 1
    add ax, bx
