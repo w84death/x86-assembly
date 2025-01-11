@@ -131,10 +131,10 @@ loading_msg db  'Loading... ',0x0
 error_msg db    'Err',0x0
 done_msg db     'OK!',0x0
 wait_msg db     'Press any key...',0x0
-game_title_msg db 'This is the title of the production',0x0
-game_line1_msg db 'First line',0x0
-game_line2_msg db 'Second line',0x0
-game_info_msg db 'This is an information space',0x0
+game_title_msg db 'WELCOME TO THE 12-TH ASSEMBLY GAME  BY P1X, JAN 2025',0x0
+game_line1_msg db 'Experimental game to test new, fast engine. Runs on 386SX!',0x0
+game_line2_msg db 'Coded & designed by Krzysztof Krystian Jankowski',0x0
+game_info_msg db 'Visit http://smol.p1x.in/assembly/ for more games!',0x0
 
 times 507 - ($ - $$) db 0   ; Pad to 510 bytes
 db "P1X"                    ; Use HEX viewer to see P1X at the end of binary

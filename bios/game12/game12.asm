@@ -74,7 +74,7 @@ VIEWPORT_HEIGHT equ 10
 
 COLOR_BACKGROUND equ 0xC7
 COLOR_GRID equ 0xC6
-COLOR_TEXT equ 0x4E
+COLOR_TEXT equ 0x33
 COLOR_CURSOR equ 0x1E
 COLOR_CURSOR_ERR equ 0x6F
 COLOR_CURSOR_OK equ 0x49
@@ -259,10 +259,6 @@ je draw_game
 jmp wait_for_tick
 
 draw_intro:
-   mov ax, [_GAME_TICK_]
-   test ax, 0x10
-   jnz .done
-
    mov al, [_VECTOR_COLOR_]
    cmp al, 0x1f
    jge .done
@@ -345,10 +341,16 @@ prepare_intro:
       dec dl
       jnz .draw_gradient
 
-   mov byte [_VECTOR_COLOR_], COLOR_TEXT
-   mov bp, 320*170+85
-   mov si, PressEnterVector
-   call draw_vector
+   mov si, WelcomeText
+   mov dh, 0xb
+   mov dl, 0x1
+   mov bl, COLOR_TEXT
+   call draw_text
+
+   mov si, PressEnterText
+   mov dh, 0xe
+   mov dl, 0x5   
+   call draw_text
 
    mov byte [_VECTOR_SCALE_], 0x2
    mov byte [_VECTOR_COLOR_], 0x10
@@ -382,7 +384,18 @@ prepare_game:
 
    call draw_train
 
-   call draw_header
+   mov si, HeaderText
+   mov dh, 0x0
+   mov dl, 0xb
+   mov bl, COLOR_TEXT
+   call draw_text
+
+   mov si, FooterText
+   mov dh, 0x17
+   mov dl, 0xe
+   mov bl, COLOR_TEXT
+   call draw_text
+
 ret
 
 draw_grid:
@@ -431,23 +444,26 @@ draw_tools:
    call update_tools_selector
 ret
 
-draw_header:
-   mov dh, 0x0
-   mov dl, 0xb
-   xor bx, bx
+
+; =========================================== DRAW TEXT ========================
+; STACK:
+; SI - Pointer to text
+; DL - X position
+; DH - Y position
+; BX - Color
+draw_text:
+   mov bh, 0x0
    mov ah, 0x02
    int 0x10                ; Set cursor position
    mov ah, 0x0E            ; BIOS teletype
-   mov bl, 0x0E            ; Yellow color
-   mov si, HeaderText      ; Point SI to string
-   .loop:
+   .next_char:
       lodsb                    ; Load byte at SI into AL, increment SI
-      cmp al, '$'            ; Check for terminator
-      je .done               ; If terminator, exit
+      cmp al, 0            ; Check for terminator
+      jz .done               ; If terminator, exit
       int 0x10              ; Print character
-      jmp .loop             ; Continue loop
+      jmp .next_char             ; Continue loop
    .done:
-      ret
+ret
 
 convert_cur_pos_to_screen:
    mov ax, [_CUR_Y_]
@@ -965,7 +981,13 @@ draw_line:
 
 ; =========================================== DATA =============================
 HeaderText:
-db 'ASM GAME 12 by P1X$'
+db '~ GAME 12 ~ by P1X', 0x0
+WelcomeText:
+db 'KKJ PRESENTS 12-TH ASSEMBLY PRODUCTION', 0x0
+PressEnterText:
+db 'Press ENTER to start the game', 0x0
+FooterText:
+db 'Q/W,SPACE,DEL,ARROWS,ESC', 0x0
 
 P1XVector:
 db 4
@@ -978,41 +1000,6 @@ db 3
 db 18, 35, 18, 19, 24, 11, 24, 2
 db 3
 db 24, 35, 24, 19, 18, 11, 18, 2
-db 0
-
-PressEnterVector:
-db 6
-db 3, 16, 15, 4, 20, 4, 21, 6, 18, 9, 15, 10, 10, 10
-db 5
-db 17, 16, 26, 4, 31, 4, 32, 7, 28, 10, 23, 10
-db 1
-db 27, 10, 28, 16
-db 3
-db 46, 4, 39, 4, 32, 15, 40, 16
-db 1
-db 37, 8, 43, 9
-db 7
-db 58, 4, 53, 4, 49, 8, 51, 10, 55, 10, 55, 14, 51, 16, 45, 15
-db 7
-db 70, 4, 64, 4, 62, 7, 64, 9, 68, 11, 68, 15, 63, 17, 59, 15
-db 3
-db 88, 4, 81, 4, 80, 16, 88, 16
-db 1
-db 82, 9, 87, 9
-db 3
-db 93, 16, 93, 4, 102, 15, 102, 4
-db 1
-db 106, 4, 115, 4
-db 1
-db 111, 4, 114, 17
-db 3
-db 126, 4, 119, 4, 122, 16, 130, 16
-db 1
-db 121, 9, 128, 9
-db 5
-db 136, 16, 130, 4, 135, 4, 137, 4, 139, 10, 134, 10
-db 1
-db 138, 10, 146, 16
 db 0
 
 CursorVector:
