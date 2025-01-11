@@ -1267,44 +1267,44 @@ dw RailroadTracksHRailVector,RailroadTracksHRailVector,RailroadTracksVRailVector
 
 RailroadTracksHRailVector:
 db 1
-db 1, 6, 16, 6
+db 1, 6, 15, 6
 db 1
-db 1, 10, 16, 10
+db 1, 10, 15, 10
 db 0
 
 RailroadTracksVRailVector:
 db 1
-db 6, 1, 6, 16
+db 6, 1, 6, 15
 db 1
-db 10, 1, 10, 16
+db 10, 1, 10, 15
 db 0
 
 RailroadTracksTurn3Vector:
 db 1
-db 1, 5, 10, 16
+db 1, 5, 10, 15
 db 1
-db 1, 9, 6, 16
+db 1, 9, 6, 15
 db 0
 
 RailroadTracksTurn6Vector:
 db 1
-db 6, 16, 16, 5
+db 6, 15, 15, 5
 db 1
-db 10, 16, 16, 9
+db 10, 15, 15, 9
 db 0
 
 RailroadTracksTurn9Vector:
 db 1
-db 1, 6, 7, 1
+db 1, 6, 6, 1
 db 1
-db 1, 10, 11, 1
+db 1, 10, 10, 1
 db 0
 
 RailroadTracksTurn12Vector:
 db 1
-db 6, 1, 16, 9
+db 6, 1, 15, 9
 db 1
-db 10, 1, 16, 5
+db 10, 1, 15, 5
 db 0
 
 Infra1Vector:
