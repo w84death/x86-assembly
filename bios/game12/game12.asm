@@ -220,18 +220,50 @@ check_keyboard:
 
       .recalculate_railroad:
       call set_pos_to_cursor_w_offset
-      call recalculate_railroad_at_pos
       call convert_xy_pos_to_map
+      call recalculate_railroad_at_pos
       call load_tile_from_map
-      ; inc ax
-      ; call recalculate_railroad_at_pos
-      ; call convert_xy_pos_to_map
-      ; call load_tile_from_map
-      ; dec ax
-      ; dec ax
-      ; call recalculate_railroad_at_pos
-      ; call convert_xy_pos_to_map
-      ; call load_tile_from_map
+
+      call set_pos_to_cursor
+      inc ax
+      call convert_xy_to_screen
+      call clear_tile_on_screen
+      call set_pos_to_cursor_w_offset
+      inc ax
+      call convert_xy_pos_to_map
+      call recalculate_railroad_at_pos
+      call load_tile_from_map
+
+      call set_pos_to_cursor
+      dec ax
+      call convert_xy_to_screen
+      call clear_tile_on_screen
+      call set_pos_to_cursor_w_offset
+      dec ax
+      call convert_xy_pos_to_map
+      call recalculate_railroad_at_pos
+      call load_tile_from_map
+
+      call set_pos_to_cursor
+      dec bx
+      call convert_xy_to_screen
+      call clear_tile_on_screen
+      call set_pos_to_cursor_w_offset
+      dec bx
+      call convert_xy_pos_to_map
+      call recalculate_railroad_at_pos
+      call load_tile_from_map
+
+      call set_pos_to_cursor
+      inc bx
+      call convert_xy_to_screen
+      call clear_tile_on_screen
+      call set_pos_to_cursor_w_offset
+      inc bx
+      call convert_xy_pos_to_map
+      call recalculate_railroad_at_pos
+      call load_tile_from_map
+
       .skip_recalculate:
 
       mov cl, COLOR_CURSOR_OK
@@ -556,7 +588,6 @@ ret
 
 recalculate_railroad_at_pos:
    pusha
-   call convert_xy_pos_to_map
    xor bx, bx
 
    test byte [si], 128
@@ -587,6 +618,7 @@ recalculate_railroad_at_pos:
       mov bl, 0
    .skip_clip:
 
+   .save_to_map:
    add bl, TOOLS  ; move over tools list
    add bl, 128    ; set railroad bit
    mov byte [si], bl
@@ -780,12 +812,16 @@ draw_cursor:
 ret
  
 convert_xy_to_screen:
+   push ax
+   push bx
    shl ax, 4
    imul ax, 320
    shl bx, 4
    add ax, bx
    add ax, 320*8+8
    mov bp, ax   
+   pop bx
+   pop ax
 ret
 
 verify_change_tool:
