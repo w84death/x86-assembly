@@ -73,6 +73,7 @@ MAP_WIDTH equ 64
 MAP_HEIGHT equ 64
 VIEWPORT_WIDTH equ 18
 VIEWPORT_HEIGHT equ 10
+VIEWPORT_POS equ 320*16+16
 
 COLOR_BACKGROUND equ 0xC7
 COLOR_GRID equ 0xC6
@@ -218,7 +219,6 @@ check_keyboard:
       call prepare_game
       jmp .done
    .go_game_enter:
-      call train_ai
       jmp .done
    .go_game_space:
       call set_pos_to_cursor_w_offset
@@ -276,6 +276,9 @@ je draw_intro
 cmp byte [_GAME_STATE_], STATE_GAME
 je draw_game
 
+cmp byte [_GAME_STATE_], STATE_MAP
+je draw_map
+
 jmp wait_for_tick
 
 draw_intro:
@@ -291,6 +294,16 @@ draw_intro:
 
 draw_game:
    call train_ai
+   call draw_train
+   jmp wait_for_tick
+
+draw_map:
+   mov dx, 0x1010
+   call draw_train_on_map
+   call move_train
+   mov dx, 0x1f1f
+   call draw_train_on_map
+   jmp wait_for_tick
 
 ; =========================================== GAME TICK ========================
 
@@ -475,12 +488,25 @@ prepare_map:
       pop cx
       add di, 320+320-MAP_WIDTH*2      
    loop .draw_row
+   call draw_train_on_map
+ret
 
+draw_train_on_map:
+   mov di, 320*36+96
+   mov ax, [_TRAIN_Y_]
+   mov bx, [_TRAIN_X_]
+   imul ax, 320*2
+   shl bx, 1
+   add ax, bx
+   add di, ax
+   mov ax, dx
+   mov [es:di], ax
+   mov [es:di+320], ax
 ret
 
 draw_grid:
    pusha
-   mov di, 320*8+8
+   mov di, VIEWPORT_POS
    push di    
    mov al, COLOR_GRID
    mov ah, al
@@ -569,7 +595,7 @@ convert_cur_pos_to_screen:
    mov bx, [_CUR_X_]
    shl bx, 4
    add ax, bx
-   add ax, 320*8+8
+   add ax, VIEWPORT_POS
    mov bp, ax
 ret
 
@@ -813,7 +839,7 @@ load_map:
    mov al, [_TOOL_]
    push ax
    mov si, _MAP_
-   mov bp, 320*8+8
+   mov bp, VIEWPORT_POS
 
    mov ax, [_VIEWPORT_Y_]
    imul ax, MAP_WIDTH
@@ -931,7 +957,7 @@ convert_xy_to_screen:
    imul ax, 320
    shl bx, 4
    add ax, bx
-   add ax, 320*8+8
+   add ax, VIEWPORT_POS
    mov bp, ax   
    pop bx
    pop ax
@@ -969,35 +995,34 @@ update_tools_selector:
 ret
 
 train_ai:
+   mov ax, [_TRAIN_Y_]
+   sub ax, [_VIEWPORT_Y_]
+   mov bx, [_TRAIN_X_]
+   sub bx, [_VIEWPORT_X_]
+   
+   cmp bx, 0
+   jl .outside_viewport
+   cmp bx, VIEWPORT_WIDTH
+   jge .outside_viewport
+   cmp ax, 0
+   jl .outside_viewport
+   cmp ax, VIEWPORT_HEIGHT
+   jge .outside_viewport
 
- mov ax, [_TRAIN_Y_]
-      sub ax, [_VIEWPORT_Y_]
-      mov bx, [_TRAIN_X_]
-      sub bx, [_VIEWPORT_X_]
-      
-      cmp bx, 0
-      jl .outside_viewport
-      cmp bx, VIEWPORT_WIDTH
-      jge .outside_viewport
-      cmp ax, 0
-      jl .outside_viewport
-      cmp ax, VIEWPORT_HEIGHT
-      jge .outside_viewport
 
+   call convert_xy_to_screen
+   call clear_tile_on_screen
+   
+   mov si, _MAP_
+   mov ax, [_TRAIN_Y_]
+   mov bx, [_TRAIN_X_]
+   imul ax, MAP_WIDTH
+   add ax, bx
+   add si, ax
+   call load_tile_from_map
 
-      call convert_xy_to_screen
-      call clear_tile_on_screen
-      
-      mov si, _MAP_
-      mov ax, [_TRAIN_Y_]
-      mov bx, [_TRAIN_X_]
-      imul ax, MAP_WIDTH
-      add ax, bx
-      add si, ax
-      call load_tile_from_map
-
-      .outside_viewport:
-      call move_train
+   .outside_viewport:
+   call move_train
 ret
 
 draw_train:
@@ -1076,9 +1101,6 @@ move_train:
    mov byte [_TRAIN_DIR_MASK_], bl
 
    .done:
-   call draw_train
-
-   
 ret
 
 ; =========================================== DRAW VECTOR ======================
