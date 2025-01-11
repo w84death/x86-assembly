@@ -276,11 +276,6 @@ draw_intro:
    jmp wait_for_tick
 
 draw_game:
-   mov ax, [_GAME_TICK_]
-   shr ax, 1
-   and ax, 0x4
-   cmp ax, 0x4
-   jnz wait_for_tick
    call train_ai
 
 ; =========================================== GAME TICK ========================
@@ -731,7 +726,7 @@ init_map:
    mov byte [di], TOOL_RAILROAD+128
    mov word [_TRAIN_X_], 31
    mov word [_TRAIN_Y_], 31
-   mov byte [_TRAIN_DIR_MASK_], 0x1
+   mov byte [_TRAIN_DIR_MASK_], 0
 ret
 
 load_map:
@@ -839,23 +834,6 @@ move_cursor:
       mov cl, COLOR_CURSOR  
    .done:
    call draw_cursor
-
-   ;debug
-   ; call set_pos_to_cursor_w_offset
-   ; call convert_xy_pos_to_map
-   ; mov al, [si]
-   ; and al, 0x7f
-   ; sub al, TOOLS
-   ; xor dx,dx
-   ; inc dh
-   ; mov bh, 0x0
-   ; mov ah, 0x02
-   ; int 0x10 
-   ; mov ah, 0x0E  
-   ; add al, 0x30
-   ; mov bl, 0x1e
-   ; int 0x10
-   ;/debug
 ret
 
 draw_cursor:
@@ -1019,16 +997,6 @@ move_train:
    mov byte [_TRAIN_DIR_MASK_], bl
 
    .done:
-   ;debug
-   ; mov al, bl
-   ; xor dx,dx
-   ; mov bh, 0x0
-   ; mov ah, 0x02
-   ; int 0x10 
-   ; mov ah, 0x0E  
-   ; add al, 0x30
-   ; int 0x10
-   ;/debug
    call draw_train
 
    
@@ -1088,6 +1056,16 @@ get_random:
    mov [_RNG_], ax
 ret
 
+debug:
+   ; AL - value to show
+   ; xor dx,dx
+   ; mov bh, 0x0
+   ; mov ah, 0x02
+   ; int 0x10 
+   ; mov ah, 0x0E  
+   ; add al, 0x30
+   ; int 0x10
+ret
 ; =========================================== DRAWING LINE ====================
 ; X0 - AX, Y0 - DL
 ; X1 - BX, Y1 - DH
