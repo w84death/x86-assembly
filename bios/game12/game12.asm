@@ -498,7 +498,7 @@ stamp_tile:
 
    cmp bl, TOOLS-3
    jl .skip2
-      rdtsc
+      call get_random
       and ax, 0x3
       mov byte [_VECTOR_COLOR_], COLOR_INFRA
       add byte [_VECTOR_COLOR_], al
@@ -506,7 +506,7 @@ stamp_tile:
 
    cmp bl, TOOLS-2
    jl .skip3
-      rdtsc
+      call get_random
       and ax, 0x7
       mov byte [_VECTOR_COLOR_], COLOR_GREEN
       add byte [_VECTOR_COLOR_], al
@@ -966,8 +966,6 @@ draw_line:
 ; =========================================== DATA =============================
 HeaderText:
 db 'ASM GAME 12 by P1X$'
-FooterText:
-db 'Q/W TOOL, SPACE, DELETE$'
 
 P1XVector:
 db 4
