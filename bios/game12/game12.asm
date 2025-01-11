@@ -44,6 +44,7 @@ STATE_MENU equ 2
 STATE_PREPARE equ 4
 STATE_GAME equ 8
 STATE_OVER equ 16
+STATE_MAP equ 32
 ; ...
 STATE_QUIT equ 255
 
@@ -58,6 +59,7 @@ KB_DEL equ 0x53
 KB_BACK equ 0x0E
 KB_Q equ 0x10
 KB_W equ 0x11
+KB_M equ 0x32
 
 TOOLS equ 0x4
 TOOL_EMPTY equ 0x40
@@ -88,6 +90,7 @@ COLOR_MOUNTAIN equ 0xAD
 COLOR_INFRA equ 0xA0
 COLOR_TOOLS_SELECTOR equ 0x1e1e
 COLOR_TRAIN equ 0x1F
+COLOR_MAP equ 0xC4C4
 
 ; =========================================== INITIALIZATION ===================
 
@@ -129,6 +132,8 @@ check_keyboard:
    je .process_esc
    cmp ah, KB_ENTER
    je .process_enter
+   cmp ah, KB_M
+   je .process_m
 
    cmp byte [_GAME_STATE_], STATE_GAME
    jnz .done
@@ -154,6 +159,8 @@ check_keyboard:
    jmp .done
 
    .process_esc:
+      cmp byte [_GAME_STATE_], STATE_MAP
+      jz .go_game
       cmp byte [_GAME_STATE_], STATE_GAME
       jz .go_intro
       mov byte [_GAME_STATE_], STATE_QUIT
@@ -163,6 +170,13 @@ check_keyboard:
       jz .go_game
       cmp byte [_GAME_STATE_], STATE_GAME
       jz .go_game_enter
+      jmp .done
+   .process_m:
+      cmp byte [_GAME_STATE_], STATE_MAP
+      jz .go_game  
+      mov byte [_GAME_STATE_], STATE_MAP
+      mov word [_GAME_TICK_], 0x0
+      call prepare_map
       jmp .done
    .process_space:
       cmp byte [_GAME_STATE_], STATE_GAME
@@ -396,6 +410,71 @@ prepare_game:
    mov dl, 0xe
    mov bl, COLOR_TEXT
    call draw_text
+ret
+
+prepare_map:
+   xor si, si
+   mov al, COLOR_BACKGROUND
+   mov ah, al
+   mov cx, 320*200
+   rep stosw
+
+   mov di, 320*30+90
+   mov ax, COLOR_MAP
+   mov cx, 140
+   .draw_line:
+      push cx
+      mov cx, 70
+      rep stosw
+      pop cx
+      add di, 320-140
+   loop .draw_line
+
+   mov si, _MAP_
+   mov di, 320*36+96
+   mov cx, MAP_HEIGHT
+   .draw_row:
+      push cx
+      mov cx, MAP_WIDTH
+      .draw_col:
+         mov al, [si]
+
+         test al, 0x80
+         jnz .set_railroads
+
+         and al, 0x7f
+
+         mov bx, COLOR_MAP
+         
+         .check_tree:
+         cmp al, TOOL_FOREST
+         jnz .check_infra
+         mov bl, 0x77
+         .check_infra:
+         cmp al, TOOL_INFRA
+         jnz .check_mountains
+         mov bl, 0x1c
+         .check_mountains:
+         cmp al, TOOL_MOUNTAINS
+         jnz .push_pixel
+         mov bl, COLOR_MOUNTAIN
+
+         jmp .push_pixel
+         .set_railroads:
+         mov bx, 0x10
+
+         .push_pixel:
+         mov ax, bx
+         mov ah, al
+         mov [es:di], ax
+         mov [es:di+320], ax
+         inc di
+         inc di
+         inc si
+      loop .draw_col
+      pop cx
+      add di, 320+320-MAP_WIDTH*2      
+   loop .draw_row
 
 ret
 
@@ -1066,6 +1145,7 @@ debug:
    ; add al, 0x30
    ; int 0x10
 ret
+
 ; =========================================== DRAWING LINE ====================
 ; X0 - AX, Y0 - DL
 ; X1 - BX, Y1 - DH
@@ -1124,7 +1204,7 @@ db 'KKJ PRESENTS 12-TH ASSEMBLY PRODUCTION', 0x0
 PressEnterText:
 db 'Press ENTER to start the game', 0x0
 FooterText:
-db 'Q/W,SPACE,DEL,ARROWS,ESC', 0x0
+db '[Q/W],[SPACE]BUILD,[M]MAP', 0x0
 
 P1XVector:
 db 4
