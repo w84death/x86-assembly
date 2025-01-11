@@ -171,14 +171,17 @@ check_keyboard:
    .process_del:
       call set_pos_to_cursor
       call convert_xy_to_screen
+      call clear_tile_on_screen
       mov al, [_TOOL_]
       push ax
       mov byte [_TOOL_], TOOL_EMPTY
       call set_pos_to_cursor_w_offset
       call save_tile_to_map
+      call convert_xy_pos_to_map
+      call recalculate_neighbors_railroads
       pop ax
       mov byte [_TOOL_], al
-      call clear_tile_on_screen
+      
       mov cl, COLOR_CURSOR_OK
       call draw_cursor
       jmp .done
@@ -223,46 +226,8 @@ check_keyboard:
       call convert_xy_pos_to_map
       call recalculate_railroad_at_pos
       call load_tile_from_map
-
-      call set_pos_to_cursor
-      inc ax
-      call convert_xy_to_screen
-      call clear_tile_on_screen
-      call set_pos_to_cursor_w_offset
-      inc ax
-      call convert_xy_pos_to_map
-      call recalculate_railroad_at_pos
-      call load_tile_from_map
-
-      call set_pos_to_cursor
-      dec ax
-      call convert_xy_to_screen
-      call clear_tile_on_screen
-      call set_pos_to_cursor_w_offset
-      dec ax
-      call convert_xy_pos_to_map
-      call recalculate_railroad_at_pos
-      call load_tile_from_map
-
-      call set_pos_to_cursor
-      dec bx
-      call convert_xy_to_screen
-      call clear_tile_on_screen
-      call set_pos_to_cursor_w_offset
-      dec bx
-      call convert_xy_pos_to_map
-      call recalculate_railroad_at_pos
-      call load_tile_from_map
-
-      call set_pos_to_cursor
-      inc bx
-      call convert_xy_to_screen
-      call clear_tile_on_screen
-      call set_pos_to_cursor_w_offset
-      inc bx
-      call convert_xy_pos_to_map
-      call recalculate_railroad_at_pos
-      call load_tile_from_map
+      call recalculate_neighbors_railroads
+      
 
       .skip_recalculate:
 
@@ -486,6 +451,23 @@ draw_tools:
 ret
 
 
+validate_xy_onscreen:
+   cmp bx, 0
+   jl .err
+   cmp bx, VIEWPORT_WIDTH
+   jge .err
+   cmp ax, 0
+   jl .err
+   cmp ax, VIEWPORT_HEIGHT
+   jge .err
+   jmp .done
+   .err:
+      stc
+      ret
+   .done:
+   clc
+ret
+
 ; =========================================== DRAW TEXT ========================
 ; STACK:
 ; SI - Pointer to text
@@ -584,6 +566,80 @@ stamp_tile:
 
    .done:
    popa
+ret
+
+recalculate_neighbors_railroads:
+      call set_pos_to_cursor
+      inc ax
+      call validate_xy_onscreen
+      jc .skip1
+      call convert_xy_to_screen
+      call clear_tile_on_screen
+      .skip1:
+      call set_pos_to_cursor_w_offset
+      inc ax
+      call convert_xy_pos_to_map
+      call recalculate_railroad_at_pos
+      call set_pos_to_cursor
+      inc ax
+      call validate_xy_onscreen
+      jc .skip2
+      call load_tile_from_map
+      .skip2:
+
+      call set_pos_to_cursor
+      dec ax
+      call validate_xy_onscreen
+      jc .skip3
+      call convert_xy_to_screen
+      call clear_tile_on_screen
+      .skip3:
+      call set_pos_to_cursor_w_offset
+      dec ax
+      call convert_xy_pos_to_map
+      call recalculate_railroad_at_pos
+      call set_pos_to_cursor
+      dec ax
+      call validate_xy_onscreen
+      jc .skip4
+      call load_tile_from_map
+      .skip4:
+       
+      call set_pos_to_cursor
+      dec bx
+      call validate_xy_onscreen
+      jc .skip5
+      call convert_xy_to_screen
+      call clear_tile_on_screen
+      .skip5:
+      call set_pos_to_cursor_w_offset
+      dec bx
+      call convert_xy_pos_to_map
+      call recalculate_railroad_at_pos
+      call set_pos_to_cursor
+      dec bx
+      call validate_xy_onscreen
+      jc .skip6
+      call load_tile_from_map
+      .skip6:
+
+      call set_pos_to_cursor
+      inc bx
+      call validate_xy_onscreen
+      jc .skip7
+      call convert_xy_to_screen
+      call clear_tile_on_screen
+      .skip7:
+      call set_pos_to_cursor_w_offset
+      inc bx
+      call convert_xy_pos_to_map
+      call recalculate_railroad_at_pos
+      call set_pos_to_cursor
+      inc bx
+      call validate_xy_onscreen
+      jc .skip8
+      call load_tile_from_map
+      .skip8:
 ret
 
 recalculate_railroad_at_pos:
