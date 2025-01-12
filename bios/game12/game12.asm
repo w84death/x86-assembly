@@ -61,13 +61,15 @@ KB_Q equ 0x10
 KB_W equ 0x11
 KB_M equ 0x32
 
-TOOLS equ 0x4
+TOOLS equ 0x6
 TOOL_EMPTY equ 0x40
 TOOL_RAILROAD equ 0x0
-TOOL_INFRA equ 0x1
-TOOL_FOREST equ 0x2
-TOOL_MOUNTAINS equ 0x3
-TOOL_TRAIN equ 0x4
+TOOL_HOUSE equ 0x1
+TOOL_STATION equ 0x2
+TOOL_FOREST equ 0x3
+TOOL_FOREST2 equ 0x4
+TOOL_MOUNTAINS equ 0x5
+TOOL_TRAIN equ 0x6
 
 MAP_WIDTH equ 64
 MAP_HEIGHT equ 64
@@ -86,11 +88,13 @@ COLOR_GRADIENT_END equ 0x1010
 COLOR_METAL equ 0xA3
 COLOR_STEEL equ 0x67
 COLOR_RAILS equ 0xD3
-COLOR_GREEN equ 0x74
-COLOR_MOUNTAIN equ 0xAD
-COLOR_INFRA equ 0xA0
+COLOR_GREEN equ 0x76
+COLOR_EVERGREEN equ 0xC0
+COLOR_MOUNTAIN equ 0xAC
+COLOR_HOUSE equ 0xA0
+COLOR_STATION equ 0x41
 COLOR_TOOLS_SELECTOR equ 0x1e1e
-COLOR_TRAIN equ 0x1F
+COLOR_TRAIN equ 0x5C
 COLOR_MAP equ 0xC4C4
 
 ; =========================================== INITIALIZATION ===================
@@ -375,13 +379,13 @@ prepare_intro:
       jnz .draw_gradient
 
    mov si, WelcomeText
-   mov dh, 0xb
+   mov dh, 0xB
    mov dl, 0x1
    mov bl, COLOR_TEXT
    call draw_text
 
    mov si, PressEnterText
-   mov dh, 0xe
+   mov dh, 0xE
    mov dl, 0x5   
    call draw_text
 
@@ -390,7 +394,7 @@ prepare_intro:
    mov bp, 320*20+110
    mov si, P1XVector
    call draw_vector
-ret
+ret   
 
 prepare_game:
    mov byte [_VECTOR_SCALE_], 0
@@ -457,7 +461,7 @@ prepare_map:
          test al, 0x80
          jnz .set_railroads
 
-         and al, 0x7f
+         and al, 0x7F
 
          mov bx, COLOR_MAP
          
@@ -466,9 +470,9 @@ prepare_map:
          jnz .check_infra
          mov bl, 0x77
          .check_infra:
-         cmp al, TOOL_INFRA
+         cmp al, TOOL_HOUSE
          jnz .check_mountains
-         mov bl, 0x1c
+         mov bl, 0x1C
          .check_mountains:
          cmp al, TOOL_MOUNTAINS
          jnz .push_pixel
@@ -648,28 +652,49 @@ stamp_tile:
    mov byte bl, [_BRUSH_]
 
    mov byte [_VECTOR_COLOR_], COLOR_RAILS
+   
+   cmp bl, TOOLS-5
+   jl .skip1
+      call get_random
+      and ax, 0xf
+      mov byte [_VECTOR_COLOR_], COLOR_HOUSE
+      add byte [_VECTOR_COLOR_], al
+   .skip1:
+
+   cmp bl, TOOLS-4
+   jl .skip2     
+      call get_random 
+      and ax, 0x3
+      mov byte [_VECTOR_COLOR_], COLOR_STATION
+      add byte [_VECTOR_COLOR_], al
+   .skip2:      
 
    cmp bl, TOOLS-3
-   jl .skip2
-      call get_random
-      and ax, 0x3
-      mov byte [_VECTOR_COLOR_], COLOR_INFRA
-      add byte [_VECTOR_COLOR_], al
-   .skip2:
-
-   cmp bl, TOOLS-2
    jl .skip3
       call get_random
-      and ax, 0x7
+      and ax, 0x5
       mov byte [_VECTOR_COLOR_], COLOR_GREEN
       add byte [_VECTOR_COLOR_], al
    .skip3:
 
-   cmp bl, TOOLS-1
+   cmp bl, TOOLS-2
    jl .skip4
-      mov byte [_VECTOR_COLOR_], COLOR_MOUNTAIN
+      call get_random
+      and ax, 0x7
+      mov byte [_VECTOR_COLOR_], COLOR_EVERGREEN
+      add byte [_VECTOR_COLOR_], al
    .skip4:
+
+   cmp bl, TOOLS-1
+   jl .skip5
+      call get_random
+      and ax, 0x3
+      mov byte [_VECTOR_COLOR_], COLOR_MOUNTAIN
+      add byte [_VECTOR_COLOR_], al
+
+   .skip5:
    
+
    shl bx, 1
    mov si, ToolsList   
    add si, bx
@@ -824,10 +849,15 @@ init_map:
       and ax, 0xf
       cmp ax, 0x7
       jl .set_empty
-      cmp ax, 0x7
+      cmp ax, 0x9
+      jl .set_evergreen
+      cmp ax, 0x9
       jz .set_mountains
       .set_forest:
          mov ax, TOOL_FOREST
+         jmp .done
+      .set_evergreen:
+         mov ax, TOOL_FOREST2
          jmp .done
       .set_mountains:
          mov ax, TOOL_MOUNTAINS
@@ -1261,7 +1291,7 @@ db 0, 0, 16, 0, 16, 16, 0, 16, 0, 0
 db 0
 
 ToolsList:
-dw RailroadTracksHRailVector, Infra1Vector, ForestVector, MountainVector
+dw RailroadTracksHRailVector, HouseVector, StationVector, ForestVector, EvergreenVector, MountainVector
 RailroadsList:
 dw RailroadTracksHRailVector,RailroadTracksHRailVector,RailroadTracksVRailVector,RailroadTracksTurn3Vector,RailroadTracksHRailVector,RailroadTracksHRailVector,RailroadTracksTurn6Vector,RailroadTracksVRailVector,RailroadTracksVRailVector,RailroadTracksTurn9Vector,RailroadTracksVRailVector,RailroadTracksVRailVector,RailroadTracksTurn12Vector
 
@@ -1307,16 +1337,24 @@ db 1
 db 10, 1, 15, 5
 db 0
 
-Infra1Vector:
+HouseVector:
 db 4
-db 3, 3, 13, 3, 13, 13, 3, 13, 3, 3
-db 1
-db 3, 3, 13, 13
-db 1
-db 13, 3, 3, 13
+db 2, 14, 2, 8, 14, 8, 14, 14, 1, 14
+db 3
+db 6, 14, 6, 10, 8, 10, 8, 14
+db 3
+db 2, 8, 4, 4, 12, 4, 14, 8
+db 3
+db 8, 4, 8, 2, 10, 2, 10, 4
 db 0
 
-Infra2Vector:
+StationVector:
+db 6
+db 3, 15, 1, 9, 5, 7, 11, 7, 15, 9, 13, 15, 3, 15
+db 4
+db 5, 15, 5, 7, 8, 1, 11, 7, 11, 15
+db 4
+db 7, 15, 7, 11, 8, 9, 9, 11, 9, 15
 db 0
 
 MountainVector:
@@ -1327,11 +1365,24 @@ db 9, 8, 12, 4, 15, 10
 db 0
 
 ForestVector:
-db 8
-db 7, 15, 7, 12, 12, 9, 12, 6, 9, 4, 5, 4, 3, 7, 5, 10, 7, 11
+db 3
+db 7, 11, 7, 14, 8, 14, 8, 10
+db 3
+db 8, 10, 3, 12, 1, 9, 3, 7
+db 5
+db 4, 8, 1, 4, 4, 1, 8, 1, 9, 6, 4, 8
+db 4
+db 8, 3, 12, 3, 14, 9, 8, 10, 6, 7
 db 0
+
 
 TrainVector:
 db 4
 db 4, 4, 12, 4, 12, 12, 4, 12, 4, 4
 db 0
+
+EvergreenVector:
+db 18
+db 6,  15, 5, 13,1,15,4,11,2,12,5         , 8, 3, 8,  6,   5,  4, 5,  7,  1, 9, 5,  7,  5,   10,  8,  8,  8, 11, 11, 8, 11, 12, 15, 13, 13, 6, 15
+db 0
+
