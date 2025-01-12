@@ -212,9 +212,7 @@ check_keyboard:
       call recalculate_neighbors_railroads
       pop ax
       mov byte [_TOOL_], al
-      
-      mov cl, COLOR_CURSOR_OK
-      call draw_cursor
+      call draw_cursor_ok
       jmp .done
    .process_q:
       dec byte [_TOOL_]
@@ -258,11 +256,9 @@ check_keyboard:
       call load_tile_from_map
       call recalculate_neighbors_railroads
       
-
       .skip_recalculate:
 
-      mov cl, COLOR_CURSOR_OK
-      call draw_cursor
+      call draw_cursor_ok
       jmp .done
    .pressed_up:
       dec word [_CUR_TEST_Y_]
@@ -303,7 +299,6 @@ draw_intro:
    jge .done
    inc al
 
-   mov byte [_VECTOR_COLOR_], al
    call draw_vector
    .done:
    jmp wait_for_tick
@@ -398,7 +393,6 @@ prepare_intro:
    call draw_text
 
    mov byte [_VECTOR_SCALE_], 0x2
-   mov byte [_VECTOR_COLOR_], 0x10
    mov bp, 320*20+110
    mov si, P1XVector
    call draw_vector
@@ -424,14 +418,13 @@ prepare_game:
 
    call load_map
 
-   mov cl, COLOR_CURSOR
-   call draw_cursor
+   call draw_cursor_ok
 
    call draw_train
 
    mov si, HeaderText
    mov dh, 0x0
-   mov dl, 0xb
+   mov dl, 0x0
    mov bl, COLOR_TEXT
    call draw_text
 ret
@@ -666,48 +659,46 @@ stamp_tile:
    xor bx, bx
    mov byte bl, [_BRUSH_]
 
-   mov byte [_VECTOR_COLOR_], COLOR_RAILS
-   
-   cmp bl, TOOLS-5
-   jl .skip1
-      call get_random
-      and ax, 0xf
-      mov byte [_VECTOR_COLOR_], COLOR_HOUSE
-      add byte [_VECTOR_COLOR_], al
-   .skip1:
+   ; cmp bl, TOOLS-5
+   ; jl .skip1
+   ;    call get_random
+   ;    and ax, 0xf
+   ;    mov byte [_VECTOR_COLOR_], COLOR_HOUSE
+   ;    add byte [_VECTOR_COLOR_], al
+   ; .skip1:
 
-   cmp bl, TOOLS-4
-   jl .skip2     
-      call get_random 
-      and ax, 0x3
-      mov byte [_VECTOR_COLOR_], COLOR_STATION
-      add byte [_VECTOR_COLOR_], al
-   .skip2:      
+   ; cmp bl, TOOLS-4
+   ; jl .skip2     
+   ;    call get_random 
+   ;    and ax, 0x3
+   ;    mov byte [_VECTOR_COLOR_], COLOR_STATION
+   ;    add byte [_VECTOR_COLOR_], al
+   ; .skip2:      
 
-   cmp bl, TOOLS-3
-   jl .skip3
-      call get_random
-      and ax, 0x5
-      mov byte [_VECTOR_COLOR_], COLOR_GREEN
-      add byte [_VECTOR_COLOR_], al
-   .skip3:
+   ; cmp bl, TOOLS-3
+   ; jl .skip3
+   ;    call get_random
+   ;    and ax, 0x5
+   ;    mov byte [_VECTOR_COLOR_], COLOR_GREEN
+   ;    add byte [_VECTOR_COLOR_], al
+   ; .skip3:
 
-   cmp bl, TOOLS-2
-   jl .skip4
-      call get_random
-      and ax, 0x4
-      mov byte [_VECTOR_COLOR_], COLOR_EVERGREEN
-      add byte [_VECTOR_COLOR_], al
-   .skip4:
+   ; cmp bl, TOOLS-2
+   ; jl .skip4
+   ;    call get_random
+   ;    and ax, 0x4
+   ;    mov byte [_VECTOR_COLOR_], COLOR_EVERGREEN
+   ;    add byte [_VECTOR_COLOR_], al
+   ; .skip4:
 
-   cmp bl, TOOLS-1
-   jl .skip5
-      call get_random
-      and ax, 0x3
-      mov byte [_VECTOR_COLOR_], COLOR_MOUNTAIN
-      add byte [_VECTOR_COLOR_], al
+   ; cmp bl, TOOLS-1
+   ; jl .skip5
+   ;    call get_random
+   ;    and ax, 0x3
+   ;    mov byte [_VECTOR_COLOR_], COLOR_MOUNTAIN
+   ;    add byte [_VECTOR_COLOR_], al
 
-   .skip5:
+   ; .skip5:
    
 
    shl bx, 1
@@ -943,9 +934,7 @@ load_tile_from_map:
 ret
 
 move_cursor:
-   mov cl, COLOR_GRID
-   call draw_cursor
-   mov cl, COLOR_CURSOR
+   call erase_cursor
    mov ax, [_CUR_TEST_X_]
    cmp ax, 0
    jl .left_end
@@ -963,49 +952,49 @@ move_cursor:
    
    .top_end:
       cmp word [_VIEWPORT_Y_], 0
-      je .err
+      je .done
       dec word [_VIEWPORT_Y_]
-      jmp .done_end
+      jmp .pan_map
    .bottom_end:
       cmp word [_VIEWPORT_Y_], MAP_HEIGHT-VIEWPORT_HEIGHT-1
-      je .err
+      je .done
       inc word [_VIEWPORT_Y_]
-      jmp .done_end
+      jmp .pan_map
    .left_end:
       cmp word [_VIEWPORT_X_], 0
-      je .err
+      je .done
       dec word [_VIEWPORT_X_]
-      jmp .done_end
+      jmp .pan_map
    .right_end:
       cmp word [_VIEWPORT_X_], MAP_WIDTH-VIEWPORT_WIDTH-1
-      je .err
+      je .done
       inc word [_VIEWPORT_X_]
-      jmp .done_end
-   .err:
-      mov cl, COLOR_CURSOR_ERR
-      mov ax, [_CUR_X_]
-      mov [_CUR_TEST_X_], ax
-      mov ax, [_CUR_Y_]
-      mov [_CUR_TEST_Y_], ax
-      jmp .done
-   .done_end:
+      jmp .pan_map
+   .pan_map:
       mov ax, [_CUR_X_]
       mov [_CUR_TEST_X_], ax
       mov ax, [_CUR_Y_]
       mov [_CUR_TEST_Y_], ax
       call load_map 
-      mov cl, COLOR_CURSOR  
    .done:
-   call draw_cursor
+   call draw_cursor_ok
 ret
 
 draw_cursor:
    mov ax, [_CUR_Y_]
    mov bx, [_CUR_X_]
-   mov byte [_VECTOR_COLOR_], cl
-   mov si, CursorVector
    call convert_xy_to_screen
    call draw_vector
+ret
+
+draw_cursor_ok:
+   mov si, CursorVector
+   call draw_cursor
+ret
+
+erase_cursor:
+   mov si, CursorEraseVector
+   call draw_cursor
 ret
  
 convert_xy_to_screen:
@@ -1101,7 +1090,6 @@ draw_train:
 
    call convert_xy_to_screen
 
-   mov byte [_VECTOR_COLOR_], COLOR_TRAIN
    mov si, TrainVector
    call draw_vector
 
@@ -1168,6 +1156,10 @@ ret
 
 draw_vector:   
    pusha 
+   .read_color:
+   mov cl, [si]
+   mov [_VECTOR_COLOR_], cl
+   inc si
    .read_group:
       xor cx, cx
       mov cl, [si]
@@ -1278,8 +1270,8 @@ draw_line:
 
 
 ; =========================================== DATA =============================
-HeaderText:
-db '~ GAME 12 ~ by P1X', 0x0
+HeaderText:                                 ;
+db '-------- KKJ <<< GAME 12 >>> P1X -------', 0x0
 WelcomeText:
 db 'KKJ PRESENTS 12-TH ASSEMBLY PRODUCTION', 0x0
 PressEnterText:
@@ -1288,6 +1280,7 @@ FooterText:
 db '[Q/W],[SPACE]BUILD,[M]MAP', 0x0
 
 P1XVector:
+db 0x1f
 db 4
 db 2, 35, 2, 2, 10, 2, 10, 20, 2, 20
 db 1
@@ -1301,6 +1294,13 @@ db 24, 35, 24, 19, 18, 11, 18, 2
 db 0
 
 CursorVector:
+db COLOR_CURSOR
+db 4
+db 0, 0, 16, 0, 16, 16, 0, 16, 0, 0
+db 0
+
+CursorEraseVector:
+db COLOR_GRID
 db 4
 db 0, 0, 16, 0, 16, 16, 0, 16, 0, 0
 db 0
@@ -1311,27 +1311,31 @@ RailroadsList:
 dw RailroadTracksHRailVector,RailroadTracksHRailVector,RailroadTracksVRailVector,RailroadTracksTurn3Vector,RailroadTracksHRailVector,RailroadTracksHRailVector,RailroadTracksTurn6Vector,RailroadTracksVRailVector,RailroadTracksVRailVector,RailroadTracksTurn9Vector,RailroadTracksVRailVector,RailroadTracksVRailVector,RailroadTracksTurn12Vector
 
 RailroadTracksHRailVector:
+db COLOR_RAILS
 db 1
-db 1, 6, 15, 6
+db 1, 6, 16, 6
 db 1
-db 1, 10, 15, 10
+db 1, 10, 16, 10
 db 0
 
 RailroadTracksVRailVector:
+db COLOR_RAILS
 db 1
-db 6, 1, 6, 15
+db 6, 1, 6, 16
 db 1
-db 10, 1, 10, 15
+db 10, 1, 10, 16
 db 0
 
 RailroadTracksTurn3Vector:
+db COLOR_RAILS
 db 1
-db 1, 5, 10, 15
+db 1, 6, 10, 16
 db 1
-db 1, 9, 6, 15
+db 1, 10, 6, 16
 db 0
 
 RailroadTracksTurn6Vector:
+db COLOR_RAILS
 db 1
 db 6, 15, 15, 5
 db 1
@@ -1339,20 +1343,23 @@ db 10, 15, 15, 9
 db 0
 
 RailroadTracksTurn9Vector:
+db COLOR_RAILS
 db 1
-db 1, 6, 6, 1
+db 1, 5, 6, 1
 db 1
-db 1, 10, 10, 1
+db 1, 9, 10, 1
 db 0
 
 RailroadTracksTurn12Vector:
+db COLOR_RAILS
 db 1
-db 6, 1, 15, 9
+db 6, 1, 16, 10
 db 1
-db 10, 1, 15, 5
+db 10, 1, 16, 6
 db 0
 
 HouseVector:
+db COLOR_HOUSE
 db 4
 db 2, 14, 2, 8, 14, 8, 14, 14, 1, 14
 db 3
@@ -1364,6 +1371,7 @@ db 8, 4, 8, 2, 10, 2, 10, 4
 db 0
 
 StationVector:
+db COLOR_STATION
 db 6
 db 3, 15, 1, 9, 5, 7, 11, 7, 15, 9, 13, 15, 3, 15
 db 4
@@ -1373,6 +1381,7 @@ db 7, 15, 7, 11, 8, 9, 9, 11, 9, 15
 db 0
 
 MountainVector:
+db COLOR_MOUNTAIN
 db 2
 db 1, 11, 7, 3, 11, 11
 db 2
@@ -1380,6 +1389,7 @@ db 9, 8, 12, 4, 15, 10
 db 0
 
 ForestVector:
+db COLOR_GREEN
 db 3
 db 7, 11, 7, 14, 8, 14, 8, 10
 db 3
@@ -1390,14 +1400,21 @@ db 4
 db 8, 3, 12, 3, 14, 9, 8, 10, 6, 7
 db 0
 
+EvergreenVector:
+db COLOR_EVERGREEN
+db 18
+db 6,  15, 5, 13,1,15,4,11,2,12,5, 8, 3, 8,  6,   5,  4, 5,  7,  1, 9, 5,  7,  5,   10,  8,  8,  8, 11, 11, 8, 11, 12, 15, 13, 13, 6, 15
+db 0
 
 TrainVector:
+db COLOR_TRAIN
 db 4
 db 4, 4, 12, 4, 12, 12, 4, 12, 4, 4
 db 0
 
-EvergreenVector:
-db 18
-db 6,  15, 5, 13,1,15,4,11,2,12,5         , 8, 3, 8,  6,   5,  4, 5,  7,  1, 9, 5,  7,  5,   10,  8,  8,  8, 11, 11, 8, 11, 12, 15, 13, 13, 6, 15
-db 0
+; =========================================== THE END ==========================
+; Thanks for reading the source code!
+; Visit http://smol.p1x.in for more.
 
+Logo:
+db "P1X"    ; Use HEX viewer to see P1X at the end of binary
