@@ -695,7 +695,7 @@ stamp_tile:
    cmp bl, TOOLS-2
    jl .skip4
       call get_random
-      and ax, 0x7
+      and ax, 0x4
       mov byte [_VECTOR_COLOR_], COLOR_EVERGREEN
       add byte [_VECTOR_COLOR_], al
    .skip4:
