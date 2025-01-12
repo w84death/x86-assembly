@@ -34,6 +34,7 @@ _BRUSH_ equ _BASE_ + 0x15           ; 1 byte
 _TRAIN_X_ equ _BASE_ + 0x16           ; 2 byte
 _TRAIN_Y_ equ _BASE_ + 0x18           ; 2 byte
 _TRAIN_DIR_MASK_ equ _BASE_ + 0x1A   ; 1 byte
+
 _TRAINS_ equ 0x2000                 ; Trains aka entities
 _MAP_ equ 0x3000                    ; Map data 64x64
 
@@ -74,9 +75,15 @@ TOOL_POS equ 320*180+16
 
 MAP_WIDTH equ 64
 MAP_HEIGHT equ 64
-VIEWPORT_WIDTH equ 18
-VIEWPORT_HEIGHT equ 10
 VIEWPORT_POS equ 320*16+16
+
+SCALE_FACTOR equ 1 ; 1 - 2 zoom level
+VIEWPORT_WIDTH equ 18 / SCALE_FACTOR
+VIEWPORT_HEIGHT equ 10 / SCALE_FACTOR
+VIEWPORT_GRID_SCALE equ 4 + (SCALE_FACTOR - 1)
+VIEWPORT_GRID_SIZE equ 16 * SCALE_FACTOR
+VIEWPORT_VECTORS_SCALE equ 0 + (SCALE_FACTOR - 1)
+VIEWPORT_TEMP equ (2 - (SCALE_FACTOR - 1))
 
 COLOR_BACKGROUND equ 0xC7
 COLOR_GRID equ 0xC6
@@ -113,13 +120,13 @@ mov sp, 0xFFFF
 mov byte [_GAME_TICK_], 0x0
 mov word [_RNG_], 0x42
 mov byte [_VECTOR_SCALE_], 0x0
-mov word [_VIEWPORT_X_], 20
-mov word [_VIEWPORT_Y_], 27
+mov word [_VIEWPORT_X_], MAP_WIDTH/2-VIEWPORT_WIDTH/2
+mov word [_VIEWPORT_Y_], MAP_HEIGHT/2-VIEWPORT_HEIGHT/2
 mov byte [_TOOL_], 0x0
-mov word [_CUR_X_], 9
-mov word [_CUR_Y_], 5
-mov word [_CUR_TEST_X_], 9
-mov word [_CUR_TEST_Y_], 5
+mov word [_CUR_X_], VIEWPORT_WIDTH/2
+mov word [_CUR_Y_], VIEWPORT_HEIGHT/2
+mov word [_CUR_TEST_X_], VIEWPORT_WIDTH/2
+mov word [_CUR_TEST_Y_], VIEWPORT_HEIGHT/2
 call init_map
 mov byte [_GAME_STATE_], STATE_INTRO
 call prepare_intro
@@ -398,7 +405,7 @@ prepare_intro:
 ret   
 
 prepare_game:
-   mov byte [_VECTOR_SCALE_], 0
+   mov byte [_VECTOR_SCALE_], VIEWPORT_VECTORS_SCALE
    
    xor di, di
    mov al, COLOR_BACKGROUND
@@ -407,14 +414,15 @@ prepare_game:
    rep stosw
 
    call draw_grid
+
    mov byte [_TOOL_], 0
+   mov byte [_VECTOR_SCALE_], 0
    call draw_tools
+   mov byte [_VECTOR_SCALE_], VIEWPORT_VECTORS_SCALE
    mov dl, 0
    call update_tools_selector
 
    call load_map
-
-
 
    mov cl, COLOR_CURSOR
    call draw_cursor
@@ -539,24 +547,24 @@ draw_grid:
       mov cx, VIEWPORT_HEIGHT+1
       .h_line_loop:
          push cx
-         mov cx, VIEWPORT_WIDTH*16/2
+         mov cx, VIEWPORT_WIDTH*VIEWPORT_GRID_SIZE/2
          rep stosw
          pop cx
-         add di, 320*16-VIEWPORT_WIDTH*16
+         add di, 320*VIEWPORT_GRID_SIZE-VIEWPORT_WIDTH*VIEWPORT_GRID_SIZE
       loop .h_line_loop
    .draw_vertical_lines:
       pop di
       mov cx, VIEWPORT_WIDTH+1
       .v_line_loop:
          push cx
-         mov cx, VIEWPORT_HEIGHT*16
+         mov cx, VIEWPORT_HEIGHT*VIEWPORT_GRID_SIZE
          .draw_v:
             stosb
             inc di
             add di, 318
          loop .draw_v
          pop cx
-         add di, 320*45-48
+         add di, 320*45-(VIEWPORT_GRID_SIZE*3)
       loop .v_line_loop
    popa
 ret
@@ -638,16 +646,17 @@ ret
 clear_tile_on_screen:
    pusha
    mov di, bp
-   add di, 321
+   add di, 320+1
    mov ax, COLOR_BACKGROUND
    mov ah, al
-   mov cx, 15
+
+   mov cx, VIEWPORT_GRID_SIZE-1
    .v_line_loop:
       push cx
-      mov cx, 15
+      mov cx, VIEWPORT_GRID_SIZE-1
       rep stosb
       pop cx
-      add di, 320-15
+      add di, 320-VIEWPORT_GRID_SIZE+1
    loop .v_line_loop
    popa
 ret
@@ -909,12 +918,12 @@ load_map:
          mov byte [_BRUSH_], al
          call stamp_tile
          .done:
-         add bp, 16
+         add bp, VIEWPORT_GRID_SIZE
          inc si
       loop .h_line_loop
       add si, MAP_WIDTH-VIEWPORT_WIDTH
       pop cx
-      add bp, 320*15+32
+      add bp, 320*(VIEWPORT_GRID_SIZE-1)+VIEWPORT_GRID_SIZE*VIEWPORT_TEMP
    loop .v_loop
 
    pop ax
@@ -1002,12 +1011,13 @@ ret
 convert_xy_to_screen:
    push ax
    push bx
-   shl ax, 4
+   imul ax, VIEWPORT_GRID_SIZE
    imul ax, 320
-   shl bx, 4
+   imul bx, VIEWPORT_GRID_SIZE
    add ax, bx
    add ax, VIEWPORT_POS
    mov bp, ax   
+
    pop bx
    pop ax
 ret
