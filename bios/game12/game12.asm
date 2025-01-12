@@ -70,6 +70,7 @@ TOOL_FOREST equ 0x3
 TOOL_FOREST2 equ 0x4
 TOOL_MOUNTAINS equ 0x5
 TOOL_TRAIN equ 0x6
+TOOL_POS equ 320*180+16
 
 MAP_WIDTH equ 64
 MAP_HEIGHT equ 64
@@ -408,6 +409,8 @@ prepare_game:
    call draw_grid
    mov byte [_TOOL_], 0
    call draw_tools
+   mov dl, 0
+   call update_tools_selector
 
    call load_map
 
@@ -421,12 +424,6 @@ prepare_game:
    mov si, HeaderText
    mov dh, 0x0
    mov dl, 0xb
-   mov bl, COLOR_TEXT
-   call draw_text
-
-   mov si, FooterText
-   mov dh, 0x17
-   mov dl, 0xe
    mov bl, COLOR_TEXT
    call draw_text
 ret
@@ -465,22 +462,32 @@ prepare_map:
 
          mov bx, COLOR_MAP
          
-         .check_tree:
          cmp al, TOOL_FOREST
-         jnz .check_infra
-         mov bl, 0x77
-         .check_infra:
+         jz .set_green
+         cmp al, TOOL_FOREST2
+         jz .set_green
          cmp al, TOOL_HOUSE
-         jnz .check_mountains
-         mov bl, 0x1C
-         .check_mountains:
+         jz .set_infra
+         cmp al, TOOL_STATION
+         jz .set_infra
          cmp al, TOOL_MOUNTAINS
-         jnz .push_pixel
-         mov bl, COLOR_MOUNTAIN
-
+         jz .set_mountains
          jmp .push_pixel
+
+         .set_green:
+         mov bl, COLOR_GREEN
+         jmp .push_pixel
+
+         .set_infra:
+         mov bl, COLOR_HOUSE
+         jmp .push_pixel
+
+         .set_mountains:
+         mov bl, COLOR_MOUNTAIN
+         jmp .push_pixel
+
          .set_railroads:
-         mov bx, 0x10
+         mov bx, 0x10       
 
          .push_pixel:
          mov ax, bx
@@ -555,7 +562,7 @@ draw_grid:
 ret
 
 draw_tools:
-   mov bp, 320*177+16
+   mov bp, TOOL_POS
    mov byte [_BRUSH_], 0
    mov cx, TOOLS
    .tools_loop:
@@ -565,7 +572,6 @@ draw_tools:
       add bp, 24
       pop cx
    loop .tools_loop
-   call update_tools_selector
 ret
 
 
@@ -869,7 +875,6 @@ init_map:
       inc di
    loop .init_loop
 
-   ; insert railroads and train
    mov di, _MAP_
    add di, MAP_WIDTH*31+31
    mov byte [di], TOOL_RAILROAD+128
@@ -1022,13 +1027,13 @@ verify_change_tool:
 ret
 
 update_tools_selector:
-   mov di, 320*195+16
+   mov di, TOOL_POS+320*17
    mov cx, 180
    mov ax, COLOR_BACKGROUND
    mov ah, al
    rep stosw
 
-   mov di, 320*195+16
+   mov di, TOOL_POS+320*17
    xor bx, bx
    mov bl, dl
    imul bx, 24
