@@ -86,25 +86,22 @@ VIEWPORT_GRID_SIZE equ 16 * SCALE
 VIEWPORT_VECTORS_SCALE equ 0 + (SCALE - 1)
 VIEWPORT_TEMP equ (2 - (SCALE - 1))
 
-COLOR_BACKGROUND equ 0xC7
-COLOR_GRID equ 0xC6
-COLOR_TEXT equ 0x33
-COLOR_CURSOR equ 0x1E
-COLOR_CURSOR_ERR equ 0x6F
-COLOR_CURSOR_OK equ 0x49
-COLOR_GRADIENT_START equ 0x1414
-COLOR_GRADIENT_END equ 0x1010
-COLOR_METAL equ 0xA3
-COLOR_STEEL equ 0x67
-COLOR_RAILS equ 0xD3
-COLOR_GREEN equ 0x76
-COLOR_EVERGREEN equ 0xC0
-COLOR_MOUNTAIN equ 0xAC
-COLOR_HOUSE equ 0xA0
-COLOR_STATION equ 0x41
-COLOR_TOOLS_SELECTOR equ 0x1e1e
-COLOR_TRAIN equ 0x5C
-COLOR_MAP equ 0xC4C4
+COLOR_BACKGROUND equ 0xC
+COLOR_GRID equ 0x9
+COLOR_TEXT equ 0xE
+COLOR_TITLE equ 0x2
+COLOR_CURSOR equ 0x2
+COLOR_GRADIENT_START equ 0x0C0C
+COLOR_GRADIENT_END equ 0x0C0C
+COLOR_RAILS equ 0x1
+COLOR_TRAIN equ 0x7
+COLOR_TREE equ 0xB
+COLOR_EVERGREEN equ 0xA
+COLOR_MOUNTAIN equ 0x2
+COLOR_HOUSE equ 0x4
+COLOR_STATION equ 0x8
+COLOR_TOOLS_SELECTOR equ 0x0202
+COLOR_MAP equ 0x0505
 
 NOTE_C4   equ 1193182/261
 NOTE_D4   equ 1193182/294
@@ -141,6 +138,7 @@ mov word [_CUR_TEST_Y_], VIEWPORT_HEIGHT/2
 mov byte [_TUNE_POS_], 0x0
 call init_map
 mov byte [_GAME_STATE_], STATE_INTRO
+call setup_palette
 call prepare_intro
 
 ; =========================================== GAME LOOP ========================
@@ -398,32 +396,53 @@ exit:
 
 ; =========================================== PROCEDURES =======================
 
+setup_palette:
+   mov cx, 16          ; First 16 colors
+   xor bx, bx          ; Color index
+   mov si, Palette     ; Palette data pointer
+   .loop:
+      mov dx, 0x3C8    ; DAC write port
+      mov al, bl       ; Color index
+      out dx, al
+      inc dx          ; 0x3C9 - DAC data port
+      mov al, [si]    ; Red
+      shr al, 2       ; Convert from 8-bit to 6-bit (divide by 4)
+      out dx, al
+      mov al, [si+1]  ; Green
+      shr al, 2
+      out dx, al
+      mov al, [si+2]  ; Blue
+      shr al, 2
+      out dx, al
+      add si, 3       ; Next color
+      inc bx
+      loop .loop
+ret
+
 prepare_intro:
    xor di, di
-   mov ax, COLOR_GRADIENT_START             ; Set starting color
-   mov dl, 0x10              ; 10 bars to draw
+   xor si, si
+   mov al, COLOR_BACKGROUND
+   mov ah, al
+   mov cx, 320*200
+   rep stosw
+
+   mov di, 320*100
+   mov al, COLOR_BACKGROUND
+   mov ah, al
+   mov dl, 0xa              ; 10 bars to draw
    .draw_gradient:
-      mov cx, 320*4          ; Each bar 10 pixels high
+      mov cx, 320*3          ; Each bar 10 pixels high
       rep stosw               ; Write to the VGA memory
-      cmp dl, 0x04
-      jg .draw_top
-      jl .draw_bottom
-      mov ax, COLOR_GRADIENT_END
-      mov cx, 320*36
-      rep stosw
       
-      .draw_bottom:
-      inc ax
-      jmp .cont
-
-      .draw_top:
-      dec ax
-      cmp ax, 0x01010
-      jg .skip_zero
-         xor ax, ax
-      .skip_zero:
-
-      .cont:
+      cmp dl, 0x5
+      jl .down
+      inc al
+      jmp .up
+      .down:
+      dec al
+      .up:
+      
       xchg al, ah             ; Swap colors
       dec dl
       jnz .draw_gradient
@@ -442,13 +461,13 @@ prepare_intro:
    mov si, TitleText
    mov dh, 0xE
    mov dl, 0x8
-   inc bl
+   mov bl, COLOR_TITLE
    call draw_text
 
    mov si, PressEnterText
-   mov dh, 0x14
+   mov dh, 0x17
    mov dl, 0x6
-   inc bl
+   mov bl, COLOR_TEXT
    call draw_text
 
 ret   
@@ -485,12 +504,14 @@ prepare_game:
 ret
 
 prepare_map:
+   xor di, di
    xor si, si
    mov al, COLOR_BACKGROUND
    mov ah, al
-   mov cx, 320*(200-16)
+   mov cx, 320*200
    rep stosw
-
+   
+   mov di, 320*(200-44)
    mov dl, 0x6              ; 10 bars to draw
    .draw_gradient:
       mov cx, 320*4          ; Each bar 10 pixels high
@@ -550,7 +571,7 @@ prepare_map:
          jmp .push_pixel
 
          .set_green:
-         mov bl, COLOR_GREEN
+         mov bl, COLOR_TREE
          jmp .push_pixel
 
          .set_infra:
@@ -1461,7 +1482,7 @@ db 9, 8, 12, 4, 15, 10
 db 0
 
 ForestVector:
-db COLOR_GREEN
+db COLOR_TREE
 db 3
 db 7, 11, 7, 14, 8, 14, 8, 10
 db 3
@@ -1517,6 +1538,25 @@ dw NOTE_PAUSE
 dw NOTE_PAUSE
 dw NOTE_PAUSE
 dw 0x0
+
+Palette:
+; http://androidarts.com/palette/16pal.htm
+db  0,   0,   0    ; 0  Black
+db 157, 157, 157   ; 1  Light gray
+db 255, 255, 255   ; 2  White
+db 190,  38,  51   ; 3  Red
+db 224, 111, 139   ; 4  Pink
+db  73,  60,  43   ; 5  Brown
+db 164, 100,  34   ; 6  Orange brown
+db 235, 137,  49   ; 7  Orange
+db 247, 226, 107   ; 8  Yellow
+db  47,  72,  78   ; 9  Dark teal
+db  68, 137,  26   ; 10 Green
+db 163, 206,  39   ; 11 Lime
+db  27,  38,  50   ; 12 Dark blue
+db   0,  87, 132   ; 13 Blue
+db  49, 162, 242   ; 14 Light blue
+db 178, 220, 239   ; 15 Sky blue
 
 ; =========================================== THE END ==========================
 ; Thanks for reading the source code!
