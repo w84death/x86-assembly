@@ -34,6 +34,7 @@ _BRUSH_ equ _BASE_ + 0x15           ; 1 byte
 _TRAIN_X_ equ _BASE_ + 0x16           ; 2 byte
 _TRAIN_Y_ equ _BASE_ + 0x18           ; 2 byte
 _TRAIN_DIR_MASK_ equ _BASE_ + 0x1A   ; 1 byte
+_TUNE_POS_ equ _BASE_ + 0x1B         ; 1 byte
 
 _TRAINS_ equ 0x2000                 ; Trains aka entities
 _MAP_ equ 0x3000                    ; Map data 64x64
@@ -105,6 +106,16 @@ COLOR_TOOLS_SELECTOR equ 0x1e1e
 COLOR_TRAIN equ 0x5C
 COLOR_MAP equ 0xC4C4
 
+NOTE_C4   equ 1193182/261
+NOTE_D4   equ 1193182/294
+NOTE_E4   equ 1193182/330
+NOTE_F4   equ 1193182/349
+NOTE_G4   equ 1193182/392
+NOTE_A4   equ 1193182/440
+NOTE_B4   equ 1193182/494
+NOTE_C5   equ 1193182/523
+NOTE_PAUSE equ 1
+
 ; =========================================== INITIALIZATION ===================
 
 mov ax, 0x13        ; Init 320x200, 256 colors mode
@@ -127,6 +138,7 @@ mov word [_CUR_X_], VIEWPORT_WIDTH/2
 mov word [_CUR_Y_], VIEWPORT_HEIGHT/2
 mov word [_CUR_TEST_X_], VIEWPORT_WIDTH/2
 mov word [_CUR_TEST_Y_], VIEWPORT_HEIGHT/2
+mov byte [_TUNE_POS_], 0x0
 call init_map
 mov byte [_GAME_STATE_], STATE_INTRO
 call prepare_intro
@@ -183,12 +195,16 @@ check_keyboard:
       mov byte [_GAME_STATE_], STATE_QUIT
       jmp .done
    .process_enter:
+      mov dx, NOTE_C5
+      call play_note
       cmp byte [_GAME_STATE_], STATE_INTRO
       jz .go_game
       cmp byte [_GAME_STATE_], STATE_GAME
       jz .go_game_enter
       jmp .done
    .process_m:
+      mov dx, NOTE_C5
+      call play_note
       cmp byte [_GAME_STATE_], STATE_MAP
       jz .go_game  
       mov byte [_GAME_STATE_], STATE_MAP
@@ -200,6 +216,8 @@ check_keyboard:
       jz .go_game_space
       jmp .done
    .process_del:
+      mov dx, NOTE_A4
+      call play_note
       call set_pos_to_cursor
       call convert_xy_to_screen
       call clear_tile_on_screen
@@ -215,10 +233,14 @@ check_keyboard:
       call draw_cursor_ok
       jmp .done
    .process_q:
+      mov dx, NOTE_C5
+      call play_note
       dec byte [_TOOL_]
       call verify_change_tool
       jmp .done
    .process_w:
+      mov dx, NOTE_C5
+      call play_note
       inc byte [_TOOL_]
       call verify_change_tool
       jmp .done
@@ -235,6 +257,8 @@ check_keyboard:
    .go_game_enter:
       jmp .done
    .go_game_space:
+      mov dx, NOTE_C4
+      call play_note
       call set_pos_to_cursor_w_offset
       call save_tile_to_map
       call set_pos_to_cursor
@@ -273,6 +297,8 @@ check_keyboard:
       inc word [_CUR_TEST_X_]
       jmp .done_processed
    .done_processed:
+      mov dx, NOTE_F4
+      call play_note
       call move_cursor
       call draw_train
    .done:
@@ -294,13 +320,7 @@ je draw_map
 jmp wait_for_tick
 
 draw_intro:
-   mov al, [_VECTOR_COLOR_]
-   cmp al, 0x1f
-   jge .done
-   inc al
-
-   call draw_vector
-   .done:
+   call play_tune
    jmp wait_for_tick
 
 draw_game:
@@ -330,6 +350,17 @@ wait_for_tick:
 
 inc word [_GAME_TICK_]  ; Increment game tick
 
+sound:
+   ; mov dx, [_NOTE_TIMER_]
+   ; cmp dx, NOTE_A4/2
+   ; jl .note_ended
+   ; call play_raw_note
+   ; shr word [_NOTE_TIMER_], 1
+   ; jmp .done
+   ; .note_ended:
+   call stop_note
+   .done:
+
 ; =========================================== ESC OR LOOP ======================
 
 jmp main_loop
@@ -337,6 +368,14 @@ jmp main_loop
 ; =========================================== EXIT TO DOS ======================
 
 exit:
+   call stop_note
+
+   mov ax, 0x0003      ; Set video mode to 80x25 text mode
+   int 0x10            ; Call BIOS interrupt
+   mov si, QuitText
+   xor dx,dx
+   call draw_text
+   
    mov ax, 0x4c00      ; Exit to DOS
    int 0x21            ; Call DOS
    ret                 ; Return to DOS
@@ -361,41 +400,56 @@ exit:
 prepare_intro:
    xor di, di
    mov ax, COLOR_GRADIENT_START             ; Set starting color
-   mov dl, 0x10               ; 10 bars to draw
+   mov dl, 0x10              ; 10 bars to draw
    .draw_gradient:
       mov cx, 320*4          ; Each bar 10 pixels high
       rep stosw               ; Write to the VGA memory
-      cmp dl, 0x09
+      cmp dl, 0x04
       jg .draw_top
       jl .draw_bottom
       mov ax, COLOR_GRADIENT_END
       mov cx, 320*36
       rep stosw
+      
       .draw_bottom:
       inc ax
       jmp .cont
+
       .draw_top:
-      dec ax                  ; Increment color index for next bar
+      dec ax
+      cmp ax, 0x01010
+      jg .skip_zero
+         xor ax, ax
+      .skip_zero:
+
       .cont:
       xchg al, ah             ; Swap colors
       dec dl
       jnz .draw_gradient
 
+   mov byte [_VECTOR_SCALE_], 0x1
+   mov bp, 320*8+130
+   mov si, P1XVector
+   call draw_vector
+
    mov si, WelcomeText
-   mov dh, 0xB
-   mov dl, 0x1
+   mov dh, 0xC
+   mov dl, 0x2
    mov bl, COLOR_TEXT
    call draw_text
 
-   mov si, PressEnterText
+   mov si, TitleText
    mov dh, 0xE
-   mov dl, 0x5   
+   mov dl, 0x8
+   inc bl
    call draw_text
 
-   mov byte [_VECTOR_SCALE_], 0x2
-   mov bp, 320*20+110
-   mov si, P1XVector
-   call draw_vector
+   mov si, PressEnterText
+   mov dh, 0x14
+   mov dl, 0x6
+   inc bl
+   call draw_text
+
 ret   
 
 prepare_game:
@@ -433,8 +487,27 @@ prepare_map:
    xor si, si
    mov al, COLOR_BACKGROUND
    mov ah, al
-   mov cx, 320*200
+   mov cx, 320*(200-16)
    rep stosw
+
+   mov dl, 0x6              ; 10 bars to draw
+   .draw_gradient:
+      mov cx, 320*4          ; Each bar 10 pixels high
+      rep stosw               ; Write to the VGA memory
+      dec al
+      xchg al, ah             ; Swap colors
+      dec dl
+      jnz .draw_gradient
+
+   mov byte [_VECTOR_SCALE_], 3
+   mov bp, 320*40+8
+   mov si, ForestVector
+   call draw_vector
+
+   mov bp, 320*40+196
+   mov si, StationVector
+   call draw_vector
+
 
    mov di, 320*30+90
    mov ax, COLOR_MAP
@@ -656,50 +729,9 @@ ret
 
 stamp_tile:
    pusha
+
    xor bx, bx
    mov byte bl, [_BRUSH_]
-
-   ; cmp bl, TOOLS-5
-   ; jl .skip1
-   ;    call get_random
-   ;    and ax, 0xf
-   ;    mov byte [_VECTOR_COLOR_], COLOR_HOUSE
-   ;    add byte [_VECTOR_COLOR_], al
-   ; .skip1:
-
-   ; cmp bl, TOOLS-4
-   ; jl .skip2     
-   ;    call get_random 
-   ;    and ax, 0x3
-   ;    mov byte [_VECTOR_COLOR_], COLOR_STATION
-   ;    add byte [_VECTOR_COLOR_], al
-   ; .skip2:      
-
-   ; cmp bl, TOOLS-3
-   ; jl .skip3
-   ;    call get_random
-   ;    and ax, 0x5
-   ;    mov byte [_VECTOR_COLOR_], COLOR_GREEN
-   ;    add byte [_VECTOR_COLOR_], al
-   ; .skip3:
-
-   ; cmp bl, TOOLS-2
-   ; jl .skip4
-   ;    call get_random
-   ;    and ax, 0x4
-   ;    mov byte [_VECTOR_COLOR_], COLOR_EVERGREEN
-   ;    add byte [_VECTOR_COLOR_], al
-   ; .skip4:
-
-   ; cmp bl, TOOLS-1
-   ; jl .skip5
-   ;    call get_random
-   ;    and ax, 0x3
-   ;    mov byte [_VECTOR_COLOR_], COLOR_MOUNTAIN
-   ;    add byte [_VECTOR_COLOR_], al
-
-   ; .skip5:
-   
 
    shl bx, 1
    mov si, ToolsList   
@@ -709,7 +741,6 @@ stamp_tile:
    
    call draw_vector
 
-   .done:
    popa
 ret
 
@@ -1269,15 +1300,55 @@ draw_line:
  .ct:    dw  0
 
 
+play_tune:
+   xor ax, ax
+   mov al, [_TUNE_POS_]
+   mov si, IntroTune
+   add si, ax
+   mov dx, [si]
+   
+   cmp dx, 0
+   jz .restart_tune
+   cmp dx, NOTE_PAUSE
+   jz .pause_note
+
+   call play_note
+   .pause_note:
+   add byte [_TUNE_POS_], 2
+ret
+   .restart_tune:
+   mov byte [_TUNE_POS_], 0
+ret
+
+play_note:
+   mov al, 0xB6          ; Control word: channel 2, low/high byte, mode 3
+   out 0x43, al
+   out 0x42, al          ; Low byte of frequency
+   mov al, dh            ; High byte of frequency
+   out 0x42, al
+   in   al, 0x61         ; Read current speaker port
+   or   al, 3            ; Set bits 0 and 1 to enable channel 2 output
+   out  0x61, al
+ret
+
+stop_note:
+   in   al, 0x61
+   and  al, 0xFC         ; Clear bits 0 and 1
+   out  0x61, al
+ret
+
+
 ; =========================================== DATA =============================
 HeaderText:                                 ;
 db '-------- KKJ <<< GAME 12 >>> P1X -------', 0x0
 WelcomeText:
-db 'KKJ PRESENTS 12-TH ASSEMBLY PRODUCTION', 0x0
+db 'KRZYSZTOF KRYSTIAN JANKOWSKI PRESENTS', 0x0
+TitleText:
+db '12-TH ASSEMBLY PRODUCTION', 0x0
 PressEnterText:
 db 'Press ENTER to start the game', 0x0
-FooterText:
-db '[Q/W],[SPACE]BUILD,[M]MAP', 0x0
+QuitText:
+db 'Good bye!',0x0D, 0x0A,'Visit http://smol.p1x.in/assembly/ for more games :)', 0x0A, 0x0
 
 P1XVector:
 db 0x1f
@@ -1412,9 +1483,44 @@ db 4
 db 4, 4, 12, 4, 12, 12, 4, 12, 4, 4
 db 0
 
+IntroTune:
+dw NOTE_C4
+dw NOTE_E4
+dw NOTE_G4
+dw NOTE_C5
+dw NOTE_G4
+dw NOTE_E4
+dw NOTE_C4
+dw NOTE_PAUSE
+dw NOTE_PAUSE
+dw NOTE_PAUSE
+dw NOTE_E4
+dw NOTE_C4
+dw NOTE_PAUSE
+dw NOTE_PAUSE
+dw NOTE_PAUSE
+dw NOTE_G4
+dw NOTE_C5
+dw NOTE_PAUSE
+dw NOTE_E4
+dw NOTE_PAUSE
+dw NOTE_D4
+dw NOTE_F4
+dw NOTE_A4
+dw NOTE_PAUSE
+dw NOTE_PAUSE
+dw NOTE_PAUSE
+dw NOTE_E4
+dw NOTE_C4
+dw NOTE_PAUSE
+dw NOTE_PAUSE
+dw NOTE_PAUSE
+dw 0x0
+
 ; =========================================== THE END ==========================
 ; Thanks for reading the source code!
 ; Visit http://smol.p1x.in for more.
 
 Logo:
 db "P1X"    ; Use HEX viewer to see P1X at the end of binary
+
