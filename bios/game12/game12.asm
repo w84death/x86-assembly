@@ -195,7 +195,7 @@ check_keyboard:
       mov byte [_GAME_STATE_], STATE_QUIT
       jmp .done
    .process_enter:
-      mov dx, NOTE_C5
+      mov dx, 1750
       call play_note
       cmp byte [_GAME_STATE_], STATE_INTRO
       jz .go_game
@@ -216,7 +216,7 @@ check_keyboard:
       jz .go_game_space
       jmp .done
    .process_del:
-      mov dx, NOTE_A4
+      mov dx, 2500
       call play_note
       call set_pos_to_cursor
       call convert_xy_to_screen
@@ -233,13 +233,13 @@ check_keyboard:
       call draw_cursor_ok
       jmp .done
    .process_q:
-      mov dx, NOTE_C5
+      mov dx, 1750
       call play_note
       dec byte [_TOOL_]
       call verify_change_tool
       jmp .done
    .process_w:
-      mov dx, NOTE_C5
+      mov dx, 1750
       call play_note
       inc byte [_TOOL_]
       call verify_change_tool
@@ -257,7 +257,7 @@ check_keyboard:
    .go_game_enter:
       jmp .done
    .go_game_space:
-      mov dx, NOTE_C4
+      mov dx, 9000
       call play_note
       call set_pos_to_cursor_w_offset
       call save_tile_to_map
@@ -329,6 +329,7 @@ draw_game:
    jmp wait_for_tick
 
 draw_map:
+   call play_tune
    mov dx, 0x1010
    call draw_train_on_map
    call move_train
