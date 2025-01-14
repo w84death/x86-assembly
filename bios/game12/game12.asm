@@ -6,8 +6,8 @@
 ; 01/2025
 ;
 ; TODO:
-; - make metadata table for terrain
-; - move is_railroad bit to metadata
+; - [done] make metadata table for terrain
+; - [done] move is_railroad bit to metadata
 ; - add entities system
 ; - move train to entities
 ; - render entities loop
@@ -15,7 +15,8 @@
 ; - trains collision detection
 ; - buy new trains
 ; - putting railroads only on clear land
-; - manually cleaning land by cash
+; - [done] manually cleaning land..
+; - ...using cash
 ; - cash concept / economy
 ; - trains stops at stations generating cash
 ; - train uses cash for each move
