@@ -83,10 +83,23 @@ TOOL_MOUNTAINS equ 0x5
 TOOL_TRAIN equ 0x6
 TOOL_POS equ 320*180+16
 
+METADATA_EMPTY equ 0x0
+METADATA_MOVABLE equ 0x1
+METADATA_NON_DESTRUCTIBLE equ 0x2
+METADATA_FOREST equ 0x4
+METADATA_BUILDING equ 0x8
+METADATA_TRACKS equ 0x10
+METADATA_STATION equ 0x20 
+METADATA_A equ 0x40
+METADATA_B equ 0x80
+METADATA_C equ 0xFF
+
 MAP_WIDTH equ 64
 MAP_HEIGHT equ 64
-VIEWPORT_POS equ 320*16+16
+MAP_SIZE equ MAP_WIDTH*MAP_HEIGHT
+METADATA equ MAP_SIZE
 
+VIEWPORT_POS equ 320*16+16
 SCALE equ 1 ; 1 - 2 zoom level
 VIEWPORT_WIDTH equ 18 / SCALE
 VIEWPORT_HEIGHT equ 10 / SCALE
@@ -376,13 +389,6 @@ wait_for_tick:
 inc word [_GAME_TICK_]  ; Increment game tick
 
 sound:
-   ; mov dx, [_NOTE_TIMER_]
-   ; cmp dx, NOTE_A4/2
-   ; jl .note_ended
-   ; call play_raw_note
-   ; shr word [_NOTE_TIMER_], 1
-   ; jmp .done
-   ; .note_ended:
    call stop_note
    .done:
 
@@ -575,25 +581,21 @@ prepare_map:
       push cx
       mov cx, MAP_WIDTH
       .draw_col:
-         mov al, [si]
-
-         test al, 0x80
+         mov al, [si+METADATA]
+         
+         
+         test al, METADATA_TRACKS
          jnz .set_railroads
-
-         and al, 0x7F
+         test al, METADATA_FOREST
+         jnz .set_green
+         test al, METADATA_BUILDING
+         jnz .set_infra
+         test al, METADATA_STATION
+         jnz .set_infra
+         test al, METADATA_NON_DESTRUCTIBLE
+         jnz .set_mountains
 
          mov bx, COLOR_MAP
-         
-         cmp al, TOOL_FOREST
-         jz .set_green
-         cmp al, TOOL_FOREST2
-         jz .set_green
-         cmp al, TOOL_HOUSE
-         jz .set_infra
-         cmp al, TOOL_STATION
-         jz .set_infra
-         cmp al, TOOL_MOUNTAINS
-         jz .set_mountains
          jmp .push_pixel
 
          .set_green:
@@ -609,7 +611,7 @@ prepare_map:
          jmp .push_pixel
 
          .set_railroads:
-         mov bx, 0x10       
+         mov bl, COLOR_RAILS       
 
          .push_pixel:
          mov ax, bx
@@ -867,28 +869,27 @@ recalculate_neighbors_railroads:
 ret
 
 recalculate_railroad_at_pos:
-   pusha
    xor bx, bx
 
-   test byte [si], 128
+   test byte [si+METADATA], METADATA_TRACKS
    jz .done
 
-   test byte [si-MAP_WIDTH], 128 ; up
+   test byte [si+METADATA-MAP_WIDTH], METADATA_TRACKS ; up
    jz .next1
       add bl, 8
    .next1:
 
-   test byte [si+1], 128 ; right
+   test byte [si+METADATA+1], METADATA_TRACKS ; right
    jz .next2
       add bl, 4
    .next2:
 
-   test byte [si+MAP_WIDTH], 128 ; down
+   test byte [si+METADATA+MAP_WIDTH], METADATA_TRACKS ; down
    jz .next3
       add bl, 2
    .next3:
 
-   test byte [si-1], 128 ; left
+   test byte [si+METADATA-1], METADATA_TRACKS ; left
    jz .next4
       add bl, 1
    .next4:
@@ -900,21 +901,17 @@ recalculate_railroad_at_pos:
 
    .save_to_map:
    add bl, TOOLS  ; move over tools list
-   add bl, 128    ; set railroad bit
    mov byte [si], bl
-
    .done:
-   popa
+   
 ret
 
 save_tile_to_map:
    call convert_xy_pos_to_map
    mov al, [_TOOL_]
-   cmp al, 0
-   jnz .skip_railroads_bit
-      add al, 128
-   .skip_railroads_bit:
    mov byte [si], al
+   call set_metadata_values
+   mov byte [si+METADATA], ah
 ret
 
 convert_xy_pos_to_map:
@@ -931,35 +928,67 @@ init_map:
    mov cx, MAP_WIDTH*MAP_HEIGHT
    .init_loop:
       call get_random
-      and ax, 0xf
-      cmp ax, 0x7
       jl .set_empty
       cmp ax, 0x9
       jl .set_evergreen
       cmp ax, 0x9
       jz .set_mountains
       .set_forest:
-         mov ax, TOOL_FOREST
+         mov al, TOOL_FOREST
+         mov ah, METADATA_FOREST
          jmp .done
       .set_evergreen:
-         mov ax, TOOL_FOREST2
+         mov al, TOOL_FOREST2
+         mov ah, METADATA_FOREST
          jmp .done
       .set_mountains:
-         mov ax, TOOL_MOUNTAINS
+         mov al, TOOL_MOUNTAINS
+         mov ah, METADATA_NON_DESTRUCTIBLE
          jmp .done
       .set_empty:
-         mov ax, TOOL_EMPTY      
+         mov al, TOOL_EMPTY 
+         mov ah, METADATA_MOVABLE    
       .done:
       mov [di], al
+      call set_metadata_values
+      mov [di+METADATA], ah
       inc di
    loop .init_loop
 
    mov di, _MAP_
-   add di, MAP_WIDTH*31+31
-   mov byte [di], TOOL_RAILROAD+128
-   mov word [_TRAIN_X_], 31
+   add di, MAP_WIDTH*31+32
+   mov byte [di], TOOL_RAILROAD
+   mov byte [di+METADATA], METADATA_TRACKS
+   mov word [_TRAIN_X_], 32
    mov word [_TRAIN_Y_], 31
    mov byte [_TRAIN_DIR_MASK_], 0
+ret
+
+set_metadata_values:
+   .set_railroads:
+      cmp al, TOOL_RAILROAD
+      jnz .set_forest
+      mov ah, METADATA_TRACKS
+      jmp .done
+   .set_forest:
+      cmp al, TOOL_FOREST
+      jnz .set_evergreen
+      mov ah, METADATA_FOREST
+      jmp .done
+   .set_evergreen:
+      cmp al, TOOL_FOREST2
+      jnz .set_mountains
+      mov ah, METADATA_FOREST
+      jmp .done
+   .set_mountains:
+      cmp al, TOOL_MOUNTAINS
+      jnz .set_empty
+      mov ah, METADATA_NON_DESTRUCTIBLE
+      jmp .done
+   .set_empty:
+      mov al, TOOL_EMPTY 
+      mov ah, METADATA_MOVABLE 
+   .done:
 ret
 
 load_map:
@@ -982,7 +1011,7 @@ load_map:
       .h_line_loop:
          call clear_tile_on_screen
          mov al, [si]
-         and al, 0x7f         ; clear railroad bit
+
          cmp al, TOOL_EMPTY
          jz .done
          mov byte [_BRUSH_], al
@@ -1003,7 +1032,6 @@ ret
 load_tile_from_map:
    pusha
    mov al, [si]
-   and al, 0x7f         ; clear railroad bit
    cmp al, TOOL_EMPTY
    jz .done
       mov byte [_BRUSH_], al
@@ -1013,17 +1041,13 @@ load_tile_from_map:
 ret
 
 check_if_map_tile_empty:
-   pusha
-   mov al, [si]
-   and al, 0x7f         ; clear railroad bit
-   cmp al, TOOL_EMPTY
-   jz .empty
-      stc
-      jmp .done
-   .empty:
+   mov al, [si+METADATA]
+   test al, METADATA_MOVABLE
+   jz .movable
       clc
-   .done:
-   popa
+ret
+   .movable:
+      stc
 ret
 
 move_cursor:
@@ -1203,14 +1227,13 @@ move_train:
    add ax, bx
    add si, ax
    mov al, [si]
-   and al, 0x7f   ; clear railroad bit
    sub al, TOOLS  ; move over tools list
    sub al, [_TRAIN_DIR_MASK_]
 
    .test_up:
    test al, 8
    jz .test_right
-   test byte [si-MAP_WIDTH], 128
+   test byte [si+METADATA-MAP_WIDTH], METADATA_TRACKS
    jz .test_right
    dec word [_TRAIN_Y_]
    mov bl, 2
@@ -1218,7 +1241,7 @@ move_train:
    .test_right:
    test al, 4
    jz .test_down
-   test byte [si+1], 128
+   test byte [si+METADATA+1], METADATA_TRACKS
    jz .test_down
    inc word [_TRAIN_X_]
    mov bl, 1
@@ -1226,7 +1249,7 @@ move_train:
    .test_down:
    test al, 2
    jz .test_left
-   test byte [si+MAP_WIDTH], 128
+   test byte [si+METADATA+MAP_WIDTH], METADATA_TRACKS
    jz .test_left
    inc word [_TRAIN_Y_]
    mov bl, 8
@@ -1234,7 +1257,7 @@ move_train:
    .test_left:
    test al, 1
    jz .no_move
-   test byte [si-1], 128
+   test byte [si+METADATA-1], METADATA_TRACKS
    jz .no_move
    dec word [_TRAIN_X_]
    mov bl, 4
