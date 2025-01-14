@@ -112,7 +112,7 @@ COLOR_TITLE equ 0x2
 COLOR_CURSOR equ 0x2
 COLOR_GRADIENT_START equ 0x0C0C
 COLOR_GRADIENT_END equ 0x0C0C
-COLOR_RAILS equ 0x1
+COLOR_TRACKS equ 0x1
 COLOR_TRAIN equ 0x7
 COLOR_TREE equ 0xB
 COLOR_EVERGREEN equ 0xA
@@ -121,6 +121,8 @@ COLOR_HOUSE equ 0x4
 COLOR_STATION equ 0x8
 COLOR_TOOLS_SELECTOR equ 0x0202
 COLOR_MAP equ 0x0505
+COLOR_WHITE equ 0x01
+COLOR_BLACK equ 0x00
 
 NOTE_C4     equ 1193182/261
 NOTE_D4     equ 1193182/294
@@ -364,10 +366,12 @@ draw_game:
 
 draw_map:
    call play_tune
-   mov dx, 0x1010
+   mov dx, COLOR_BLACK
+   mov dh, dl
    call draw_train_on_map
    call move_train
-   mov dx, 0x1f1f
+   mov dx, COLOR_WHITE
+   mov dh, dl
    call draw_train_on_map
    call draw_cursor_on_map
    jmp wait_for_tick
@@ -608,7 +612,7 @@ prepare_map:
          jmp .push_pixel
 
          .set_railroads:
-         mov bl, COLOR_RAILS       
+         mov bl, COLOR_BLACK      
 
          .push_pixel:
          mov ax, bx
@@ -925,6 +929,8 @@ init_map:
    mov cx, MAP_WIDTH*MAP_HEIGHT
    .init_loop:
       call get_random
+      and ax, 0xa
+      cmp ax, 0x7
       jl .set_empty
       cmp ax, 0x9
       jl .set_evergreen
@@ -932,19 +938,15 @@ init_map:
       jz .set_mountains
       .set_forest:
          mov al, TOOL_FOREST
-         mov ah, METADATA_FOREST
          jmp .done
       .set_evergreen:
          mov al, TOOL_FOREST2
-         mov ah, METADATA_FOREST
          jmp .done
       .set_mountains:
          mov al, TOOL_MOUNTAINS
-         mov ah, METADATA_NON_DESTRUCTIBLE
          jmp .done
       .set_empty:
          mov al, TOOL_EMPTY 
-         mov ah, METADATA_MOVABLE    
       .done:
       mov [di], al
       call set_metadata_values
@@ -1469,7 +1471,7 @@ RailroadsList:
 dw RailroadTracksHRailVector,RailroadTracksHRailVector,RailroadTracksVRailVector,RailroadTracksTurn3Vector,RailroadTracksHRailVector,RailroadTracksHRailVector,RailroadTracksTurn6Vector,RailroadTracksVRailVector,RailroadTracksVRailVector,RailroadTracksTurn9Vector,RailroadTracksVRailVector,RailroadTracksVRailVector,RailroadTracksTurn12Vector
 
 RailroadTracksHRailVector:
-db COLOR_RAILS
+db COLOR_TRACKS
 db 1
 db 1, 6, 16, 6
 db 1
@@ -1477,7 +1479,7 @@ db 1, 10, 16, 10
 db 0
 
 RailroadTracksVRailVector:
-db COLOR_RAILS
+db COLOR_TRACKS
 db 1
 db 6, 1, 6, 16
 db 1
@@ -1485,7 +1487,7 @@ db 10, 1, 10, 16
 db 0
 
 RailroadTracksTurn3Vector:
-db COLOR_RAILS
+db COLOR_TRACKS
 db 1
 db 1, 6, 10, 16
 db 1
@@ -1493,7 +1495,7 @@ db 1, 10, 6, 16
 db 0
 
 RailroadTracksTurn6Vector:
-db COLOR_RAILS
+db COLOR_TRACKS
 db 1
 db 6, 15, 15, 5
 db 1
@@ -1501,7 +1503,7 @@ db 10, 15, 15, 9
 db 0
 
 RailroadTracksTurn9Vector:
-db COLOR_RAILS
+db COLOR_TRACKS
 db 1
 db 1, 5, 6, 1
 db 1
@@ -1509,7 +1511,7 @@ db 1, 9, 10, 1
 db 0
 
 RailroadTracksTurn12Vector:
-db COLOR_RAILS
+db COLOR_TRACKS
 db 1
 db 6, 1, 16, 10
 db 1
