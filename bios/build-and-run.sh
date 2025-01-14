@@ -46,10 +46,10 @@ cp floppy.img "${filename}/${filename}_floppy.img"
 echo ""
 echo "Running..."
 qemu-system-i386 \
--m 16 \
+-m 1 \
 -k en-us \
 -rtc base=localtime \
--device cirrus-vga \
+-vga std \
 -cpu 486 \
 -boot a \
 -fda floppy.img
