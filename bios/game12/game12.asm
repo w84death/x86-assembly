@@ -52,10 +52,10 @@ _MAP_METADATA_ equ 0x4000           ; Map metadata 64x64
 
 ; =========================================== GAME STATES ======================
 
-STATE_INTRO equ 0
+STATE_TITLE_SCREEN equ 0
 STATE_MENU equ 1
 STATE_GAME equ 2
-STATE_MAP equ 3
+STATE_MAP_SCREEN equ 3
 STATE_STATS equ 4
 ; ...
 STATE_QUIT equ 255
@@ -165,7 +165,7 @@ start:
    mov word [_CUR_TEST_Y_], VIEWPORT_HEIGHT/2
    mov byte [_TUNE_POS_], 0x0
    call init_map
-   mov byte [_GAME_STATE_], STATE_INTRO
+   mov byte [_GAME_STATE_], STATE_TITLE_SCREEN
    call setup_palette
    call prepare_intro
 
@@ -214,7 +214,7 @@ check_keyboard:
    jmp .done
 
    .process_esc:
-      cmp byte [_GAME_STATE_], STATE_MAP
+      cmp byte [_GAME_STATE_], STATE_MAP_SCREEN
       jz .go_game
       cmp byte [_GAME_STATE_], STATE_GAME
       jz .go_intro
@@ -223,7 +223,7 @@ check_keyboard:
    .process_enter:
       mov dx, 1750
       call play_note
-      cmp byte [_GAME_STATE_], STATE_INTRO
+      cmp byte [_GAME_STATE_], STATE_TITLE_SCREEN
       jz .go_game
       cmp byte [_GAME_STATE_], STATE_GAME
       jz .go_game_enter
@@ -231,9 +231,9 @@ check_keyboard:
    .process_m:
       mov dx, NOTE_C5
       call play_note
-      cmp byte [_GAME_STATE_], STATE_MAP
+      cmp byte [_GAME_STATE_], STATE_MAP_SCREEN
       jz .go_game  
-      mov byte [_GAME_STATE_], STATE_MAP
+      mov byte [_GAME_STATE_], STATE_MAP_SCREEN
       mov word [_GAME_TICK_], 0x0
       call prepare_map
       jmp .done
@@ -271,7 +271,7 @@ check_keyboard:
       call verify_change_tool
       jmp .done
    .go_intro:
-      mov byte [_GAME_STATE_], STATE_INTRO
+      mov byte [_GAME_STATE_], STATE_TITLE_SCREEN
       mov word [_GAME_TICK_], 0x0
       call prepare_intro
       jmp .done
@@ -346,13 +346,13 @@ check_keyboard:
 cmp byte [_GAME_STATE_], STATE_QUIT
 je exit
 
-cmp byte [_GAME_STATE_], STATE_INTRO
+cmp byte [_GAME_STATE_], STATE_TITLE_SCREEN
 je draw_intro
 
 cmp byte [_GAME_STATE_], STATE_GAME
 je draw_game
 
-cmp byte [_GAME_STATE_], STATE_MAP
+cmp byte [_GAME_STATE_], STATE_MAP_SCREEN
 je draw_map
 
 jmp wait_for_tick
@@ -1394,7 +1394,7 @@ draw_line:
 play_tune:
    xor ax, ax
    mov al, [_TUNE_POS_]
-   mov si, IntroTune
+   mov si, TitleTune
    add si, ax
    mov dx, [si]
    
@@ -1574,7 +1574,7 @@ db 4
 db 4, 4, 12, 4, 12, 12, 4, 12, 4, 4
 db 0
 
-IntroTune:
+TitleTune:
 dw NOTE_C4
 dw NOTE_E4
 dw NOTE_G4
