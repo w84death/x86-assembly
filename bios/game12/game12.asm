@@ -1,17 +1,24 @@
 ; GAME12 - 2D Game Engine for DOS
 ;
+; http://smol.p1x.in/assembly/#game12
 ; Created by Krzysztof Krystian Jankowski
 ; MIT License
 ; 01/2025
 ;
-; Idea 1:
-; - build railroads from center to any of the 4 sides
-; - removing tree from map will move the train forward
-; - tran can't move on mountains, infrastructure
-; - if train reaches the end of railroads, game over
-; - if train reaches the edge destination, game won
-; - balance between removing trees and building longer railroads
-;
+; TODO:
+; - make metadata table for terrain
+; - move is_railroad bit to metadata
+; - add entities system
+; - move train to entities
+; - render entities loop
+; - more trains
+; - trains collision detection
+; - buy new trains
+; - putting railroads only on clear land
+; - manually cleaning land by cash
+; - cash concept / economy
+; - trains stops at stations generating cash
+; - train uses cash for each move
 
 org 0x100
 use16
@@ -31,22 +38,24 @@ _VIEWPORT_X_ equ _BASE_ + 0x0F      ; 2 bytes
 _VIEWPORT_Y_ equ _BASE_ + 0x11      ; 2 bytes
 _RNG_ equ _BASE_ + 0x13             ; 2 bytes
 _BRUSH_ equ _BASE_ + 0x15           ; 1 byte
+
 _TRAIN_X_ equ _BASE_ + 0x16           ; 2 byte
 _TRAIN_Y_ equ _BASE_ + 0x18           ; 2 byte
 _TRAIN_DIR_MASK_ equ _BASE_ + 0x1A   ; 1 byte
+
 _TUNE_POS_ equ _BASE_ + 0x1B         ; 1 byte
 
 _TRAINS_ equ 0x2000                 ; Trains aka entities
 _MAP_ equ 0x3000                    ; Map data 64x64
+_MAP_METADATA_ equ 0x4000           ; Map metadata 64x64
 
 ; =========================================== GAME STATES ======================
 
 STATE_INTRO equ 0
-STATE_MENU equ 2
-STATE_PREPARE equ 4
-STATE_GAME equ 8
-STATE_OVER equ 16
-STATE_MAP equ 32
+STATE_MENU equ 1
+STATE_GAME equ 2
+STATE_MAP equ 3
+STATE_STATS equ 4
 ; ...
 STATE_QUIT equ 255
 
@@ -103,43 +112,48 @@ COLOR_STATION equ 0x8
 COLOR_TOOLS_SELECTOR equ 0x0202
 COLOR_MAP equ 0x0505
 
-NOTE_C4   equ 1193182/261
-NOTE_D4   equ 1193182/294
-NOTE_E4   equ 1193182/330
-NOTE_F4   equ 1193182/349
-NOTE_G4   equ 1193182/392
-NOTE_A4   equ 1193182/440
-NOTE_B4   equ 1193182/494
-NOTE_C5   equ 1193182/523
-NOTE_PAUSE equ 1
+NOTE_C4     equ 1193182/261
+NOTE_D4     equ 1193182/294
+NOTE_E4     equ 1193182/330
+NOTE_F4     equ 1193182/349
+NOTE_G4     equ 1193182/392
+NOTE_A4     equ 1193182/440
+NOTE_B4     equ 1193182/494
+NOTE_C5     equ 1193182/523
+NOTE_D5     equ 1193182/587
+NOTE_E5     equ 1193182/659
+NOTE_F5     equ 1193182/698
+NOTE_PAUSE  equ 1
 
 ; =========================================== INITIALIZATION ===================
+start:
+   mov ax, 0x13        ; Init 320x200, 256 colors mode
+   int 0x10            ; Video BIOS interrupt
 
-mov ax, 0x13        ; Init 320x200, 256 colors mode
-int 0x10            ; Video BIOS interrupt
-mov ax, 0xA000
-mov es, ax
-xor di, di          ; Set DI to 0
+   mov ax, 0xA000       ; VGA memory segment
+   mov es, ax
+   xor di, di
 
-mov ax, 0x9000
-mov ss, ax
-mov sp, 0xFFFF
+   mov ax, 0x9000
+   mov ss, ax
+   mov sp, 0xFFFF
 
-mov byte [_GAME_TICK_], 0x0
-mov word [_RNG_], 0x42
-mov byte [_VECTOR_SCALE_], 0x0
-mov word [_VIEWPORT_X_], MAP_WIDTH/2-VIEWPORT_WIDTH/2
-mov word [_VIEWPORT_Y_], MAP_HEIGHT/2-VIEWPORT_HEIGHT/2
-mov byte [_TOOL_], 0x0
-mov word [_CUR_X_], VIEWPORT_WIDTH/2
-mov word [_CUR_Y_], VIEWPORT_HEIGHT/2
-mov word [_CUR_TEST_X_], VIEWPORT_WIDTH/2
-mov word [_CUR_TEST_Y_], VIEWPORT_HEIGHT/2
-mov byte [_TUNE_POS_], 0x0
-call init_map
-mov byte [_GAME_STATE_], STATE_INTRO
-call setup_palette
-call prepare_intro
+.reset:
+   mov byte [_GAME_TICK_], 0x0
+   mov word [_RNG_], 0x42
+   mov byte [_VECTOR_SCALE_], 0x0
+   mov word [_VIEWPORT_X_], MAP_WIDTH/2-VIEWPORT_WIDTH/2
+   mov word [_VIEWPORT_Y_], MAP_HEIGHT/2-VIEWPORT_HEIGHT/2
+   mov byte [_TOOL_], 0x0
+   mov word [_CUR_X_], VIEWPORT_WIDTH/2
+   mov word [_CUR_Y_], VIEWPORT_HEIGHT/2
+   mov word [_CUR_TEST_X_], VIEWPORT_WIDTH/2
+   mov word [_CUR_TEST_Y_], VIEWPORT_HEIGHT/2
+   mov byte [_TUNE_POS_], 0x0
+   call init_map
+   mov byte [_GAME_STATE_], STATE_INTRO
+   call setup_palette
+   call prepare_intro
 
 ; =========================================== GAME LOOP ========================
 
@@ -228,7 +242,7 @@ check_keyboard:
       call recalculate_neighbors_railroads
       pop ax
       mov byte [_TOOL_], al
-      call draw_cursor_ok
+      call draw_normal_cursor
       jmp .done
    .process_q:
       mov dx, 1750
@@ -255,6 +269,14 @@ check_keyboard:
    .go_game_enter:
       jmp .done
    .go_game_space:
+      
+
+      ; check if empty
+      call set_pos_to_cursor_w_offset
+      call convert_xy_pos_to_map
+      call check_if_map_tile_empty
+      jc .err_stamping
+
       mov dx, 9000
       call play_note
       call set_pos_to_cursor_w_offset
@@ -277,10 +299,14 @@ check_keyboard:
       call recalculate_railroad_at_pos
       call load_tile_from_map
       call recalculate_neighbors_railroads
-      
       .skip_recalculate:
 
-      call draw_cursor_ok
+      call draw_normal_cursor
+      jmp .done
+
+      .err_stamping:
+      mov dx, 1000
+      call play_note
       jmp .done
    .pressed_up:
       dec word [_CUR_TEST_Y_]
@@ -427,15 +453,15 @@ prepare_intro:
    mov cx, 320*200
    rep stosw
 
-   mov di, 320*100
+   mov di, 320*88
    mov al, COLOR_BACKGROUND
    mov ah, al
-   mov dl, 0xa              ; 10 bars to draw
+   mov dl, 0xC              ; 10 bars to draw
    .draw_gradient:
-      mov cx, 320*3          ; Each bar 10 pixels high
+      mov cx, 320*4          ; Each bar 10 pixels high
       rep stosw               ; Write to the VGA memory
       
-      cmp dl, 0x5
+      cmp dl, 0x7
       jl .down
       inc al
       jmp .up
@@ -453,13 +479,13 @@ prepare_intro:
    call draw_vector
 
    mov si, WelcomeText
-   mov dh, 0xC
+   mov dh, 0xB
    mov dl, 0x2
    mov bl, COLOR_TEXT
    call draw_text
 
    mov si, TitleText
-   mov dh, 0xE
+   mov dh, 0x11
    mov dl, 0x8
    mov bl, COLOR_TITLE
    call draw_text
@@ -492,7 +518,7 @@ prepare_game:
 
    call load_map
 
-   call draw_cursor_ok
+   call draw_normal_cursor
 
    call draw_train
 
@@ -986,8 +1012,22 @@ load_tile_from_map:
    popa
 ret
 
+check_if_map_tile_empty:
+   pusha
+   mov al, [si]
+   and al, 0x7f         ; clear railroad bit
+   cmp al, TOOL_EMPTY
+   jz .empty
+      stc
+      jmp .done
+   .empty:
+      clc
+   .done:
+   popa
+ret
+
 move_cursor:
-   call erase_cursor
+   call draw_erase_cursor
    mov ax, [_CUR_TEST_X_]
    cmp ax, 0
    jl .left_end
@@ -1030,7 +1070,12 @@ move_cursor:
       mov [_CUR_TEST_Y_], ax
       call load_map 
    .done:
-   call draw_cursor_ok
+      mov ax, [_CUR_X_]
+      mov [_CUR_TEST_X_], ax
+      mov ax, [_CUR_Y_]
+      mov [_CUR_TEST_Y_], ax
+   
+   call draw_normal_cursor
 ret
 
 draw_cursor:
@@ -1040,12 +1085,12 @@ draw_cursor:
    call draw_vector
 ret
 
-draw_cursor_ok:
+draw_normal_cursor:
    mov si, CursorVector
    call draw_cursor
 ret
 
-erase_cursor:
+draw_erase_cursor:
    mov si, CursorEraseVector
    call draw_cursor
 ret
