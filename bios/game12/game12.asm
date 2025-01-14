@@ -14,7 +14,7 @@
 ; - more trains
 ; - trains collision detection
 ; - buy new trains
-; - putting railroads only on clear land
+; - [done] putting railroads only on clear land
 ; - [done] manually cleaning land..
 ; - ...using cash
 ; - cash concept / economy
