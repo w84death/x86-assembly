@@ -929,19 +929,21 @@ init_map:
    mov cx, MAP_WIDTH*MAP_HEIGHT
    .init_loop:
       call get_random
-      and ax, 0xa
+      and ax, 0xF
       cmp ax, 0x7
       jl .set_empty
       cmp ax, 0x9
-      jl .set_evergreen
+      jl .set_forest
       cmp ax, 0x9
       jz .set_mountains
-      .set_forest:
-         mov al, TOOL_FOREST
-         jmp .done
+
       .set_evergreen:
          mov al, TOOL_FOREST2
          jmp .done
+      .set_forest:
+         mov al, TOOL_FOREST
+         jmp .done
+      
       .set_mountains:
          mov al, TOOL_MOUNTAINS
          jmp .done
