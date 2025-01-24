@@ -443,26 +443,15 @@ exit:
 ; =========================================== PROCEDURES =======================
 
 setup_palette:
-   mov cx, 16          ; First 16 colors
-   xor bx, bx          ; Color index
+
    mov si, Palette     ; Palette data pointer
-   .loop:
-      mov dx, 0x3C8    ; DAC write port
-      mov al, bl       ; Color index
-      out dx, al
-      inc dx          ; 0x3C9 - DAC data port
-      mov al, [si]    ; Red
-      shr al, 2       ; Convert from 8-bit to 6-bit (divide by 4)
-      out dx, al
-      mov al, [si+1]  ; Green
-      shr al, 2
-      out dx, al
-      mov al, [si+2]  ; Blue
-      shr al, 2
-      out dx, al
-      add si, 3       ; Next color
-      inc bx
-      loop .loop
+   mov dx, 03C8h    ; DAC Write Port (start at index 0)
+   xor al, al       ; Start with color index 0
+   out dx, al
+
+   mov dx, 03C9h    ; DAC Data Port
+   mov cx, 16*3     ; 16 colors × 3 bytes (R, G, B)
+   rep outsb        ; Send all RGB values
 ret
 
 prepare_intro:
@@ -1696,22 +1685,23 @@ dw 0x0
 
 Palette:
 ; http://androidarts.com/palette/16pal.htm
+; Converted from 8-bit to 6-bit for VGA
 db  0,   0,   0    ; 0  Black
-db 157, 157, 157   ; 1  Light gray
-db 255, 255, 255   ; 2  White
-db 190,  38,  51   ; 3  Red
-db 224, 111, 139   ; 4  Pink
-db  73,  60,  43   ; 5  Brown
-db 164, 100,  34   ; 6  Orange brown
-db 235, 137,  49   ; 7  Orange
-db 247, 226, 107   ; 8  Yellow
-db  47,  72,  78   ; 9  Dark teal
-db  68, 137,  26   ; 10 Green
-db 163, 206,  39   ; 11 Lime
-db  27,  38,  50   ; 12 Dark blue
-db   0,  87, 132   ; 13 Blue
-db  49, 162, 242   ; 14 Light blue
-db 178, 220, 239   ; 15 Sky blue
+db 39,  39,  39    ; 1  Light gray  
+db 63,  63,  63    ; 2  White
+db 47,   9,  12    ; 3  Red
+db 56,  27,  34    ; 4  Pink
+db 18,  15,  10    ; 5  Brown
+db 41,  25,   8    ; 6  Orange brown
+db 58,  34,  12    ; 7  Orange  
+db 61,  56,  26    ; 8  Yellow
+db 11,  18,  19    ; 9  Dark teal
+db 17,  34,   6    ; 10 Green
+db 40,  51,   9    ; 11 Lime
+db  6,   9,  12    ; 12 Dark blue
+db  0,  21,  33    ; 13 Blue
+db 12,  40,  60    ; 14 Light blue
+db 44,  55,  59    ; 15 Sky blue
 
 ; =========================================== THE END ==========================
 ; Thanks for reading the source code!
