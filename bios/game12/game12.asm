@@ -1,11 +1,14 @@
 ; GAME12 - 2D Game Engine for DOS
 ;
+; "Lord of Freight"
+; 
 ; http://smol.p1x.in/assembly/#game12
 ; Created by Krzysztof Krystian Jankowski
 ; MIT License
 ; 01/2025
 ;
 ; TODO:
+; - ability to lay trucks next to each other
 ; - add entities system
 ; - move train to entities
 ; - render entities loop
@@ -86,9 +89,9 @@ METADATA_NON_DESTRUCTIBLE equ 0x2
 METADATA_FOREST equ 0x4
 METADATA_BUILDING equ 0x8
 METADATA_TRACKS equ 0x10
-METADATA_STATION equ 0x20 
-METADATA_A equ 0x40
-METADATA_B equ 0x80
+METADATA_OPEN_TRACKS equ 0x20
+METADATA_STATION equ 0x40 
+METADATA_A equ 0x80
 METADATA_C equ 0xFF
 
 MAP_WIDTH equ 64
@@ -97,19 +100,16 @@ MAP_SIZE equ MAP_WIDTH*MAP_HEIGHT
 METADATA equ MAP_SIZE
 
 VIEWPORT_POS equ 320*16+16
-SCALE equ 1 ; 1 - 2 zoom level
-VIEWPORT_WIDTH equ 18 / SCALE
-VIEWPORT_HEIGHT equ 10 / SCALE
-VIEWPORT_GRID_SCALE equ 4 + (SCALE - 1)
-VIEWPORT_GRID_SIZE equ 16 * SCALE
-VIEWPORT_VECTORS_SCALE equ 0 + (SCALE - 1)
-VIEWPORT_TEMP equ (2 - (SCALE - 1))
+VIEWPORT_WIDTH equ 18
+VIEWPORT_HEIGHT equ 10
+VIEWPORT_GRID_SIZE equ 16
 
 COLOR_BACKGROUND equ 0xC
 COLOR_GRID equ 0x9
 COLOR_TEXT equ 0xE
 COLOR_TITLE equ 0x2
 COLOR_CURSOR equ 0x2
+COLOR_CURSOR_ON_MAP equ 0x0404
 COLOR_GRADIENT_START equ 0x0C0C
 COLOR_GRADIENT_END equ 0x0C0C
 COLOR_TRACKS equ 0x1
@@ -185,6 +185,7 @@ check_keyboard:
    je .process_esc
    cmp ah, KB_ENTER
    je .process_enter
+
    cmp ah, KB_M
    je .process_m
 
@@ -282,6 +283,9 @@ check_keyboard:
       jmp .done
    .go_game_space:
       
+      
+
+
 
       ; check if empty
       call set_pos_to_cursor_w_offset
@@ -337,6 +341,13 @@ check_keyboard:
       call play_note
       call move_cursor
       call draw_train
+      
+      mov si, _MAP_
+      call set_pos_to_cursor_w_offset
+      call convert_xy_pos_to_map
+      mov al, [si+METADATA]
+      and al, METADATA_OPEN_TRACKS
+      call debug
    .done:
 
 ; =========================================== GAME STATES ======================
@@ -356,6 +367,7 @@ je draw_map
 jmp wait_for_tick
 
 draw_intro:
+   mov si, TitleTune
    call play_tune
    jmp wait_for_tick
 
@@ -365,6 +377,7 @@ draw_game:
    jmp wait_for_tick
 
 draw_map:
+   mov si, MapTune
    call play_tune
    mov dx, COLOR_BLACK
    mov dh, dl
@@ -402,10 +415,10 @@ jmp main_loop
 exit:
    call stop_note
 
-   mov ax, 0x0003      ; Set video mode to 80x25 text mode
-   int 0x10            ; Call BIOS interrupt
-   mov si, QuitText
-   xor dx,dx
+   mov ax, 0x0003       ; Set video mode to 80x25 text mode
+   int 0x10             ; Call BIOS interrupt
+   mov si, QuitText     ; Draw message after exit
+   xor dx, dx           ; At 0/0 position
    call draw_text
    
    mov ax, 0x4c00      ; Exit to DOS
@@ -453,106 +466,83 @@ setup_palette:
 ret
 
 prepare_intro:
-   xor di, di
-   xor si, si
-   mov al, COLOR_BACKGROUND
-   mov ah, al
-   mov cx, 320*200
-   rep stosw
-
+   call clear_screen
    mov di, 320*88
    mov al, COLOR_BACKGROUND
    mov ah, al
-   mov dl, 0xC              ; 10 bars to draw
+   mov dl, 0xC                ; Number of bars to draw
    .draw_gradient:
-      mov cx, 320*4          ; Each bar 10 pixels high
+      mov cx, 320*4           ; Number of pixels high for each bar
       rep stosw               ; Write to the VGA memory
       
-      cmp dl, 0x7
-      jl .down
-      inc al
+      cmp dl, 0x7             ; Check if we are in the middle
+      jl .down                ; If not, decrease 
+      inc al                  ; Increase color in right pixel
       jmp .up
       .down:
-      dec al
+      dec al                  ; Decrease color in left pixel
       .up:
       
-      xchg al, ah             ; Swap colors
-      dec dl
-      jnz .draw_gradient
+      xchg al, ah             ; Swap colors (left/right pixel)
+      dec dl                  ; Decrease number of bars to draw
+      jg .draw_gradient       ; Loop until all bars are drawn
 
-   mov byte [_VECTOR_SCALE_], 0x1
-   mov bp, 320*8+130
+   mov byte [_VECTOR_SCALE_], 0x1   ; Zoom level 2
+   mov bp, 320*8+130    ; Position for the vector
    mov si, P1XVector
    call draw_vector
 
    mov si, WelcomeText
-   mov dh, 0xB
-   mov dl, 0x2
+   mov dh, 0xB          ; Y position
+   mov dl, 0x2          ; X position
    mov bl, COLOR_TEXT
    call draw_text
 
    mov si, TitleText
-   mov dh, 0x11
-   mov dl, 0x8
+   mov dh, 0x11      ; Y position
+   mov dl, 0x8       ; X position
    mov bl, COLOR_TITLE
    call draw_text
 
    mov si, PressEnterText
-   mov dh, 0x17
-   mov dl, 0x6
+   mov dh, 0x17      ; Y position
+   mov dl, 0x6       ; X position
    mov bl, COLOR_TEXT
    call draw_text
 
 ret   
 
 prepare_game:
-   mov byte [_VECTOR_SCALE_], VIEWPORT_VECTORS_SCALE
-   
-   xor di, di
-   mov al, COLOR_BACKGROUND
-   mov ah, al
-   mov cx, 320*200/2
-   rep stosw
-
+   call clear_screen
    call draw_grid
 
    mov byte [_TOOL_], 0
    mov byte [_VECTOR_SCALE_], 0
    call draw_tools
-   mov byte [_VECTOR_SCALE_], VIEWPORT_VECTORS_SCALE
    mov dl, 0
    call update_tools_selector
-
    call load_map
-
    call draw_normal_cursor
-
    call draw_train
 
    mov si, HeaderText
-   mov dh, 0x0
-   mov dl, 0x0
+   xor dx, dx     ; At 0/0 position
    mov bl, COLOR_TEXT
    call draw_text
 ret
 
 prepare_map:
-   xor di, di
-   xor si, si
-   mov al, COLOR_BACKGROUND
-   mov ah, al
-   mov cx, 320*200
-   rep stosw
+   call clear_screen
    
    mov di, 320*(200-44)
-   mov dl, 0x6              ; 10 bars to draw
+   mov dl, 0x6                ; No bars to draw
    .draw_gradient:
-      mov cx, 320*4          ; Each bar 10 pixels high
+      mov cx, 320*4           ; Each bar 4 pixels high
       rep stosw               ; Write to the VGA memory
-      dec al
-      xchg al, ah             ; Swap colors
-      dec dl
-      jnz .draw_gradient
+      dec al                  ; Decrease color in left pixel
+      xchg al, ah             ; Swap colors (left/right pixel)
+      dec dl                  ; Decrease number of bars to draw
+      jnz .draw_gradient      ; Loop until all bars are drawn
 
    mov byte [_VECTOR_SCALE_], 3
    mov bp, 320*40+8
@@ -562,7 +552,6 @@ prepare_map:
    mov bp, 320*40+196
    mov si, StationVector
    call draw_vector
-
 
    mov di, 320*30+90
    mov ax, COLOR_MAP
@@ -583,8 +572,6 @@ prepare_map:
       mov cx, MAP_WIDTH
       .draw_col:
          mov al, [si+METADATA]
-         
-         
          test al, METADATA_TRACKS
          jnz .set_railroads
          test al, METADATA_FOREST
@@ -628,12 +615,22 @@ prepare_map:
    loop .draw_row
 ret
 
+clear_screen:
+   xor di, di
+   xor si, si
+   mov di, 0
+   mov cx, 320*200
+   mov ax, COLOR_BACKGROUND
+   mov ah, al
+   rep stosw
+ret
+
 draw_cursor_on_map:
    mov ax, [_CUR_Y_]
    add ax, [_VIEWPORT_Y_]
    mov bx, [_CUR_X_]
    add bx, [_VIEWPORT_X_]
-   mov dx, 0x0404
+   mov dx, COLOR_CURSOR_ON_MAP
    call draw_pixel_on_map
 ret
 
@@ -760,6 +757,31 @@ set_pos_to_cursor:
    mov bx, [_CUR_X_]
 ret
 
+convert_xy_pos_to_map:
+   push ax
+   mov si, _MAP_
+   imul ax, MAP_WIDTH
+   add ax, bx
+   add si, ax
+   pop ax
+ret
+
+convert_xy_to_screen:
+   push ax
+   push bx
+   ; imul ax, VIEWPORT_GRID_SIZE
+   shl ax, 4
+   imul ax, 320
+   ; imul bx, VIEWPORT_GRID_SIZE
+   shl bx, 4
+   add ax, bx
+   add ax, VIEWPORT_POS
+   mov bp, ax   
+
+   pop bx
+   pop ax
+ret
+
 clear_tile_on_screen:
    pusha
    mov di, bp
@@ -795,85 +817,117 @@ stamp_tile:
    popa
 ret
 
+check_open_tracks:
+   call convert_xy_pos_to_map
+   test byte [si+METADATA], METADATA_OPEN_TRACKS
+   jz .no_track
+      clc
+ret
+   .no_track:
+      stc
+ret
+
 recalculate_neighbors_railroads:
-      call set_pos_to_cursor
-      inc ax
-      call validate_xy_onscreen
-      jc .skip1
-      call convert_xy_to_screen
-      call clear_tile_on_screen
-      .skip1:
-      call set_pos_to_cursor_w_offset
-      inc ax
-      call convert_xy_pos_to_map
-      call recalculate_railroad_at_pos
-      call set_pos_to_cursor
-      inc ax
-      call validate_xy_onscreen
-      jc .skip2
-      call load_tile_from_map
-      .skip2:
+   call set_pos_to_cursor_w_offset
+   inc ax
+   call check_open_tracks
+   jc .skip2
 
-      call set_pos_to_cursor
-      dec ax
-      call validate_xy_onscreen
-      jc .skip3
-      call convert_xy_to_screen
-      call clear_tile_on_screen
-      .skip3:
-      call set_pos_to_cursor_w_offset
-      dec ax
-      call convert_xy_pos_to_map
-      call recalculate_railroad_at_pos
-      call set_pos_to_cursor
-      dec ax
-      call validate_xy_onscreen
-      jc .skip4
-      call load_tile_from_map
-      .skip4:
-       
-      call set_pos_to_cursor
-      dec bx
-      call validate_xy_onscreen
-      jc .skip5
-      call convert_xy_to_screen
-      call clear_tile_on_screen
-      .skip5:
-      call set_pos_to_cursor_w_offset
-      dec bx
-      call convert_xy_pos_to_map
-      call recalculate_railroad_at_pos
-      call set_pos_to_cursor
-      dec bx
-      call validate_xy_onscreen
-      jc .skip6
-      call load_tile_from_map
-      .skip6:
+   call set_pos_to_cursor
+   inc ax
+   call validate_xy_onscreen
+   jc .skip1
+   call set_pos_to_cursor
+   call convert_xy_to_screen
+   call clear_tile_on_screen
+   .skip1:
+   call set_pos_to_cursor_w_offset
+   inc ax
+   call convert_xy_pos_to_map
+   call recalculate_railroad_at_pos
+   call set_pos_to_cursor
+   inc ax
+   call validate_xy_onscreen
+   jc .skip2
+   call load_tile_from_map
+   .skip2:
 
-      call set_pos_to_cursor
-      inc bx
-      call validate_xy_onscreen
-      jc .skip7
-      call convert_xy_to_screen
-      call clear_tile_on_screen
-      .skip7:
-      call set_pos_to_cursor_w_offset
-      inc bx
-      call convert_xy_pos_to_map
-      call recalculate_railroad_at_pos
-      call set_pos_to_cursor
-      inc bx
-      call validate_xy_onscreen
-      jc .skip8
-      call load_tile_from_map
-      .skip8:
+   call set_pos_to_cursor_w_offset
+   dec ax
+   call check_open_tracks
+   jc .skip4
+
+   call set_pos_to_cursor
+   dec ax
+   call validate_xy_onscreen
+   jc .skip3
+   call convert_xy_to_screen
+   call clear_tile_on_screen
+   .skip3:
+   call set_pos_to_cursor_w_offset
+   dec ax
+   call convert_xy_pos_to_map
+   call recalculate_railroad_at_pos
+   call set_pos_to_cursor
+   dec ax
+   call validate_xy_onscreen
+   jc .skip4
+   call load_tile_from_map
+   .skip4:
+      
+
+   call set_pos_to_cursor_w_offset
+   dec bx
+   call check_open_tracks
+   jc .skip6
+
+   call set_pos_to_cursor
+   dec bx
+   call validate_xy_onscreen
+   jc .skip5
+   call convert_xy_to_screen
+   call clear_tile_on_screen
+   .skip5:
+   call set_pos_to_cursor_w_offset
+   dec bx
+   call convert_xy_pos_to_map
+   call recalculate_railroad_at_pos
+   call set_pos_to_cursor
+   dec bx
+   call validate_xy_onscreen
+   jc .skip6
+   call load_tile_from_map
+   .skip6:
+
+   call set_pos_to_cursor_w_offset
+   inc bx
+   call check_open_tracks
+   jc .skip8
+
+   call set_pos_to_cursor
+   inc bx
+   call validate_xy_onscreen
+   jc .skip7
+   call convert_xy_to_screen
+   call clear_tile_on_screen
+   .skip7:
+   call set_pos_to_cursor_w_offset
+   inc bx
+   call convert_xy_pos_to_map
+   call recalculate_railroad_at_pos
+   call set_pos_to_cursor
+   inc bx
+   call validate_xy_onscreen
+   jc .skip8
+   call load_tile_from_map
+   .skip8:
 ret
 
 recalculate_railroad_at_pos:
    xor bx, bx
 
-   test byte [si+METADATA], METADATA_TRACKS
-   jz .done
+   ; test byte [si+METADATA], METADATA_TRACKS
+   ; jz .done
 
    test byte [si+METADATA-MAP_WIDTH], METADATA_TRACKS ; up
    jz .next1
@@ -915,15 +969,6 @@ save_tile_to_map:
    mov byte [si+METADATA], ah
 ret
 
-convert_xy_pos_to_map:
-   push ax
-   mov si, _MAP_
-   imul ax, MAP_WIDTH
-   add ax, bx
-   add si, ax
-   pop ax
-ret
-
 init_map:
    mov di, _MAP_
    mov cx, MAP_WIDTH*MAP_HEIGHT
@@ -959,7 +1004,7 @@ init_map:
    mov di, _MAP_
    add di, MAP_WIDTH*31+32
    mov byte [di], TOOL_RAILROAD
-   mov byte [di+METADATA], METADATA_TRACKS
+   mov byte [di+METADATA], METADATA_TRACKS+METADATA_OPEN_TRACKS
    mov word [_TRAIN_X_], 32
    mov word [_TRAIN_Y_], 31
    mov byte [_TRAIN_DIR_MASK_], 0
@@ -970,6 +1015,7 @@ set_metadata_values:
       cmp al, TOOL_RAILROAD
       jnz .set_forest
       mov ah, METADATA_TRACKS
+      add ah, METADATA_OPEN_TRACKS
       jmp .done
    .set_forest:
       cmp al, TOOL_FOREST
@@ -1017,13 +1063,14 @@ load_map:
          jz .done
          mov byte [_BRUSH_], al
          call stamp_tile
+   
          .done:
          add bp, VIEWPORT_GRID_SIZE
          inc si
       loop .h_line_loop
       add si, MAP_WIDTH-VIEWPORT_WIDTH
       pop cx
-      add bp, 320*(VIEWPORT_GRID_SIZE-1)+VIEWPORT_GRID_SIZE*VIEWPORT_TEMP
+      add bp, 320*(VIEWPORT_GRID_SIZE-1)+VIEWPORT_GRID_SIZE*2
    loop .v_loop
 
    pop ax
@@ -1103,13 +1150,6 @@ move_cursor:
    call draw_normal_cursor
 ret
 
-draw_cursor:
-   mov ax, [_CUR_Y_]
-   mov bx, [_CUR_X_]
-   call convert_xy_to_screen
-   call draw_vector
-ret
-
 draw_normal_cursor:
    mov si, CursorVector
    call draw_cursor
@@ -1119,21 +1159,14 @@ draw_erase_cursor:
    mov si, CursorEraseVector
    call draw_cursor
 ret
- 
-convert_xy_to_screen:
-   push ax
-   push bx
-   imul ax, VIEWPORT_GRID_SIZE
-   imul ax, 320
-   imul bx, VIEWPORT_GRID_SIZE
-   add ax, bx
-   add ax, VIEWPORT_POS
-   mov bp, ax   
 
-   pop bx
-   pop ax
+draw_cursor:
+   mov ax, [_CUR_Y_]
+   mov bx, [_CUR_X_]
+   call convert_xy_to_screen
+   call draw_vector
 ret
-
+ 
 verify_change_tool:
    mov dl, [_TOOL_]
    cmp dl, TOOLS
@@ -1202,13 +1235,13 @@ draw_train:
    mov bx, [_TRAIN_X_]
    sub bx, [_VIEWPORT_X_]
    
-   cmp bx, 0
-   jl .do_not_draw_train
-   cmp bx, VIEWPORT_WIDTH
+   cmp bx, 0                     ; Check if train is on screen
+   jl .do_not_draw_train         ; left side
+   cmp bx, VIEWPORT_WIDTH        ; right side
    jge .do_not_draw_train
-   cmp ax, 0
+   cmp ax, 0                     ; top side
    jl .do_not_draw_train
-   cmp ax, VIEWPORT_HEIGHT
+   cmp ax, VIEWPORT_HEIGHT       ; bottom side
    jge .do_not_draw_train
 
    call convert_xy_to_screen
@@ -1332,13 +1365,13 @@ ret
 
 debug:
    ; AL - value to show
-   ; xor dx,dx
-   ; mov bh, 0x0
-   ; mov ah, 0x02
-   ; int 0x10 
-   ; mov ah, 0x0E  
-   ; add al, 0x30
-   ; int 0x10
+   xor dx,dx
+   mov bh, 0x0
+   mov ah, 0x02
+   int 0x10 
+   mov ah, 0x0E  
+   add al, 0x30
+   int 0x10
 ret
 
 ; =========================================== DRAWING LINE ====================
@@ -1347,54 +1380,57 @@ ret
 ; COLOR - CL
 ; Spektre @ https://stackoverflow.com/questions/71390507/line-drawing-algorithm-in-assembly#71391899
 draw_line:
-  pusha       
-    push ax
-    mov si,bx
-    sub si,ax
-    sub ah,ah
-    mov al,dl
-    mov bx,ax
-    mov al,dh
-    sub ax,bx
-    mov di,ax
-    mov ax,320
-    sub dh,dh
-    mul dx
-    pop bx
-    add ax,bx
-    mov bp,ax
-    mov ax,1
-    mov bx,320
-    cmp si,32768
-    jb  .r0
-    neg si
-    neg ax
- .r0:    cmp di,32768
-    jb  .r1
-    neg di
-    neg bx
- .r1:    cmp si,di
-    ja  .r2
-    xchg    ax,bx
-    xchg    si,di
- .r2:    mov [.ct],si
- .l0:    mov byte [es:bp], cl
-    add bp,ax
-    sub dx,di
-    jnc .r3
-    add dx,si
-    add bp,bx
- .r3:    dec word [.ct]
-    jnz .l0
-    popa
-    ret
+   push si 
+   push bp
+
+   push ax
+   mov si,bx
+   sub si,ax
+   sub ah,ah
+   mov al,dl
+   mov bx,ax
+   mov al,dh
+   sub ax,bx
+   mov di,ax
+   mov ax,320
+   sub dh,dh
+   mul dx
+   pop bx
+   add ax,bx
+   mov bp,ax
+   mov ax,1
+   mov bx,320
+   cmp si,32768
+   jb  .r0
+   neg si
+   neg ax
+.r0:    cmp di,32768
+   jb  .r1
+   neg di
+   neg bx
+.r1:    cmp si,di
+   ja  .r2
+   xchg    ax,bx
+   xchg    si,di
+.r2:    mov [.ct],si
+.l0:    mov byte [es:bp], cl
+   add bp,ax
+   sub dx,di
+   jnc .r3
+   add dx,si
+   add bp,bx
+.r3:    dec word [.ct]
+   jnz .l0
+   pop bp
+   pop si
+ret
  .ct:    dw  0
 
 
 play_tune:
    xor ax, ax
    mov al, [_TUNE_POS_]
-   mov si, TitleTune
+   
    add si, ax
    mov dx, [si]
    
@@ -1465,6 +1501,12 @@ CursorEraseVector:
 db COLOR_GRID
 db 4
 db 0, 0, 16, 0, 16, 16, 0, 16, 0, 0
+db 0
+
+DebugVector:
+db COLOR_CURSOR
+db 3
+db 1, 1, 7, 1, 15, 15, 1, 1
 db 0
 
 ToolsList:
@@ -1606,6 +1648,50 @@ dw NOTE_C4
 dw NOTE_PAUSE
 dw NOTE_PAUSE
 dw NOTE_PAUSE
+dw 0x0
+
+MapTune:
+; Verse 1
+dw NOTE_C4   
+dw NOTE_D4   
+dw NOTE_E4   
+dw NOTE_F4   
+dw NOTE_G4   
+dw NOTE_A4   
+dw NOTE_B4   
+dw NOTE_C5   
+dw NOTE_PAUSE
+; Chorus (Dramatic Resolve)
+dw NOTE_D4   
+dw NOTE_E4   
+dw NOTE_F5  
+dw NOTE_PAUSE
+; Verse 2 (Accomplishment)
+dw NOTE_G4   
+dw NOTE_A4   
+dw NOTE_PAUSE
+dw NOTE_C5  
+dw NOTE_D5  
+dw NOTE_PAUSE
+
+; Scale Ascension (Climactic Point)
+dw NOTE_E5   
+dw NOTE_F5   
+dw NOTE_G4   
+dw NOTE_PAUSE
+
+; Final crescendo (Resolution)
+dw NOTE_A4  
+dw NOTE_B4  
+dw NOTE_C5  
+dw NOTE_PAUSE
+
+; Ending (Climactic Conclusion)
+dw NOTE_D4   
+dw NOTE_PAUSE
+dw NOTE_PAUSE
+dw NOTE_PAUSE
+
 dw 0x0
 
 Palette:
