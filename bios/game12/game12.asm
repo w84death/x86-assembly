@@ -123,18 +123,6 @@ COLOR_TOOLS_SELECTOR equ 0x0202
 COLOR_MAP equ 0x0505
 COLOR_WHITE equ 0x01
 COLOR_BLACK equ 0x00
-
-NOTE_C4     equ 1193182/261
-NOTE_D4     equ 1193182/294
-NOTE_E4     equ 1193182/330
-NOTE_F4     equ 1193182/349
-NOTE_G4     equ 1193182/392
-NOTE_A4     equ 1193182/440
-NOTE_B4     equ 1193182/494
-NOTE_C5     equ 1193182/523
-NOTE_D5     equ 1193182/587
-NOTE_E5     equ 1193182/659
-NOTE_F5     equ 1193182/698
 NOTE_PAUSE  equ 1
 
 ; =========================================== INITIALIZATION ===================
@@ -143,14 +131,14 @@ start:
    int 0x10            ; Video BIOS interrupt
 
    mov ax, 0xA000       ; VGA memory segment
-   mov es, ax
-   xor di, di
+   mov es, ax           ; Set ES to VGA memory segment
+   xor di, di           ; Set DI to 0
 
-   mov ax, 0x9000
-   mov ss, ax
-   mov sp, 0xFFFF
+   mov ax, 0x9000       
+   mov ss, ax           ; Set stack segment to 0x9000
+   mov sp, 0xFFFF       ; Set stack pointer to 0xFFFF
 
-.reset:
+reset:
    mov byte [_GAME_TICK_], 0x0
    mov word [_RNG_], 0x42
    mov byte [_VECTOR_SCALE_], 0x0
@@ -162,9 +150,11 @@ start:
    mov word [_CUR_TEST_X_], VIEWPORT_WIDTH/2
    mov word [_CUR_TEST_Y_], VIEWPORT_HEIGHT/2
    mov byte [_TUNE_POS_], 0x0
-   call init_map
-   mov byte [_GAME_STATE_], STATE_TITLE_SCREEN
+
    call setup_palette
+   call init_map
+
+   mov byte [_GAME_STATE_], STATE_TITLE_SCREEN
    call prepare_intro
 
 ; =========================================== GAME LOOP ========================
@@ -228,7 +218,7 @@ check_keyboard:
       jz .go_game_enter
       jmp .done
    .process_m:
-      mov dx, NOTE_C5
+      mov dx, 1750
       call play_note
       cmp byte [_GAME_STATE_], STATE_MAP_SCREEN
       jz .go_game  
@@ -337,7 +327,7 @@ check_keyboard:
       inc word [_CUR_TEST_X_]
       jmp .done_processed
    .done_processed:
-      mov dx, NOTE_F4
+      mov dx, 1500
       call play_note
       call move_cursor
       call draw_train
@@ -1418,19 +1408,23 @@ ret
 
 play_tune:
    xor ax, ax
+   xor bx,bx
    mov al, [_TUNE_POS_]
    
    add si, ax
-   mov dx, [si]
+   mov bl, [si]
    
-   cmp dx, 0
+   cmp bl, 0xFF
    jz .restart_tune
-   cmp dx, NOTE_PAUSE
+   cmp bl, 0x0
    jz .pause_note
 
+   mov di, Notes
+   add di, bx
+   mov dx, [di]
    call play_note
    .pause_note:
-   add byte [_TUNE_POS_], 2
+   inc byte [_TUNE_POS_]
 ret
    .restart_tune:
    mov byte [_TUNE_POS_], 0
@@ -1456,7 +1450,7 @@ ret
 
 ; =========================================== DATA =============================
 HeaderText:                                 ;
-db '-------- KKJ <<< GAME 12 >>> P1X -------', 0x0
+db '  PLAYER 1    SCORE 0000    $ 0000', 0x0
 WelcomeText:
 db 'KRZYSZTOF KRYSTIAN JANKOWSKI PRESENTS', 0x0
 TitleText:
@@ -1596,7 +1590,7 @@ db 0
 EvergreenVector:
 db COLOR_EVERGREEN
 db 18
-db 6,  15, 5, 13,1,15,4,11,2,12,5, 8, 3, 8,  6,   5,  4, 5,  7,  1, 9, 5,  7,  5,   10,  8,  8,  8, 11, 11, 8, 11, 12, 15, 13, 13, 6, 15
+db 6,  15, 5, 13,1,15,4,11,2,12,5, 8, 3, 8,  6, 5,  4, 5,  7,  1, 9, 5,  7,  5,   10,  8,  8,  8, 11, 11, 8, 11, 12, 15, 13, 13, 6, 15
 db 0
 
 TrainVector:
@@ -1605,83 +1599,25 @@ db 4
 db 4, 4, 12, 4, 12, 12, 4, 12, 4, 4
 db 0
 
+Notes:
+dw 1          ; PAUSE
+dw 1193182/261 ; C4
+dw 1193182/294 ; D4
+dw 1193182/330 ; E4
+dw 1193182/349 ; F4
+dw 1193182/392 ; G4
+dw 1193182/440 ; A4
+dw 1193182/494 ; B4
+dw 1193182/523 ; C5
+dw 1193182/587 ; D5
+dw 1193182/659 ; E5
+dw 1193182/698 ; F5
+
 TitleTune:
-dw NOTE_C4
-dw NOTE_E4
-dw NOTE_G4
-dw NOTE_C5
-dw NOTE_G4
-dw NOTE_E4
-dw NOTE_C4
-dw NOTE_PAUSE
-dw NOTE_PAUSE
-dw NOTE_PAUSE
-dw NOTE_E4
-dw NOTE_C4
-dw NOTE_PAUSE
-dw NOTE_PAUSE
-dw NOTE_PAUSE
-dw NOTE_G4
-dw NOTE_C5
-dw NOTE_PAUSE
-dw NOTE_E4
-dw NOTE_PAUSE
-dw NOTE_D4
-dw NOTE_F4
-dw NOTE_A4
-dw NOTE_PAUSE
-dw NOTE_PAUSE
-dw NOTE_PAUSE
-dw NOTE_E4
-dw NOTE_C4
-dw NOTE_PAUSE
-dw NOTE_PAUSE
-dw NOTE_PAUSE
-dw 0x0
+db 2,6,10,16,10,6,2,0,0,0,6,2,0,0,0,10,16,0,6,0,4,8,12,0,0,0,6,2,0,0,0,0xFF
 
 MapTune:
-; Verse 1
-dw NOTE_C4   
-dw NOTE_D4   
-dw NOTE_E4   
-dw NOTE_F4   
-dw NOTE_G4   
-dw NOTE_A4   
-dw NOTE_B4   
-dw NOTE_C5   
-dw NOTE_PAUSE
-; Chorus (Dramatic Resolve)
-dw NOTE_D4   
-dw NOTE_E4   
-dw NOTE_F5  
-dw NOTE_PAUSE
-; Verse 2 (Accomplishment)
-dw NOTE_G4   
-dw NOTE_A4   
-dw NOTE_PAUSE
-dw NOTE_C5  
-dw NOTE_D5  
-dw NOTE_PAUSE
-
-; Scale Ascension (Climactic Point)
-dw NOTE_E5   
-dw NOTE_F5   
-dw NOTE_G4   
-dw NOTE_PAUSE
-
-; Final crescendo (Resolution)
-dw NOTE_A4  
-dw NOTE_B4  
-dw NOTE_C5  
-dw NOTE_PAUSE
-
-; Ending (Climactic Conclusion)
-dw NOTE_D4   
-dw NOTE_PAUSE
-dw NOTE_PAUSE
-dw NOTE_PAUSE
-
-dw 0x0
+db 2,4,6,8,10,12,14,16,0,4,6,22,0,10,12,0,16,18,0,20,22,10,0,12,14,16,0,4,0,0,0,0xFF
 
 Palette:
 ; http://androidarts.com/palette/16pal.htm
@@ -1705,8 +1641,7 @@ db 44,  55,  59    ; 15 Sky blue
 
 ; =========================================== THE END ==========================
 ; Thanks for reading the source code!
-; Visit http://smol.p1x.in for more.
+; Visit http://smol.p1x.in/assembly/ for more.
 
 Logo:
 db "P1X"    ; Use HEX viewer to see P1X at the end of binary
-
