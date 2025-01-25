@@ -272,11 +272,7 @@ check_keyboard:
    .go_game_enter:
       jmp .done
    .go_game_space:
-      
-      
-
-
-
+   
       ; check if empty
       call set_pos_to_cursor_w_offset
       call convert_xy_pos_to_map
@@ -335,8 +331,8 @@ check_keyboard:
       mov si, _MAP_
       call set_pos_to_cursor_w_offset
       call convert_xy_pos_to_map
+
       mov al, [si+METADATA]
-      and al, METADATA_OPEN_TRACKS
       call debug
    .done:
 
@@ -796,21 +792,8 @@ stamp_tile:
    popa
 ret
 
-check_open_tracks:
-   call convert_xy_pos_to_map
-   test byte [si+METADATA], METADATA_OPEN_TRACKS
-   jz .no_track
-      clc
-ret
-   .no_track:
-      stc
-ret
-
 recalculate_neighbors_railroads:
-   call set_pos_to_cursor_w_offset
-   inc ax
-   call check_open_tracks
-   jc .skip2
+
 
    call set_pos_to_cursor
    inc ax
@@ -829,12 +812,8 @@ recalculate_neighbors_railroads:
    call validate_xy_onscreen
    jc .skip2
    call load_tile_from_map
+   
    .skip2:
-
-   call set_pos_to_cursor_w_offset
-   dec ax
-   call check_open_tracks
-   jc .skip4
 
    call set_pos_to_cursor
    dec ax
@@ -854,12 +833,6 @@ recalculate_neighbors_railroads:
    call load_tile_from_map
    .skip4:
       
-
-   call set_pos_to_cursor_w_offset
-   dec bx
-   call check_open_tracks
-   jc .skip6
-
    call set_pos_to_cursor
    dec bx
    call validate_xy_onscreen
@@ -877,11 +850,6 @@ recalculate_neighbors_railroads:
    jc .skip6
    call load_tile_from_map
    .skip6:
-
-   call set_pos_to_cursor_w_offset
-   inc bx
-   call check_open_tracks
-   jc .skip8
 
    call set_pos_to_cursor
    inc bx
@@ -905,8 +873,8 @@ ret
 recalculate_railroad_at_pos:
    xor bx, bx
 
-   ; test byte [si+METADATA], METADATA_TRACKS
-   ; jz .done
+   test byte [si+METADATA], METADATA_TRACKS
+   jz .done
 
    test byte [si+METADATA-MAP_WIDTH], METADATA_TRACKS ; up
    jz .next1
@@ -936,8 +904,8 @@ recalculate_railroad_at_pos:
    .save_to_map:
    add bl, TOOLS  ; move over tools list
    mov byte [si], bl
+
    .done:
-   
 ret
 
 save_tile_to_map:
@@ -983,7 +951,7 @@ init_map:
    mov di, _MAP_
    add di, MAP_WIDTH*31+32
    mov byte [di], TOOL_RAILROAD
-   mov byte [di+METADATA], METADATA_TRACKS+METADATA_OPEN_TRACKS
+   mov byte [di+METADATA], METADATA_TRACKS
    mov word [_TRAIN_X_], 32
    mov word [_TRAIN_Y_], 31
    mov byte [_TRAIN_DIR_MASK_], 0
@@ -994,7 +962,6 @@ set_metadata_values:
       cmp al, TOOL_RAILROAD
       jnz .set_forest
       mov ah, METADATA_TRACKS
-      add ah, METADATA_OPEN_TRACKS
       jmp .done
    .set_forest:
       cmp al, TOOL_FOREST
