@@ -793,13 +793,12 @@ stamp_tile:
 ret
 
 recalculate_neighbors_railroads:
-
-
    call set_pos_to_cursor
    inc ax
    call validate_xy_onscreen
    jc .skip1
    call set_pos_to_cursor
+   inc ax
    call convert_xy_to_screen
    call clear_tile_on_screen
    .skip1:
