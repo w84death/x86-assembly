@@ -1408,26 +1408,26 @@ ret
 
 play_tune:
    xor ax, ax
-   xor bx,bx
-   mov al, [_TUNE_POS_]
+   xor bx, bx
+   mov al, [_TUNE_POS_] ; Get current position
+   add si, ax      ; Move to the position
+   mov bl, [si]      ; Get the note
    
-   add si, ax
-   mov bl, [si]
-   
-   cmp bl, 0xFF
+   cmp bl, 0xFF   ; Check if it's the end of the tune
    jz .restart_tune
-   cmp bl, 0x0
+   cmp bl, 0x0    ; Check if it's a pause
    jz .pause_note
 
-   mov di, Notes
-   add di, bx
-   mov dx, [di]
+   mov di, Notes  ; Move to the notes table
+   add di, bx    ; Move to the note
+   mov dx, [di]  ; Get the frequency
    call play_note
+
    .pause_note:
-   inc byte [_TUNE_POS_]
+   inc byte [_TUNE_POS_] ; Move to the next note
 ret
    .restart_tune:
-   mov byte [_TUNE_POS_], 0
+   mov byte [_TUNE_POS_], 0 ; Move to first note (restart)
 ret
 
 play_note:
@@ -1436,15 +1436,15 @@ play_note:
    out 0x42, al          ; Low byte of frequency
    mov al, dh            ; High byte of frequency
    out 0x42, al
-   in   al, 0x61         ; Read current speaker port
-   or   al, 3            ; Set bits 0 and 1 to enable channel 2 output
-   out  0x61, al
+   in  al, 0x61         ; Read current speaker port
+   or  al, 0x3            ; Set bits 0 and 1 to enable channel 2 output
+   out 0x61, al
 ret
 
 stop_note:
-   in   al, 0x61
-   and  al, 0xFC         ; Clear bits 0 and 1
-   out  0x61, al
+   in  al, 0x61
+   and al, 0xFC         ; Clear bits 0 and 1
+   out 0x61, al
 ret
 
 
