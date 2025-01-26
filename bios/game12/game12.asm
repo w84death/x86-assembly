@@ -78,11 +78,12 @@ TOOL_HOUSE equ 0x1
 TOOL_FIELD equ 0x2
 TOOL_CITY equ 0x3
 TOOL_STATION equ 0x4
-TOOL_FOREST equ 0x5
-TOOL_FOREST2 equ 0x6
-TOOL_MOUNTAINS equ 0x7
-TOOL_TRAIN equ 0x8
-TOOLS equ 0x8
+TOOL_FACTORY equ 0x5
+TOOL_FOREST equ 0x6
+TOOL_FOREST2 equ 0x7
+TOOL_MOUNTAINS equ 0x8
+TOOL_TRAIN equ 0x9
+TOOLS equ 0x9
 TOOL_POS equ 320*180+16
 
 METADATA_EMPTY equ 0x0
@@ -1531,7 +1532,7 @@ db 1, 1, 7, 1, 15, 15, 1, 1
 db 0
 
 ToolsList:
-dw RailroadTracksHRailVector, HouseVector, FieldVector, CityVector, StationVector, ForestVector, EvergreenVector, MountainVector
+dw RailroadTracksHRailVector, HouseVector, FieldVector, CityVector, StationVector, FactoryVector, ForestVector, EvergreenVector, MountainVector
 RailroadsList:
 dw RailroadTracksHRailVector,RailroadTracksHRailVector,RailroadTracksVRailVector,RailroadTracksTurn3Vector,RailroadTracksHRailVector,RailroadTracksHRailVector,RailroadTracksTurn6Vector,RailroadTracksVRailVector,RailroadTracksVRailVector,RailroadTracksTurn9Vector,RailroadTracksVRailVector,RailroadTracksVRailVector,RailroadTracksTurn12Vector,0,0,RailroadTracksCrossVector
 
@@ -1625,17 +1626,19 @@ db 0
 CityVector:
 db COLOR_15
 db 3
-db 3, 14, 3, 2, 13, 2, 13, 14
+db 2, 15, 2, 6, 5, 6, 5, 15
+db 3
+db 5, 15, 5, 2, 10, 2, 10, 15
+db 3
+db 10, 15, 10, 5, 15, 5, 15, 16
+db 0
+
+FactoryVector:
+db COLOR_6
+db 11
+db 2, 15, 2, 1, 4, 1, 4, 9, 7, 7, 7, 9, 10, 7, 10, 9, 13, 7, 13, 9, 15, 15, 2, 15 
 db 1
-db 4, 4, 12, 4
-db 1
-db 4, 6, 12, 6
-db 1
-db 4, 8, 12, 8
-db 1
-db 4, 10, 12, 10
-db 1
-db 4, 12, 12, 12
+db 4, 11, 14, 11
 db 0
 
 StationVector:
