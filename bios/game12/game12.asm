@@ -72,15 +72,16 @@ KB_Q equ 0x10
 KB_W equ 0x11
 KB_M equ 0x32
 
-TOOLS equ 0x6
 TOOL_EMPTY equ 0x40
 TOOL_RAILROAD equ 0x0
 TOOL_HOUSE equ 0x1
-TOOL_STATION equ 0x2
-TOOL_FOREST equ 0x3
-TOOL_FOREST2 equ 0x4
-TOOL_MOUNTAINS equ 0x5
-TOOL_TRAIN equ 0x6
+TOOL_FIELD equ 0x2
+TOOL_STATION equ 0x3
+TOOL_FOREST equ 0x4
+TOOL_FOREST2 equ 0x5
+TOOL_MOUNTAINS equ 0x6
+TOOL_TRAIN equ 0x7
+TOOLS equ 0x7
 TOOL_POS equ 320*180+16
 
 METADATA_EMPTY equ 0x0
@@ -123,6 +124,24 @@ COLOR_TOOLS_SELECTOR equ 0x0202
 COLOR_MAP equ 0x0505
 COLOR_WHITE equ 0x01
 COLOR_BLACK equ 0x00
+
+COLOR_0 equ 0x0
+COLOR_1 equ 0x1
+COLOR_2 equ 0x2
+COLOR_3 equ 0x3
+COLOR_4 equ 0x4
+COLOR_5 equ 0x5
+COLOR_6 equ 0x6
+COLOR_7 equ 0x7
+COLOR_8 equ 0x8
+COLOR_9 equ 0x9
+COLOR_10 equ 0xA
+COLOR_11 equ 0xB
+COLOR_12 equ 0xC
+COLOR_13 equ 0xD
+COLOR_14 equ 0xE
+COLOR_15 equ 0xF
+
 NOTE_PAUSE  equ 1
 
 ; =========================================== INITIALIZATION ===================
@@ -323,7 +342,7 @@ check_keyboard:
       inc word [_CUR_TEST_X_]
       jmp .done_processed
    .done_processed:
-      mov dx, 1500
+      mov dx, 5500
       call play_note
       call move_cursor
       call draw_train
@@ -500,10 +519,7 @@ prepare_game:
    call draw_normal_cursor
    call draw_train
 
-   mov si, HeaderText
-   xor dx, dx     ; At 0/0 position
-   mov bl, COLOR_TEXT
-   call draw_text
+   call draw_header
 ret
 
 prepare_map:
@@ -598,6 +614,26 @@ clear_screen:
    mov ax, COLOR_BACKGROUND
    mov ah, al
    rep stosw
+ret
+
+draw_header:
+   ; Player 1
+   mov si, Player1Text
+   mov dx, 0x0002
+   mov bl, COLOR_TEXT
+   call draw_text
+   ; Score
+   
+   mov si, ScoreText
+   mov dx, 0x000C
+   mov bl, COLOR_2
+   call draw_text
+
+   ; Cash
+   mov si, CashText
+   mov dx, 0x001A
+   mov bl, COLOR_11
+   call draw_text
 ret
 
 draw_cursor_on_map:
@@ -895,10 +931,10 @@ recalculate_railroad_at_pos:
       add bl, 1
    .next4:
 
-   cmp bl, 12
-   jle .skip_clip
-      mov bl, 0
-   .skip_clip:
+   cmp bl, 0xC
+   jle .skip_crossing
+      mov bl, 0xF ; Crossing
+   .skip_crossing:
 
    .save_to_map:
    add bl, TOOLS  ; move over tools list
@@ -1207,41 +1243,72 @@ move_train:
    add si, ax
    mov al, [si]
    sub al, TOOLS  ; move over tools list
-   sub al, [_TRAIN_DIR_MASK_]
+   mov bl, [_TRAIN_DIR_MASK_] ; remove the direction the train came from
+   
+  
+   cmp al, 0xf    ; Check if it's a crossing
+   jnz .not_crossing
+
+   cmp bl, 8
+   jz .move_down
+   cmp bl, 4
+   jz .move_left
+   cmp bl, 2
+   jz .move_up
+   cmp bl, 1
+   jz .move_right
+   jmp .done
+
+   jmp .train_moved
+   .not_crossing:
+   sub al, bl
 
    .test_up:
    test al, 8
    jz .test_right
    test byte [si+METADATA-MAP_WIDTH], METADATA_TRACKS
    jz .test_right
-   dec word [_TRAIN_Y_]
-   mov bl, 2
-   jmp .train_moved
+   jmp .move_up
    .test_right:
    test al, 4
    jz .test_down
    test byte [si+METADATA+1], METADATA_TRACKS
    jz .test_down
-   inc word [_TRAIN_X_]
-   mov bl, 1
-   jmp .train_moved
+   jmp .move_right
    .test_down:
    test al, 2
    jz .test_left
    test byte [si+METADATA+MAP_WIDTH], METADATA_TRACKS
    jz .test_left
-   inc word [_TRAIN_Y_]
-   mov bl, 8
-   jmp .train_moved
+   jmp .move_down
    .test_left:
    test al, 1
    jz .no_move
    test byte [si+METADATA-1], METADATA_TRACKS
    jz .no_move
+   jmp .move_left
+  
+
+  .move_up:
+   dec word [_TRAIN_Y_]
+   mov bl, 2
+   jmp .train_moved
+
+   .move_right:
+   inc word [_TRAIN_X_]
+   mov bl, 1
+   jmp .train_moved
+
+   .move_down:
+   inc word [_TRAIN_Y_]
+   mov bl, 8
+   jmp .train_moved
+
+   .move_left:
    dec word [_TRAIN_X_]
    mov bl, 4
    jmp .train_moved
-  
+
    .no_move:
    mov bl, al
    .train_moved:
@@ -1415,8 +1482,12 @@ ret
 
 
 ; =========================================== DATA =============================
-HeaderText:                                 ;
-db '  PLAYER 1    SCORE 0000    $ 0000', 0x0
+Player1Text:                                 ;
+db 'PLAYER 1', 0x0
+ScoreText:
+db 'SCORE: 0000', 0x0
+CashText:
+db 'CASH: $10000', 0x0
 WelcomeText:
 db 'KRZYSZTOF KRYSTIAN JANKOWSKI PRESENTS', 0x0
 TitleText:
@@ -1459,9 +1530,9 @@ db 1, 1, 7, 1, 15, 15, 1, 1
 db 0
 
 ToolsList:
-dw RailroadTracksHRailVector, HouseVector, StationVector, ForestVector, EvergreenVector, MountainVector
+dw RailroadTracksHRailVector, HouseVector, FieldVector, StationVector, ForestVector, EvergreenVector, MountainVector
 RailroadsList:
-dw RailroadTracksHRailVector,RailroadTracksHRailVector,RailroadTracksVRailVector,RailroadTracksTurn3Vector,RailroadTracksHRailVector,RailroadTracksHRailVector,RailroadTracksTurn6Vector,RailroadTracksVRailVector,RailroadTracksVRailVector,RailroadTracksTurn9Vector,RailroadTracksVRailVector,RailroadTracksVRailVector,RailroadTracksTurn12Vector
+dw RailroadTracksHRailVector,RailroadTracksHRailVector,RailroadTracksVRailVector,RailroadTracksTurn3Vector,RailroadTracksHRailVector,RailroadTracksHRailVector,RailroadTracksTurn6Vector,RailroadTracksVRailVector,RailroadTracksVRailVector,RailroadTracksTurn9Vector,RailroadTracksVRailVector,RailroadTracksVRailVector,RailroadTracksTurn12Vector,0,0,RailroadTracksCrossVector
 
 RailroadTracksHRailVector:
 db COLOR_TRACKS
@@ -1509,6 +1580,33 @@ db 1
 db 6, 1, 16, 10
 db 1
 db 10, 1, 16, 6
+db 0
+
+
+RailroadTracksCrossVector:
+db COLOR_TRACKS
+db 1
+db 1, 6, 16, 6
+db 1
+db 1, 10, 16, 10
+db 1
+db 6, 1, 6, 16
+db 1
+db 10, 1, 10, 16
+db 0
+
+FieldVector:
+db COLOR_5
+db 1
+db 1, 2, 15, 2
+db 1
+db 1, 5, 15, 5
+db 1
+db 1, 8, 15, 8
+db 1
+db 1, 11, 15, 11
+db 1
+db 1, 14, 15, 14
 db 0
 
 HouseVector:
