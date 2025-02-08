@@ -3,10 +3,10 @@
 ; Description: Brushes data
 ; Size: 72 bytes
 ;
-; Size category: 4096 bytes / 4KB
+; Size category: 5KB
 ; Bootloader: 512 bytes
-; Author: Krzysztof Krystian Jankowski
-; Web: smol.p1x.in/assembly/forgotten-isles/
+; Design & Code: Krzysztof Krystian Jankowski
+; Web: smol.p1x.in/assembly/#forgotten-isles
 ; License: MIT
 
 
