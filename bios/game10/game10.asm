@@ -1,14 +1,25 @@
 ; GAME10 - Mysteries of the Forgotten Isles
-; game10.asm
+; ----------------------------------------------------------------------------- 
+;
+; - boot.asm      : Bootloader
+; - game10.asm    ; Main file (this)
+; - brushes.asm   ; Sprites data
+; - levels.asm    ; Levels data
+; - palettes.asm  ; Color palettes sets
+; - tiles.asm     ; Tiles data
+; - tunes.asm     ; Music data
+; - vectors.asm   ; Vector graphics data
 ;
 ; Description:
-; Logic 2D game in VGA graphics, w PC Speaker sound.
+; Logic 2D game in VGA graphics, w PC Speaker sound. Runs from a floppy.
 ;
-; Size category: 4096 bytes / 4KB
+; Size category: 5KB
 ; Bootloader: 512 bytes
-; Author: Krzysztof Krystian Jankowski
-; Web: smol.p1x.in/assembly/forgotten-isles/
+; Design & Code: Krzysztof Krystian Jankowski
+; Web: smol.p1x.in/assembly/#forgotten-isles
 ; License: MIT
+; ----------------------------------------------------------------------------- 
+
 
 org 0x100
 use16

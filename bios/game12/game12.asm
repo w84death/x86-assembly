@@ -187,7 +187,7 @@ main_loop:
 check_keyboard:
    mov ah, 01h         ; BIOS keyboard status function
    int 16h             ; Call BIOS interrupt
-   jz .done            ; Jump if Zero Flag is set (no key pressed)
+   jz .done
 
    mov ah, 00h         ; BIOS keyboard read function
    int 16h             ; Call BIOS interrupt
@@ -1485,7 +1485,7 @@ ret
 
 ; =========================================== DATA =============================
 Player1Text:                                 ;
-db 'PLAYER 1', 0x0
+db '1P', 0x0
 ScoreText:
 db 'SCORE: 0000', 0x0
 CashText:
