@@ -1123,17 +1123,15 @@ spawn_entities:
   shl ax, 1
   add si, ax
   mov ax, [si]
-  add ax, 128
+  add ax, 128           ; Move to the first entity in level data
   mov si, ax
   mov di, _ENTITIES_
   mov byte [_MAX_ENTITIES_], 0x0
 
   .next_entity:
-    mov bl, [si]       ; Get first word (ID)
+    mov bl, [si]       ; Get first byte (ID)
     cmp bl, 0x0        ; Check for last entity marker
     jz .done
-
-    
 
     dec bl             ; Conv level id to game id
 
