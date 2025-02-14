@@ -747,17 +747,6 @@ draw_text:
    .done:
 ret
 
-convert_cur_pos_to_screen:
-   mov ax, [_CUR_Y_]
-   shl ax, 4
-   imul ax, 320
-   mov bx, [_CUR_X_]
-   shl bx, 4
-   add ax, bx
-   add ax, VIEWPORT_POS
-   mov bp, ax
-ret
-
 set_pos_to_cursor_w_offset:
    mov ax, [_CUR_Y_]
    add ax, [_VIEWPORT_Y_]
@@ -765,32 +754,43 @@ set_pos_to_cursor_w_offset:
    add bx, [_VIEWPORT_X_]
 ret
 
+; out: AX Y, BX X
 set_pos_to_cursor:
    mov ax, [_CUR_Y_]
    mov bx, [_CUR_X_]
 ret
 
+; in: AX Y, BX X
+; out: SI pointer to map tile
 convert_xy_pos_to_map:
    push ax
    mov si, _MAP_
-   imul ax, MAP_WIDTH
+   shl ax, 6      ; * VIEWPORT_GRID_SIZE 64
    add ax, bx
    add si, ax
    pop ax
 ret
 
+; in AX Y, BX X
+; out BP screen position
 convert_xy_to_screen:
    push ax
    push bx
-   ; imul ax, VIEWPORT_GRID_SIZE
+   push cx
+
+   ; for VIEWPORT_GRID_SIZE 64
    shl ax, 4
-   imul ax, 320
-   ; imul bx, VIEWPORT_GRID_SIZE
+   mov cx, ax
+   shl ax, 8   ; * 256
+   shl cx, 6   ; * 64
+   add ax, cx
+   ; for VIEWPORT_GRID_SIZE 64
    shl bx, 4
    add ax, bx
    add ax, VIEWPORT_POS
    mov bp, ax   
 
+   pop cx
    pop bx
    pop ax
 ret
