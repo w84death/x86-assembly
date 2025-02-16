@@ -155,10 +155,10 @@ check_keyboard:
    cmp ah, KB_ENTER
    je .process_enter
 
-   .process_esc:
-      mov al, [_GAME_STATE_]
-      
-      cmp byte al, STATE_TITLE_SCREEN
+   jmp .done
+
+   .process_esc:      
+      cmp byte [_GAME_STATE_], STATE_TITLE_SCREEN
       je .set_quit
       mov byte [_GAME_STATE_], STATE_TITLE_SCREEN_INIT
       jmp .done
@@ -291,7 +291,7 @@ init_test_state:
    call clear_screen
 
    mov si, TestText
-   mov dh, 0x0A          ; Y position
+   mov dh, 0x0A          ; Y position  
    mov dl, 0x10          ; X position
    mov bl, COLOR_WHITE
    call draw_text
