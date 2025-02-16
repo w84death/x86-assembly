@@ -143,10 +143,15 @@ cmp byte [_GAME_STATE_], STATE_QUIT
 je exit
 
 cmp byte [_GAME_STATE_], STATE_INIT_ENGINE
-call init_engine
+je init_engine
 
 cmp byte [_GAME_STATE_], STATE_TITLE_SCREEN + STATE_INIT
-call init_title_screen
+je init_title_screen
+
+cmp byte [_GAME_STATE_], STATE_TITLE_SCREEN
+je live_title_screen
+
+game_state_satisfied:
 
 ; =========================================== KEYBOARD INPUT ===================
 
@@ -229,21 +234,22 @@ init_engine:
    mov word [_CUR_Y_], VIEWPORT_HEIGHT/2
    
    mov byte [_GAME_STATE_], STATE_TITLE_SCREEN + STATE_INIT
-ret
+
+jmp game_state_satisfied
 
 init_title_screen:
-   mov al, COLOR_DARK_BLUE
-   call clear_screen
-
-   mov di, 320*88
    mov al, COLOR_BLACK
+   call clear_screen
+   
+   mov di, 320*48
+   mov al, COLOR_DARK_BLUE
    mov ah, al
-   mov dl, 0xC                ; Number of bars to draw
+   mov dl, 0xD                ; Number of bars to draw
    .draw_gradient:
       mov cx, 320*4           ; Number of pixels high for each bar
       rep stosw               ; Write to the VGA memory
       
-      cmp dl, 0x7             ; Check if we are in the middle
+      cmp dl, 0x8             ; Check if we are in the middle
       jl .down                ; If not, decrease 
       inc al                  ; Increase color in right pixel
       jmp .up
@@ -257,26 +263,34 @@ init_title_screen:
 
 
    mov si, WelcomeText
-   mov dh, 0xB          ; Y position
-   mov dl, 0x2          ; X position
+   mov dh, 0x2          ; Y position
+   mov dl, 0x3          ; X position
    mov bl, COLOR_LIGHT_BLUE
    call draw_text
 
    mov si, TitleText
-   mov dh, 0x11      ; Y position
-   mov dl, 0x8       ; X position
-   mov bl, COLOR_ORANGE
+   mov dh, 0xC      ; Y position
+   mov dl, 0x7       ; X position
+   mov bl, COLOR_WHITE
    call draw_text
 
+   mov byte [_GAME_STATE_], STATE_TITLE_SCREEN
+
+jmp game_state_satisfied
+
+
+live_title_screen:
    mov si, PressEnterText
-   mov dh, 0x17      ; Y position
-   mov dl, 0x6       ; X position
+   mov dh, 0x16      ; Y position
+   mov dl, 0x5       ; X position
    mov bl, COLOR_LIGHT_BLUE
+   test word [_GAME_TICK_], 0x4
+   je .blink
+      mov bl, COLOR_BLACK
+   .blink:
    call draw_text
-
-   sub byte [_GAME_STATE_], STATE_INIT
-ret
-
+   
+jmp game_state_satisfied
 
 
 ; =========================================== PROCEDURES =======================
@@ -392,11 +406,11 @@ db 'SCORE: 0000', 0x0
 CashText:
 db 'CASH: $10000', 0x0
 WelcomeText:
-db 'KRZYSZTOF KRYSTIAN JANKOWSKI PRESENTS', 0x0
+db 'KKJ^P1X PRESENTS A 2025 PRODUCTION', 0x0
 TitleText:
-db '12-TH ASSEMBLY PRODUCTION', 0x0
+db '12-TH ASSEMBLY GAME ENGINE', 0x0
 PressEnterText:
-db 'Press ENTER to start', 0x
+db 'Press [ENTER] to start engine!', 0x
 QuitText:
 db 'Good bye!',0x0D, 0x0A,'Visit http://smol.p1x.in/assembly/ for more games :)', 0x0A, 0x0
 
