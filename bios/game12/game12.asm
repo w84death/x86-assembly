@@ -33,17 +33,12 @@ _MAP_METADATA_    equ 0x4000  ; Map metadata 64x64
 
 ; =========================================== GAME STATES ======================
 
-STATE_INIT_ENGINE    equ 0
-STATE_TITLE_SCREEN   equ 1
-STATE_MENU           equ 2
-STATE_GAME           equ 3
-STATE_MAP_SCREEN     equ 4
-STATE_STATS          equ 5
-STATE_GAME_OVER      equ 6
-STATE_CREDITS        equ 7
-
-STATE_INIT           equ 128
-STATE_QUIT           equ 255
+STATE_INIT_ENGINE       equ 0
+STATE_QUIT              equ 1
+STATE_TITLE_SCREEN_INIT equ 2
+STATE_TITLE_SCREEN      equ 3
+STATE_TEST_INIT         equ 4
+STATE_TEST              equ 5
 
 ; =========================================== KEYBOARD CODES ===================
 
@@ -139,17 +134,9 @@ main_loop:
 
 ; =========================================== GAME STATES ======================
 
-cmp byte [_GAME_STATE_], STATE_QUIT
-je exit
-
-cmp byte [_GAME_STATE_], STATE_INIT_ENGINE
-je init_engine
-
-cmp byte [_GAME_STATE_], STATE_TITLE_SCREEN + STATE_INIT
-je init_title_screen
-
-cmp byte [_GAME_STATE_], STATE_TITLE_SCREEN
-je live_title_screen
+   movzx bx, byte [_GAME_STATE_]  ; Load state into BX
+   shl bx, 1                     ; Multiply by 2 (word size)
+   jmp word [state_jump_table + bx]   ; Jump to handle
 
 game_state_satisfied:
 
@@ -169,11 +156,18 @@ check_keyboard:
    je .process_enter
 
    .process_esc:
+      mov al, [_GAME_STATE_]
+      
+      cmp byte al, STATE_TITLE_SCREEN
+      je .set_quit
+      mov byte [_GAME_STATE_], STATE_TITLE_SCREEN_INIT
+      jmp .done
+      .set_quit:      
       mov byte [_GAME_STATE_], STATE_QUIT
       jmp .done
    
    .process_enter:
-      ; mov byte [_GAME_STATE_], STATE_QUIT
+      mov byte [_GAME_STATE_], STATE_TEST_INIT
       jmp .done
 
    .done:
@@ -233,7 +227,7 @@ init_engine:
    mov word [_CUR_X_], VIEWPORT_WIDTH/2
    mov word [_CUR_Y_], VIEWPORT_HEIGHT/2
    
-   mov byte [_GAME_STATE_], STATE_TITLE_SCREEN + STATE_INIT
+   mov byte [_GAME_STATE_], STATE_TITLE_SCREEN_INIT
 
 jmp game_state_satisfied
 
@@ -292,6 +286,21 @@ live_title_screen:
    
 jmp game_state_satisfied
 
+init_test_state:
+   mov al, COLOR_BLACK
+   call clear_screen
+
+   mov si, TestText
+   mov dh, 0x0A          ; Y position
+   mov dl, 0x10          ; X position
+   mov bl, COLOR_WHITE
+   call draw_text
+   mov byte [_GAME_STATE_], STATE_TEST
+jmp game_state_satisfied
+
+test_state:
+   nop
+jmp game_state_satisfied
 
 ; =========================================== PROCEDURES =======================
 
@@ -397,10 +406,18 @@ ret
 
 ; =========================================== DATA =============================
 
+state_jump_table:
+   dw init_engine
+   dw exit
+   dw init_title_screen
+   dw live_title_screen
+   dw init_test_state
+   dw test_state
+   
 
 ; =========================================== TEXT DATA ========================
-Player1Text:
-db '1P', 0x0
+TestText:
+db 'TEST STATE', 0x0
 ScoreText:
 db 'SCORE: 0000', 0x0
 CashText:
