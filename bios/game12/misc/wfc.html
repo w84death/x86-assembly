@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>WFC-inspired Greedy Constraint Solver</title>
+    <style>
+        body {
+            background: #f0ece1;
+            width: 480px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            font-family: 'Georgia', serif;
+        }
+
+        .map-container {
+            background: #f4e4bc;
+            padding: 30px;
+            border: 1px solid #8b7355;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 5px;
+            position: relative;
+        }
+
+        h1 {
+            color: #4a3c28;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-variant: small-caps;
+            letter-spacing: 2px;
+        }
+
+        #gridCanvas {
+            border: 2px solid #8b7355;
+            margin-bottom: 15px;
+        }
+
+        button {
+            background: #8b7355;
+            color: #f4e4bc;
+            border: none;
+            padding: 8px 16px;
+            font-family: 'Georgia', serif;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .map-container {
+            text-align: center;
+        }
+
+        button:hover {
+            background: #6b5744;
+        }
+
+        .manuscript-note {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #8b7355;
+            color: #4a3c28;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .manuscript-note h2 {
+            font-variant: small-caps;
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #6b5744;
+        }
+
+        .manuscript-note h3 {
+            font-size: 16px;
+            margin: 15px 0 10px 0;
+            font-style: italic;
+        }
+
+        .manuscript-note ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+
+        .manuscript-note ul li::before {
+            content: "•";
+            color: #8b7355;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+
+        .manuscript-note .footnote {
+            font-style: italic;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="map-container">
+        <h1>WFC-inspired Greedy Constraint Solver</h1>
+        <div class="map-container">
+            <canvas id="gridCanvas" width="320" height="320"></canvas>
+            <br>
+            <button onclick="generateAndDraw()">Generate New Realm</button>
+        </div>
+        <div class="manuscript-note">
+            <h2>Notes on the Algorithm</h2>
+            <p>This implementation presents a simplified constraint-based terrain generator, 
+            inspired by Wave Function Collapse (WFC) but utilizing a greedy approach. While 
+            true WFC maintains superposition of all possible states until collapse, this 
+            algorithm makes immediate decisions based on local rules.</p>
+            
+            <h3>Key Differences from Classic WFC:</h3>
+            <ul>
+                <li>No backtracking when contradictions occur</li>
+                <li>Linear generation from top-left to bottom-right</li>
+                <li>Simplified neighborhood constraints</li>
+                <li>Weighted probabilities through duplicated values</li>
+            </ul>
+            
+            <p class="footnote">The resulting maps, while less precise than true WFC, 
+            generate quickly and provide satisfactory terrain patterns for many practical 
+            applications.</p>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const TILE_SIZE = 5;
+        const GRID_SIZE = 64;
+        const TILE_COLORS = [
+            '#1a3c54', // Deep water (darker, more muted)
+            '#2d5d7c', // Shallow water (muted blue)
+            '#d5c396', // Sand (parchment-like)
+            '#8fa977', // Grass (muted green)
+            '#657153', // Bush (olive)
+            '#434b35', // Forest (dark olive)
+            '#5c5650'  // Mountain (muted gray)
+        ];
+        
+        // Modified adjacency rules with weighted probabilities
+        const rightRules = [
+            [0, 0, 0, 1],     // Deep water -> heavily biased to deep water, some shallow
+            [0, 1, 1, 2],     // Shallow water -> mix of deep/shallow/sand
+            [1, 2, 2, 3],     // Sand -> shallow/sand/grass
+            [2, 3, 3, 4],     // Grass -> sand/grass/bush
+            [3, 4, 4, 5],     // Bush -> grass/bush/forest
+            [4, 5, 5, 6],     // Forest -> bush/forest/mountain
+            [5, 5, 6, 6]      // Mountain -> forest/mountain
+        ];
+        
+        const downRules = rightRules; // Same rules for vertical transitions
+
+        let grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+
+        function generateGrid() {
+            for(let i = 0; i < GRID_SIZE; i++) {
+                for(let j = 0; j < GRID_SIZE; j++) {
+                    if(i === 0 && j === 0) {
+                        grid[i][j] = Math.floor(Math.random() * 7);
+                        continue;
+                    }
+
+                    let allowed = [0, 1, 2, 3, 4, 5, 6];
+
+                    // Check left neighbor with expanded context
+                    if(j > 0) {
+                        const left = grid[i][j-1];
+                        allowed = rightRules[left];
+                    }
+
+                    // Check top neighbor
+                    if(i > 0) {
+                        const top = grid[i-1][j];
+                        const topAllowed = downRules[top];
+                        allowed = allowed.filter(t => topAllowed.includes(t));
+                    }
+
+                    grid[i][j] = allowed[Math.floor(Math.random() * allowed.length)];
+                }
+            }
+        }
+
+        function drawGrid() {
+            const canvas = document.getElementById('gridCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            for(let i = 0; i < GRID_SIZE; i++) {
+                for(let j = 0; j < GRID_SIZE; j++) {
+                    ctx.fillStyle = TILE_COLORS[grid[i][j]];
+                    ctx.fillRect(
+                        j * TILE_SIZE,
+                        i * TILE_SIZE,
+                        TILE_SIZE ,
+                        TILE_SIZE 
+                    );
+                }
+            }
+        }
+
+        function generateAndDraw() {
+            generateGrid();
+            drawGrid();
+        }
+
+        // Initial generation
+        generateAndDraw();
+    </script>
+</body>
+</html>

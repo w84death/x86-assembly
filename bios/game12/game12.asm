@@ -27,7 +27,7 @@ _TRAIN_X_      equ _BASE_ + 0x10    ; 2 byte
 _TRAIN_Y_      equ _BASE_ + 0x11    ; 2 byte
 _TRAIN_DIR_    equ _BASE_ + 0x12    ; 1 byte
 
-_TRAINS_          equ 0x2000  ; Trains aka entities
+_ENTITIES_        equ 0x2000  ; Entities data
 _MAP_             equ 0x3000  ; Map data 64x64
 _MAP_METADATA_    equ 0x4000  ; Map metadata 64x64
 
@@ -37,8 +37,12 @@ STATE_INIT_ENGINE       equ 0
 STATE_QUIT              equ 1
 STATE_TITLE_SCREEN_INIT equ 2
 STATE_TITLE_SCREEN      equ 3
-STATE_TEST_INIT         equ 4
-STATE_TEST              equ 5
+STATE_MENU_INIT         equ 4
+STATE_MENU              equ 5
+STATE_GAME_INIT         equ 6
+STATE_GAME              equ 7
+STATE_MAP_VIEW_INIT     equ 8
+STATE_MAP_VIEW          equ 9
 
 ; =========================================== KEYBOARD CODES ===================
 
@@ -54,6 +58,7 @@ KB_BACK     equ 0x0E
 KB_Q        equ 0x10
 KB_W        equ 0x11
 KB_M        equ 0x32
+KB_F2       equ 0x3C
 
 ; =========================================== TILES NAMES ======================
 
@@ -154,21 +159,58 @@ check_keyboard:
    je .process_esc
    cmp ah, KB_ENTER
    je .process_enter
+   cmp ah, KB_F2
+   je .process_f2
 
    jmp .done
 
    .process_esc:      
       cmp byte [_GAME_STATE_], STATE_TITLE_SCREEN
       je .set_quit
-      mov byte [_GAME_STATE_], STATE_TITLE_SCREEN_INIT
-      jmp .done
-      .set_quit:      
-      mov byte [_GAME_STATE_], STATE_QUIT
+      cmp byte [_GAME_STATE_], STATE_MENU
+      je .set_quit
+      cmp byte [_GAME_STATE_], STATE_GAME
+      je .set_menu
+      cmp byte [_GAME_STATE_], STATE_MAP_VIEW
+      je .set_game
+
       jmp .done
    
    .process_enter:
-      mov byte [_GAME_STATE_], STATE_TEST_INIT
+      cmp byte [_GAME_STATE_], STATE_TITLE_SCREEN
+      je .set_menu
+      cmp byte [_GAME_STATE_], STATE_MENU
+      je .set_game
+
       jmp .done
+
+   .process_f2:
+      cmp byte [_GAME_STATE_], STATE_GAME
+      je .set_map
+      cmp byte [_GAME_STATE_], STATE_MAP_VIEW
+      je .set_game
+
+      jmp .done
+
+   .set_quit:      
+   mov byte [_GAME_STATE_], STATE_QUIT
+   jmp .done
+
+   .set_title:
+   mov byte [_GAME_STATE_], STATE_TITLE_SCREEN_INIT
+   jmp .done
+   
+   .set_menu:
+   mov byte [_GAME_STATE_], STATE_MENU_INIT
+   jmp .done
+
+   .set_game:
+   mov byte [_GAME_STATE_], STATE_GAME_INIT
+   jmp .done
+
+   .set_map:
+   mov byte [_GAME_STATE_], STATE_MAP_VIEW_INIT
+   jmp .done
 
    .done:
 
@@ -225,8 +267,12 @@ state_jump_table:
    dw exit
    dw init_title_screen
    dw live_title_screen
-   dw init_test_state
-   dw live_test_state
+   dw init_menu
+   dw live_menu
+   dw init_game
+   dw live_game
+   dw init_map_view
+   dw live_map_view
    
 init_engine:
    mov byte [_GAME_TICK_], 0x0
@@ -298,23 +344,40 @@ live_title_screen:
    
 jmp game_state_satisfied
 
-init_test_state:
+init_menu:
    mov al, COLOR_BLACK
    call clear_screen
 
-   mov si, TestText
-   mov dh, 0x0A          ; Y position  
-   mov dl, 0x10          ; X position
+   mov si, MainMenuText
+   xor dx,dx
    mov bl, COLOR_WHITE
    call draw_text
-   mov byte [_GAME_STATE_], STATE_TEST
+   mov byte [_GAME_STATE_], STATE_MENU
 jmp game_state_satisfied
 
-live_test_state:
+live_menu:
    nop
 jmp game_state_satisfied
 
+init_game:
+   mov al, COLOR_DARK_TEAL
+   call clear_screen
+   mov byte [_GAME_STATE_], STATE_GAME
+jmp game_state_satisfied
 
+live_game:
+   nop
+jmp game_state_satisfied
+
+init_map_view:
+   mov al, COLOR_DARK_BLUE
+   call clear_screen
+   mov byte [_GAME_STATE_], STATE_MAP_VIEW
+jmp game_state_satisfied
+
+live_map_view:
+   nop
+jmp game_state_satisfied
 
 
 
@@ -466,12 +529,11 @@ ret
    
 
 ; =========================================== TEXT DATA ========================
-TestText:
-db 'TEST STATE', 0x0
-ScoreText:
-db 'SCORE: 0000', 0x0
-CashText:
-db 'CASH: $10000', 0x0
+MainMenuText:
+db 'Main Menu', 0x0D, 0x0A
+db '- [ENTER] Start New Game', 0x0D, 0x0A
+db '- [F2] Show Map View', 0x0D, 0x0A
+db '- [ESC] Quit',0x0
 WelcomeText:
 db 'KKJ^P1X PRESENTS A 2025 PRODUCTION', 0x0
 TitleText:
