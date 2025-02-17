@@ -155,10 +155,11 @@ check_keyboard:
    mov ah, 00h         ; BIOS keyboard read function
    int 16h             ; Call BIOS interrupt
 
+   ; ========================================= STATE TRANSITIONS ===============
    mov si, StateTransitionTable
    .check_transitions:
       cmp byte [si], 0xFF ; Check for end of table
-      je .done
+      je .transitions_done
       
       mov bl, [_GAME_STATE_]
       cmp bl, [si]        ; Check current state
@@ -169,11 +170,17 @@ check_keyboard:
       
       mov bl, [si+2]      ; Get new state
       mov [_GAME_STATE_], bl
-      jmp .done
+      jmp .transitions_done
 
    .next_entry:
-      add si, 3           ; Move to next entry (3 bytes per entry)
+      add si, 3           ; Move to next entry
       jmp .check_transitions
+
+   .transitions_done:
+
+   ; ========================================= GAME LOGIC INPUT ================
+
+   ; todo: handle game logic inputs
 
 .done:
 
