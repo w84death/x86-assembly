@@ -141,7 +141,7 @@ main_loop:
 
    movzx bx, byte [_GAME_STATE_]  ; Load state into BX
    shl bx, 1                     ; Multiply by 2 (word size)
-   jmp word [state_jump_table + bx]   ; Jump to handle
+   jmp word [StateJumpTable + bx]   ; Jump to handle
 
 game_state_satisfied:
 
@@ -155,64 +155,27 @@ check_keyboard:
    mov ah, 00h         ; BIOS keyboard read function
    int 16h             ; Call BIOS interrupt
 
-   cmp ah, KB_ESC
-   je .process_esc
-   cmp ah, KB_ENTER
-   je .process_enter
-   cmp ah, KB_F2
-   je .process_f2
-
-   jmp .done
-
-   .process_esc:      
-      cmp byte [_GAME_STATE_], STATE_TITLE_SCREEN
-      je .set_quit
-      cmp byte [_GAME_STATE_], STATE_MENU
-      je .set_quit
-      cmp byte [_GAME_STATE_], STATE_GAME
-      je .set_menu
-      cmp byte [_GAME_STATE_], STATE_MAP_VIEW
-      je .set_game
-
-      jmp .done
-   
-   .process_enter:
-      cmp byte [_GAME_STATE_], STATE_TITLE_SCREEN
-      je .set_menu
-      cmp byte [_GAME_STATE_], STATE_MENU
-      je .set_game
-
+   mov si, StateTransitionTable
+   .check_transitions:
+      cmp byte [si], 0xFF ; Check for end of table
+      je .done
+      
+      mov bl, [_GAME_STATE_]
+      cmp bl, [si]        ; Check current state
+      jne .next_entry
+      
+      cmp ah, [si+1]      ; Check key press
+      jne .next_entry
+      
+      mov bl, [si+2]      ; Get new state
+      mov [_GAME_STATE_], bl
       jmp .done
 
-   .process_f2:
-      cmp byte [_GAME_STATE_], STATE_GAME
-      je .set_map
-      cmp byte [_GAME_STATE_], STATE_MAP_VIEW
-      je .set_game
+   .next_entry:
+      add si, 3           ; Move to next entry (3 bytes per entry)
+      jmp .check_transitions
 
-      jmp .done
-
-   .set_quit:      
-   mov byte [_GAME_STATE_], STATE_QUIT
-   jmp .done
-
-   .set_title:
-   mov byte [_GAME_STATE_], STATE_TITLE_SCREEN_INIT
-   jmp .done
-   
-   .set_menu:
-   mov byte [_GAME_STATE_], STATE_MENU_INIT
-   jmp .done
-
-   .set_game:
-   mov byte [_GAME_STATE_], STATE_GAME_INIT
-   jmp .done
-
-   .set_map:
-   mov byte [_GAME_STATE_], STATE_MAP_VIEW_INIT
-   jmp .done
-
-   .done:
+.done:
 
 ; =========================================== GAME TICK ========================
 
@@ -262,7 +225,7 @@ exit:
 
 ; =========================================== LOGIC FOR GAME STATES ============
 
-state_jump_table:
+StateJumpTable:
    dw init_engine
    dw exit
    dw init_title_screen
@@ -273,7 +236,18 @@ state_jump_table:
    dw live_game
    dw init_map_view
    dw live_map_view
-   
+
+StateTransitionTable:
+    db STATE_TITLE_SCREEN, KB_ESC,   STATE_QUIT
+    db STATE_TITLE_SCREEN, KB_ENTER, STATE_MENU_INIT
+    db STATE_MENU,         KB_ESC,   STATE_QUIT
+    db STATE_MENU,         KB_ENTER, STATE_GAME_INIT
+    db STATE_GAME,         KB_ESC,   STATE_MENU_INIT
+    db STATE_GAME,         KB_F2,    STATE_MAP_VIEW_INIT
+    db STATE_MAP_VIEW,     KB_ESC,   STATE_GAME_INIT
+    db STATE_MAP_VIEW,     KB_F2,    STATE_GAME_INIT
+    db 0xFF
+
 init_engine:
    mov byte [_GAME_TICK_], 0x0
    mov word [_RNG_], 0x42
