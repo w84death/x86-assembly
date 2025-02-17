@@ -214,8 +214,20 @@ exit:
 
 
 
-; =========================================== DRAW GAME STATES =================
 
+
+
+
+; =========================================== LOGIC FOR GAME STATES ============
+
+state_jump_table:
+   dw init_engine
+   dw exit
+   dw init_title_screen
+   dw live_title_screen
+   dw init_test_state
+   dw live_test_state
+   
 init_engine:
    mov byte [_GAME_TICK_], 0x0
    mov word [_RNG_], 0x42
@@ -298,9 +310,42 @@ init_test_state:
    mov byte [_GAME_STATE_], STATE_TEST
 jmp game_state_satisfied
 
-test_state:
+live_test_state:
    nop
 jmp game_state_satisfied
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ; =========================================== PROCEDURES =======================
 
@@ -358,8 +403,18 @@ draw_text:
    .done:
 ret
 
+; =========================================== GET RANDOM =======================
+; OUT: AX - Random number
+get_random:
+   mov ax, [_RNG_]
+   xor ax, 0AAAAh
+   rol ax, 1
+   mov [_RNG_], ax
+ret
 
 ; =========================================== CLEAR SCREEN =====================
+; IN: AL - Color
+; OUT: VGA memory cleared (fullscreen)
 clear_screen:
    mov ah, al
    mov cx, 320*200/2    ; Number of pixels
@@ -367,13 +422,14 @@ clear_screen:
    rep stosw            ; Write to the VGA memory
 ret
 
-; ; Calculate screen position for a tile at (X, Y) in a grid:
+; Calculate screen position for a tile at (X, Y) in a grid:
 ; mov  bx, [x_pos]      ; BX = X coordinate
 ; mov  si, [y_pos]      ; SI = Y coordinate
-; lea  di, [bx + si*16] ; DI = X + Y*16 (for 16-pixel tiles)
+; lea  di, [bx + si*320] ; DI = X + Y*320 (for 16-pixel tiles)
 ; add  di, VIEWPORT_POS ; Add base offset
-
-
+; MOV AX, YCoordinate          ; Y coordinate
+; SHL AX, 6                     ; Y * 64
+; LEA SI, [AX + XCoordinate]   ; SI = Y * 320 + X (offset in video memory)
 
 ; ; Load a far pointer stored in memory
 ; les  di, [video_ptr]  ; ES = segment, DI = offset
@@ -406,13 +462,7 @@ ret
 
 ; =========================================== DATA =============================
 
-state_jump_table:
-   dw init_engine
-   dw exit
-   dw init_title_screen
-   dw live_title_screen
-   dw init_test_state
-   dw test_state
+
    
 
 ; =========================================== TEXT DATA ========================
