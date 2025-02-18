@@ -1,15 +1,16 @@
 {
     "cSpell.words": [
         "imul",
-        "stosb",
-        "stosw",
-        "xchg",
+        "Jankowski",
+        "Krystian",
+        "Krzysztof",
         "lodsb",
         "lodsw",
         "popa",
         "pusha",
-        "Krzysztof",
-        "Krystian",
-        "Jankowski",
+        "stosb",
+        "stosw",
+        "xchg",
+        "xlatb"
     ]
 }

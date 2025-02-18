@@ -62,33 +62,13 @@ KB_F2       equ 0x3C
 
 ; =========================================== TILES NAMES ======================
 
-TILE_EMPTY     equ 0x40
-TILE_RAILROAD  equ 0x0
-TILE_HOUSE     equ 0x1
-TILE_FIELD     equ 0x2
-TILE_CITY      equ 0x3
-TILE_STATION   equ 0x4
-TILE_FACTORY   equ 0x5
-TILE_FOREST    equ 0x6
-TILE_FOREST2   equ 0x7
-TILE_MOUNTAINS equ 0x8
-TILE_TRAIN     equ 0x9
-TILES          equ 0x9
-
-TOOLBOX_POS    equ 320*180+16
-
-; =========================================== METADATA =========================
-
-METADATA_EMPTY             equ 0x0
-METADATA_MOVABLE           equ 0x1
-METADATA_NON_DESTRUCTIBLE  equ 0x2
-METADATA_FOREST            equ 0x4
-METADATA_BUILDING          equ 0x8
-METADATA_TRACKS            equ 0x10
-METADATA_OPEN_TRACKS       equ 0x20
-METADATA_STATION           equ 0x40 
-METADATA_A                 equ 0x80
-METADATA_B                 equ 0xFF
+TILE_DEEP_WATER   equ 0x0
+TILE_WATER        equ 0x1
+TILE_SAND         equ 0x2
+TILE_GRASS        equ 0x3
+TILE_BUSH         equ 0x4
+TILE_FOREST       equ 0x5
+TILE_MOUNTAIN     equ 0x6
 
 ; =========================================== MISC SETTINGS ====================
 
@@ -139,8 +119,8 @@ main_loop:
 
 ; =========================================== GAME STATES ======================
 
-   movzx bx, byte [_GAME_STATE_]  ; Load state into BX
-   shl bx, 1                     ; Multiply by 2 (word size)
+   movzx bx, byte [_GAME_STATE_]    ; Load state into BX
+   shl bx, 1                        ; Multiply by 2 (word size)
    jmp word [StateJumpTable + bx]   ; Jump to handle
 
 game_state_satisfied:
@@ -266,6 +246,16 @@ init_engine:
    mov word [_CUR_X_], VIEWPORT_WIDTH/2
    mov word [_CUR_Y_], VIEWPORT_HEIGHT/2
    
+   ; init big map with random values
+   mov di, _MAP_
+   mov cx, MAP_SIZE*MAP_SIZE
+   .next_tile:
+      call get_random
+      and ax, 0x6
+      mov [di], al
+      inc di
+      loop .next_tile
+
    mov byte [_GAME_STATE_], STATE_TITLE_SCREEN_INIT
 
 jmp game_state_satisfied
@@ -353,6 +343,37 @@ jmp game_state_satisfied
 init_map_view:
    mov al, COLOR_DARK_BLUE
    call clear_screen
+
+   mov di, 320*30+90
+   mov ax, COLOR_BROWN
+   mov cx, 140
+   .draw_line:
+      push cx
+      mov cx, 70
+      rep stosw
+      pop cx
+      add di, 320-140
+   loop .draw_line
+
+   mov si, _MAP_              ; Map data
+   mov di, 320*36+96          ; Map position on screen
+   mov bx, TerrainColors      ; Terrain colors array
+   mov cx, MAP_SIZE           ; Columns
+   .draw_loop:
+      push cx
+      mov cx, MAP_SIZE        ; Rows
+      .draw_row:
+         lodsb                ; Load map cell
+         xlatb                ; Translate to color
+         mov ah, al           ; Copy color for second pixel
+         mov [es:di], ax      ; Draw 2 pixels
+         mov [es:di+320], ax  ; And another 2 pixels below
+         add di, 2            ; Move to next column
+      loop .draw_row
+      pop cx
+      add di, 320+320-MAP_SIZE*2    ; Move to next row
+   loop .draw_loop
+
    mov byte [_GAME_STATE_], STATE_MAP_VIEW
 jmp game_state_satisfied
 
@@ -451,8 +472,9 @@ ret
 ; OUT: AX - Random number
 get_random:
    mov ax, [_RNG_]
-   xor ax, 0AAAAh
+   inc ax
    rol ax, 1
+   xor ax, 0x1337
    mov [_RNG_], ax
 ret
 
@@ -507,7 +529,7 @@ ret
 ; =========================================== DATA =============================
 
 
-   
+
 
 ; =========================================== TEXT DATA ========================
 MainMenuText:
@@ -523,6 +545,27 @@ PressEnterText:
 db 'Press [ENTER] to start engine!', 0x
 QuitText:
 db 'Good bye!',0x0D, 0x0A,'Visit http://smol.p1x.in/assembly/ for more games :)', 0x0A, 0x0
+
+
+; =========================================== TERRAIN GEN RULES ================
+
+TerrainRules:
+db 0, 0, 0, 1  ; Deep water
+db 0, 1, 1, 2  ; Water
+db 1, 2, 2, 3  ; Sand
+db 2, 3, 3, 4  ; Grass
+db 3, 4, 4, 5  ; Bush
+db 4, 5, 5, 6  ; Forest
+db 5, 5, 6, 6  ; Mountain
+
+TerrainColors:
+db COLOR_BLUE        ; Deep water
+db COLOR_SKY_BLUE    ; Water
+db COLOR_YELLOW      ; Sand
+db COLOR_LIME        ; Grass
+db COLOR_GREEN       ; Bush
+db COLOR_GREEN       ; Forest
+db COLOR_WHITE       ; Mountain
 
 ; =========================================== THE END ==========================
 ; Thanks for reading the source code!
