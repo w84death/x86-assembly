@@ -158,6 +158,12 @@ check_keyboard:
 
    .transitions_done:
 
+   cmp ah, KB_SPACE
+   jne .not_space
+      call generate_map
+      mov byte [_GAME_STATE_], STATE_MAP_VIEW_INIT
+   .not_space:
+
    ; ========================================= GAME LOGIC INPUT ================
 
    ; todo: handle game logic inputs
@@ -245,16 +251,8 @@ init_engine:
    mov byte [_TOOL_], 0x0
    mov word [_CUR_X_], VIEWPORT_WIDTH/2
    mov word [_CUR_Y_], VIEWPORT_HEIGHT/2
-   
-   ; init big map with random values
-   mov di, _MAP_
-   mov cx, MAP_SIZE*MAP_SIZE
-   .next_tile:
-      call get_random
-      and ax, 0x6
-      mov [di], al
-      inc di
-      loop .next_tile
+
+   call generate_map
 
    mov byte [_GAME_STATE_], STATE_TITLE_SCREEN_INIT
 
@@ -488,6 +486,57 @@ clear_screen:
    rep stosw            ; Write to the VGA memory
 ret
 
+; =========================================== GENERATE MAP =====================
+generate_map:
+   mov di, _MAP_
+   mov si, TerrainRules
+   mov cx, MAP_SIZE
+   
+   .next_row:
+      mov dx, MAP_SIZE
+      .next_cell:
+         cmp dx, MAP_SIZE
+         jne .not_first
+            call get_random
+            and ax, 0x6
+            mov [di], al
+            jmp .check_top
+         .not_first:
+
+         .check_left:
+         movzx bx, [di-1]
+         shl bx, 2
+         call get_random
+         and ax, 0x3
+         add bx, ax
+         mov al, [si+bx]
+         mov [di], al
+
+         cmp cx, MAP_SIZE
+         je .skip_first_row
+         .check_top:
+         movzx bx, [di-MAP_SIZE]
+         shl bx, 2
+         call get_random
+         and ax, 0x3
+         add bx, ax
+         mov bl, [si+bx]
+
+         call get_random
+         test ax, 0x1
+         jnz .skip_first_row
+         mov [di], bl
+         .skip_first_row:       
+
+
+         inc di
+         dec dx
+      jnz .next_cell
+   loop .next_row
+ret
+
+
+
 ; Calculate screen position for a tile at (X, Y) in a grid:
 ; mov  bx, [x_pos]      ; BX = X coordinate
 ; mov  si, [y_pos]      ; SI = Y coordinate
@@ -536,6 +585,7 @@ MainMenuText:
 db 'Main Menu', 0x0D, 0x0A
 db '- [ENTER] Start New Game', 0x0D, 0x0A
 db '- [F2] Show Map View', 0x0D, 0x0A
+db '- [SPACE] Generate new map',0x0
 db '- [ESC] Quit',0x0
 WelcomeText:
 db 'KKJ^P1X PRESENTS A 2025 PRODUCTION', 0x0
