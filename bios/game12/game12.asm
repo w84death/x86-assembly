@@ -43,6 +43,7 @@ STATE_GAME_INIT         equ 6
 STATE_GAME              equ 7
 STATE_MAP_VIEW_INIT     equ 8
 STATE_MAP_VIEW          equ 9
+STATE_GENERATE_MAP      equ 10
 
 ; =========================================== KEYBOARD CODES ===================
 
@@ -158,12 +159,6 @@ check_keyboard:
 
    .transitions_done:
 
-   cmp ah, KB_SPACE
-   jne .not_space
-      call generate_map
-      mov byte [_GAME_STATE_], STATE_MAP_VIEW_INIT
-   .not_space:
-
    ; ========================================= GAME LOGIC INPUT ================
 
    ; todo: handle game logic inputs
@@ -229,6 +224,7 @@ StateJumpTable:
    dw live_game
    dw init_map_view
    dw live_map_view
+   dw map_generate
 
 StateTransitionTable:
     db STATE_TITLE_SCREEN, KB_ESC,   STATE_QUIT
@@ -239,6 +235,7 @@ StateTransitionTable:
     db STATE_GAME,         KB_TAB,   STATE_MAP_VIEW_INIT
     db STATE_MAP_VIEW,     KB_ESC,   STATE_GAME_INIT
     db STATE_MAP_VIEW,     KB_TAB,   STATE_GAME_INIT
+    db STATE_MAP_VIEW,     KB_SPACE, STATE_GENERATE_MAP
     db 0xFF
 
 init_engine:
@@ -318,9 +315,28 @@ init_menu:
    call clear_screen
 
    mov si, MainMenuText
-   xor dx,dx
+   mov dx, 0x0404
    mov bl, COLOR_WHITE
    call draw_text
+
+   mov si, MainMenu
+   add dh, 2
+   mov bl, COLOR_LIGHT_BLUE
+
+   mov cx, EndMainMenu - MainMenu
+   .next_menu_entry:
+      lodsw
+      test ax, ax
+      jz .done
+      
+      push si
+      mov si, ax
+      call draw_text
+      inc dh
+      pop si
+   loop .next_menu_entry
+   .done:
+
    mov byte [_GAME_STATE_], STATE_MENU
 jmp game_state_satisfied
 
@@ -379,10 +395,10 @@ live_map_view:
    nop
 jmp game_state_satisfied
 
-
-
-
-
+map_generate:
+   call generate_map
+   mov byte [_GAME_STATE_], STATE_MAP_VIEW_INIT
+jmp game_state_satisfied
 
 
 
@@ -453,16 +469,21 @@ db 44,  55,  59    ; 15 Sky blue
 ;  DH - Y position
 ;  BX - Color
 draw_text:
-   xor bh, bh           ; Page 0
-   mov ah, 0x2          ; Position cursor DL:DH
-   int 0x10             ; Call BIOS interrupt
-   mov ah, 0x0E         ; BIOS teletype
-   .next_char:
-      lodsb             ; Load byte at SI into AL, increment SI
-      cmp al, 0         ; Check for terminator
-      jz .done          ; If terminator, exit
-      int 0x10          ; Print character
-      jmp .next_char    ; Continue loop
+   mov ah, 0x02   ; Set cursor
+   xor bh, bh     ; Page 0
+   int 0x10
+
+.next_char:
+   lodsb          ; Load next character from SI into AL
+   test al, al    ; Check for string terminator
+   jz .done       ; If terminator, we're done
+   
+   mov ah, 0x0E   ; Teletype output
+   mov bh, 0      ; Page 0
+   int 0x10       ; BIOS video interrupt
+   
+   jmp .next_char ; Process next character
+   
    .done:
 ret
 
@@ -581,21 +602,22 @@ ret
 
 
 ; =========================================== TEXT DATA ========================
-MainMenuText:
-db 'Main Menu', 0x0D, 0x0A
-db '- [ENTER] Start New Game', 0x0D, 0x0A
-db '- [TAB] Toggle Map View', 0x0D, 0x0A
-db '- [SPACE] Generate new map', 0x0D, 0x0A
-db '- [ESC] Quit',0x0
-WelcomeText:
-db 'KKJ^P1X PRESENTS A 2025 PRODUCTION', 0x0
-TitleText:
-db '12-TH ASSEMBLY GAME ENGINE', 0x0
-PressEnterText:
-db 'Press [ENTER] to start engine!', 0x
-QuitText:
-db 'Good bye!',0x0D, 0x0A,'Visit http://smol.p1x.in/assembly/ for more games :)', 0x0A, 0x0
 
+WelcomeText db 'KKJ^P1X PRESENTS A 2025 PRODUCTION', 0x0
+TitleText db '12-TH ASSEMBLY GAME ENGINE', 0x0
+PressEnterText db 'Press [ENTER] to start engine!', 0x0
+QuitText db 'Good bye!',0x0D,0x0A,'Visit http://smol.p1x.in/assembly/ for more games :)', 0x0
+MainMenuText db 'Main Menu',0x0
+MenuStartNewGameText db '[ENTER] Start new game',0x0
+MenuInstructionText  db '  [TAB] Toggle map view',0x0
+MenuInstruction2Text db '[SPACE] Generate new map',0x0
+MenuQuitText         db '  [ESC] Quit game',0x0
+MainMenu:
+dw MenuStartNewGameText
+dw MenuInstructionText
+dw MenuInstruction2Text
+dw MenuQuitText
+EndMainMenu:
 
 ; =========================================== TERRAIN GEN RULES ================
 
