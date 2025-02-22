@@ -115,6 +115,8 @@ start:
 
    call initialize_custom_palette
    mov byte [_GAME_STATE_], STATE_INIT_ENGINE
+   mov word [_VIEWPORT_X_], MAP_WIDTH/2-VIEWPORT_WIDTH/2
+   mov word [_VIEWPORT_Y_], MAP_HEIGHT/2-VIEWPORT_HEIGHT/2
 
 ; =========================================== GAME LOOP ========================
 
@@ -351,68 +353,32 @@ init_game:
    mov al, COLOR_DARK_TEAL
    call clear_screen
 
-   mov si, [Tiles]
-   mov di, 320*32+32
-   call draw_sprite
+   
+   xor di, di
+   mov si, _MAP_ 
+   mov bx, Tiles        ; Terrain tiles array
+   mov cx, 12
+   .draw_line:
+      push cx
 
-   add di, 24
-   mov si, [Tiles+2]
-   call draw_sprite
+      mov cx, 20
+      .draw_cell:
+         lodsb
+         movzx bx, al
+         shl bx, 1
+         add bx, Tiles
+         push si
+         mov si, [bx]
+         call draw_sprite
+         pop si
 
-   add di, 24
-   mov si, [Tiles+4]
-   call draw_sprite
+         add di, 16
+      loop .draw_cell
+      add di, 320*16-320
+      add si, MAP_SIZE-1
+      pop cx
+   loop .draw_line
 
-   add di, 24
-   mov si, [Tiles+6]
-   call draw_sprite
-
-   add di, 24
-   mov si, [Tiles+8]
-   call draw_sprite
-
-   add di, 24
-   mov si, [Tiles+10]
-   call draw_sprite
-
-   add di, 24
-   mov si, [Tiles+12]
-   call draw_sprite
-
-
-   mov di, 320*(32+24)+32
-   mov si, [Tiles+8]
-   call draw_sprite
-
-   mov si, AlienSlim
-   call draw_sprite
-
-   mov si, BushCoverTile
-   call draw_sprite
-
-   add di, 24
-   mov si, DenseGrassTile
-   call draw_sprite
-
-   mov si, AlienSlim
-   call draw_sprite
-
-add di, 24
-    mov si, [Tiles+8]
-   call draw_sprite
-
-   mov si, AlienFat
-   call draw_sprite
-
-   mov si, BushCoverTile
-   call draw_sprite
-
-   add di, 24
-   mov si, DenseGrassTile
-   call draw_sprite
-
-   mov si, AlienFat
-   call draw_sprite
 
    mov byte [_GAME_STATE_], STATE_GAME
 jmp game_state_satisfied
@@ -757,9 +723,7 @@ db COLOR_LIGHT_GRAY      ; Mountain
 ; =========================================== TILES ============================
 
 Tiles:
-dw SwampTile, MudTile, SomeGrassTile, DenseGrassTile, BushTile, TreeTile, MountainTile
-AliensTiles:
-dw AlienSlim, AlienFat
+dw SwampTile, MudTile, SomeGrassTile, DenseGrassTile, BushTile, TreeTile, MountainTile, AlienSlim, AlienFat
 
 PaletteSets:
 db 0x0,0x0,0x0,0x0   ; Default
