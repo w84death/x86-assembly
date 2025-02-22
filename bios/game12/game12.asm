@@ -350,6 +350,70 @@ jmp game_state_satisfied
 init_game:
    mov al, COLOR_DARK_TEAL
    call clear_screen
+
+   mov si, [Tiles]
+   mov di, 320*32+32
+   call draw_sprite
+
+   add di, 24
+   mov si, [Tiles+2]
+   call draw_sprite
+
+   add di, 24
+   mov si, [Tiles+4]
+   call draw_sprite
+
+   add di, 24
+   mov si, [Tiles+6]
+   call draw_sprite
+
+   add di, 24
+   mov si, [Tiles+8]
+   call draw_sprite
+
+   add di, 24
+   mov si, [Tiles+10]
+   call draw_sprite
+
+   add di, 24
+   mov si, [Tiles+12]
+   call draw_sprite
+
+
+   mov di, 320*(32+24)+32
+   mov si, [Tiles+8]
+   call draw_sprite
+
+   mov si, AlienSlim
+   call draw_sprite
+
+   mov si, BushCoverTile
+   call draw_sprite
+
+   add di, 24
+   mov si, DenseGrassTile
+   call draw_sprite
+
+   mov si, AlienSlim
+   call draw_sprite
+
+add di, 24
+    mov si, [Tiles+8]
+   call draw_sprite
+
+   mov si, AlienFat
+   call draw_sprite
+
+   mov si, BushCoverTile
+   call draw_sprite
+
+   add di, 24
+   mov si, DenseGrassTile
+   call draw_sprite
+
+   mov si, AlienFat
+   call draw_sprite
+
    mov byte [_GAME_STATE_], STATE_GAME
 jmp game_state_satisfied
 
@@ -559,6 +623,50 @@ generate_map:
    loop .next_row
 ret
 
+; =========================================== DRAW SPRITE PROCEDURE ============
+; Expects:
+; SI - sprite data
+; DI - positon (linear)
+; Return: -
+draw_sprite:
+   pusha
+
+   lodsb
+   movzx dx, al   ; save palette
+   shl dx, 2      ; multiply by 4 (palette size)
+
+   mov cx, 0x10    ; Sprite width
+  .plot_line:
+      push cx           ; Save lines
+      
+      lodsw             ; Load 16 pixels
+     
+      mov cx, 0x10      ; 16 pixels in line
+      .draw_pixel:
+
+         cmp cx, 0x8
+         jnz .cont
+            lodsw
+         .cont:
+         rol ax, 2        ; Shift to next pixel
+
+         mov bx, ax     ; Saves word
+         and bx, 0x3    ; Cut last 2 bits
+         add bx, dx     ; add palette shift
+         mov byte bl, [PaletteSets+bx] ; get color from palette
+         cmp bl, 0x0
+         je .skip_transparent_pixel
+         mov byte [es:di], bl  ; Write pixel color 
+         .skip_transparent_pixel:      
+         inc di           ; Move destination to next pixel (+1)
+      loop .draw_pixel
+
+      add di, 320-16          ; Move to next line in destination
+
+   pop cx                   ; Restore line counter
+   loop .plot_line
+  popa
+ret
 
 
 ; Calculate screen position for a tile at (X, Y) in a grid:
@@ -649,9 +757,19 @@ db COLOR_LIGHT_GRAY      ; Mountain
 ; =========================================== TILES ============================
 
 Tiles:
-dw SwampTile, MudTile, SomeGrassTile, DenseGrassTile, BushTile, TreeTile
+dw SwampTile, MudTile, SomeGrassTile, DenseGrassTile, BushTile, TreeTile, MountainTile
 AliensTiles:
 dw AlienSlim, AlienFat
+
+PaletteSets:
+db 0x0,0x0,0x0,0x0   ; Default
+db COLOR_GREEN, COLOR_ORANGE_BROWN, COLOR_DARK_TEAL, COLOR_BLUE   ; Swamp, Mud
+db COLOR_GREEN, COLOR_ORANGE_BROWN, COLOR_LIME, 0x0   ; Some Grass
+db COLOR_GREEN, COLOR_LIME, COLOR_DARK_TEAL, COLOR_LIME  ; Dense Grass, Bush
+db COLOR_GREEN, COLOR_LIME, COLOR_WHITE, COLOR_YELLOW ; Mountain
+db COLOR_BLACK, COLOR_LIME, COLOR_DARK_TEAL, COLOR_GREEN ; Bush cover
+db COLOR_BLACK, COLOR_YELLOW, COLOR_RED, COLOR_WHITE ; Aliens
+db COLOR_BLACK, COLOR_YELLOW, COLOR_WHITE, COLOR_RED ; Aliens
 
 SwampTile:
 db 0x01
@@ -672,7 +790,7 @@ dw 0100010101101010b, 1000101001000000b
 dw 0000000110101110b, 1000010000000000b
 dw 0000000101001010b, 0000000000000000b
 MudTile:
-db 0x02
+db 0x01
 dw 0000000101010000b, 0000000000000000b
 dw 0000010101010100b, 0000000100000001b
 dw 0101010101010101b, 0101010100000000b
@@ -690,7 +808,7 @@ dw 0001000000000101b, 0101000001010100b
 dw 0000000000010101b, 0000000000010100b
 dw 0000000001000000b, 0000000000010000b
 SomeGrassTile:
-db 0x03
+db 0x02
 dw 0000010101000010b, 1010000000000000b
 dw 0001000000000010b, 1000000000100100b
 dw 0101010101000000b, 0000000000000001b
@@ -708,7 +826,7 @@ dw 0010000101000010b, 0000000101010000b
 dw 0000000100001010b, 1010000001010000b
 dw 1000000100000010b, 1010000001001010b
 DenseGrassTile:
-db 0x04
+db 0x3
 dw 0000000001010000b, 0000000000010100b
 dw 0100000000010000b, 0000000000000000b
 dw 0101000000000001b, 0000010000010000b
@@ -726,7 +844,7 @@ dw 0000000101000000b, 0000000000000000b
 dw 0001000001000000b, 0100000000010100b
 dw 0001010000000000b, 0001000000000000b
 BushTile:
-db 0x05
+db 0x03
 dw 0000000001010100b, 0000000000010100b
 dw 0100000100010101b, 0000010000000000b
 dw 0101010101001010b, 0001011001010000b
@@ -743,8 +861,26 @@ dw 0000010101011001b, 0101011010010100b
 dw 0000001001101001b, 0101011000010000b
 dw 0001000001000000b, 0100000000000100b
 dw 0001010000000000b, 0001000000000000b
+BushCoverTile:
+db 0x05
+dw 0000000000000000b, 0000000000000000b
+dw 0000000000000000b, 0000000000000000b
+dw 0000000000000000b, 0000000000000000b
+dw 0000000000000000b, 0000000000000000b
+dw 0000000000000000b, 0000000000000000b
+dw 0000000000000100b, 0000000101000000b
+dw 0000000000010101b, 0000010101010000b
+dw 0000010001010101b, 0001010101100000b
+dw 0001011001010101b, 1011011010100000b
+dw 0000101011110101b, 1011111011111100b
+dw 0011100101111010b, 1111111111011100b
+dw 0111010101011111b, 1101011101011111b
+dw 0011111101011001b, 0101011010010100b
+dw 1111111101101001b, 0101011011011111b
+dw 1101111111111111b, 0111111111110111b
+dw 1101011111111111b, 1101111111111111b
 TreeTile:
-db 0x06
+db 0x03
 dw 0000000001010000b, 0000000000010100b
 dw 0100000010101010b, 0000101000000001b
 dw 0101001000010001b, 1111010010100000b
@@ -762,7 +898,7 @@ dw 0000001000001000b, 0001101010000000b
 dw 0001100001101010b, 0000000010010100b
 dw 0001010000000000b, 0001000000000000b
 MountainTile:
-db 0x07
+db 0x04
 dw 0000000101000000b, 0000000001010000b
 dw 0100000000000000b, 0000000000000000b
 dw 0100000010000000b, 0101001000010000b
@@ -780,7 +916,7 @@ dw 0011000011110011b, 0000111101010100b
 dw 0100000100000001b, 0001011101010001b
 dw 0101000000000000b, 0100000001000100b
 AlienSlim:
-db 0x08
+db 0x06
 dw 0000000000000101b, 0110000000000000b
 dw 0000000000011111b, 0101100000000000b
 dw 0000000000101101b, 1001101000000000b
@@ -798,7 +934,7 @@ dw 0000101101010111b, 1010011110000000b
 dw 0000001010101010b, 1010101000000000b
 dw 0000000000000000b, 0000000000000000b
 AlienFat:
-db 0x0A
+db 0x07
 dw 0000000000000000b, 0000000000000000b
 dw 0000000000000101b, 0101000000000000b
 dw 0000000000011010b, 1010010100000000b
