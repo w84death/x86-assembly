@@ -60,6 +60,8 @@ KB_Q        equ 0x10
 KB_W        equ 0x11
 KB_M        equ 0x32
 KB_TAB      equ 0x0F
+KB_F1       equ 0x3B
+KB_F2       equ 0x3C
 
 ; =========================================== TILES NAMES ======================
 
@@ -230,12 +232,13 @@ StateTransitionTable:
     db STATE_TITLE_SCREEN, KB_ESC,   STATE_QUIT
     db STATE_TITLE_SCREEN, KB_ENTER, STATE_MENU_INIT
     db STATE_MENU,         KB_ESC,   STATE_QUIT
-    db STATE_MENU,         KB_ENTER, STATE_GAME_INIT
+    db STATE_MENU,         KB_F1,    STATE_GAME_INIT
+    db STATE_MENU,         KB_F2,    STATE_GENERATE_MAP
     db STATE_GAME,         KB_ESC,   STATE_MENU_INIT
     db STATE_GAME,         KB_TAB,   STATE_MAP_VIEW_INIT
     db STATE_MAP_VIEW,     KB_ESC,   STATE_GAME_INIT
     db STATE_MAP_VIEW,     KB_TAB,   STATE_GAME_INIT
-    db STATE_MAP_VIEW,     KB_SPACE, STATE_GENERATE_MAP
+    db STATE_MAP_VIEW,     KB_F2,    STATE_GENERATE_MAP
     db 0xFF
 
 init_engine:
@@ -607,16 +610,20 @@ WelcomeText db 'KKJ^P1X PRESENTS A 2025 PRODUCTION', 0x0
 TitleText db '12-TH ASSEMBLY GAME ENGINE', 0x0
 PressEnterText db 'Press [ENTER] to start engine!', 0x0
 QuitText db 'Good bye!',0x0D,0x0A,'Visit http://smol.p1x.in/assembly/ for more games :)', 0x0
-MainMenuText db 'Main Menu',0x0
-MenuStartNewGameText db '[ENTER] Start new game',0x0
-MenuInstructionText  db '  [TAB] Toggle map view',0x0
-MenuInstruction2Text db '[SPACE] Generate new map',0x0
-MenuQuitText         db '  [ESC] Quit game',0x0
+MainMenuText         db 'MAIN MENU',0x0
+MenuStartNewGameText db ' [F1] Start new game',0x0
+MenuGenerateMapText  db ' [F2] Generate new map',0x0
+MenuQuitText         db '[ESC] Quit game',0x0
+MenuInstruction1Text db '',0x0
+MenuInstruction2Text db '[TAB] Toggle map view',0x0
+MenuInstruction3Text db '[ARROWS] Move cursor',0x0
 MainMenu:
 dw MenuStartNewGameText
-dw MenuInstructionText
-dw MenuInstruction2Text
+dw MenuGenerateMapText
 dw MenuQuitText
+dw MenuInstruction1Text
+dw MenuInstruction2Text
+dw MenuInstruction3Text
 EndMainMenu:
 
 ; =========================================== TERRAIN GEN RULES ================

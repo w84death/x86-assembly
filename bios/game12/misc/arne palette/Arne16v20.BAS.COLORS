@@ -1,0 +1,86 @@
+#!/bin/sh
+. .SETUP
+if [ "$basCOLORS_DONE" = "1" ]; then
+if [ "$BASIC_COLORS" = "" ]; then
+
+    # (MSX) colors in BAS remap setaf/setab to setf/setb order
+    #       this means # order of 1st 16: t_COLORs != fb_COLORs
+    #         static int map[8]={ 0,4,2,6,1,5,3,7 };
+
+    # NOTE: sometimes you need screen colors AND actual colors
+    #       color numbers should match ~/.bashrc
+    #       color names are HTML names, plus some extras (eg BROWN)
+    #       fb_COLORs are poked directly in to framebuffer using dd
+    #       t_COLORs can be passed through: set 256 color tput/ESC code
+    #       remember 2nd 8 t_COLORs are 1st 8 t_COLORs + bold/bright
+
+    # these are RPi HDMI BGRA order framebuffer RGB values (A=ALPHA)
+    t_COLOR0="0 0 0";           t_VOID="0 0 0";
+    t_COLOR1="157 157 157";     t_GREY="157 157 157";
+    t_COLOR2="255 255 255";     t_WHITE="255 255 255";
+    t_COLOR3="51 38 190";       t_RED="51 38 190";
+    t_COLOR4="139 111 224";     t_MEAT="139 111 224";
+    t_COLOR5="43 60 73";        t_DARK_BROWN="43 60 73";
+    t_COLOR6="34 100 164";      t_BROWN="34 100 164";
+    t_COLOR7="37 137 235";      t_ORANGE="37 137 235";
+    t_COLOR8="107 226 247";     t_YELLOW="107 226 247";
+    t_COLOR9="78 72 47";        t_DARK_GREEN="78 72 47";
+    t_COLOR10="26 137 68";      t_GREEN="26 137 68";
+    t_COLOR11="39 206 163";     t_SLIME_GREEN="39 206 163";
+    t_COLOR12="50 38 27";       t_NIGHT_BLUE="50 38 27";
+    t_COLOR13="137 87 0";       t_SEA_BLUE="137 87 0";
+    t_COLOR14="242 162 49";     t_SKY_BLUE="242 162 49";
+    t_COLOR15="239 220 178";    t_CLOUD_BLUE="239 220 178";
+
+  if echo "$TERM" | grep "fbterm" > /dev/null; then
+    t_SETCOLOR='\033[3;%d;%s}';  # for printf
+    # fbterm uses decimal values in tput/ESC codes for 256 colors
+    # COLOR 0 is the transparencey (background image) color
+    t_COLOR0="0;0;0";           t_VOID="0;0;0";
+    t_COLOR1="157;157;157";     t_GREY="157;157;157";
+    t_COLOR2="255;255;255";     t_WHITE="255;255;255";
+    t_COLOR3="190;38;51";       t_RED="190;38;51";
+    t_COLOR4="224;111;139";     t_MEAT="224;111;139";
+    t_COLOR5="73;60;43";        t_DARK_BROWN="73;60;43";
+    t_COLOR6="164;100;34";      t_BROWN="164;100;34";
+    t_COLOR7="235;137;37";      t_ORANGE="235;137;37";
+    t_COLOR8="247;226;107";     t_YELLOW="247;226;107";
+    t_COLOR9="47;72;78";        t_DARK_GREEN="47;72;78";
+    t_COLOR10="68;137;26";      t_GREEN="68;137;26";
+    t_COLOR11="163;206;39";     t_SLIME_GREEN="163;206;39";
+    t_COLOR12="27;38;50";       t_NIGHT_BLUE="27;38;50";
+    t_COLOR13="0;87;137";       t_SEA_BLUE="0;87;137";
+    t_COLOR14="49;162;242";     t_SKY_BLUE="49;162;242";
+    t_COLOR15="178;220;239";    t_CLOUD_BLUE="178;220;239";
+
+  else
+    t_SETCOLOR='\033]4;%d;rgb:%s';  # for printf
+    # xterm-color256: xterm screen rxvt urxtv gnome lxterminal tmux
+    # xterm uses hexidecimal values in tput/ESC codes for 256 colors
+    t_COLOR0="00/00/00";        t_VOID="00/00/00";
+    t_COLOR1="9d/9d/9d";        t_GREY="9d/9d/9d";
+    t_COLOR2="ff/ff/ff";        t_WHITE="ff/ff/ff";
+    t_COLOR3="be/26/33";        t_RED="be/26/33";
+    t_COLOR4="e0/6f/8b";        t_MEAT="e0/6f/8b";
+    t_COLOR5="49/3c/2b";        t_DARK_BROWN="49/3c/2b";
+    t_COLOR6="a4/64/22";        t_BROWN="a4/64/22";
+    t_COLOR7="eb/89/25";        t_ORANGE="eb/89/25";
+    t_COLOR8="f7/e2/6b";        t_YELLOW="f7/e2/6b";
+    t_COLOR9="2f/48/4e";        t_DARK_GREEN="2f/48/4e";
+    t_COLOR10="44/89/1a";       t_GREEN="44/89/1a";
+    t_COLOR11="a3/ce/27";       t_SLIME_GREEN="a3/ce/27";
+    t_COLOR12="1b/26/32";       t_NIGHT_BLUE="1b/26/32";
+    t_COLOR13="00/57/89";       t_SEA_BLUE="00/57/89";
+    t_COLOR14="31/a2/f2";       t_SKY_BLUE="31/a2/f2";
+    t_COLOR15="b2/dc/ef";       t_CLOUD_BLUE="b2/dc/ef";
+  fi
+else
+  if [ ! -f "$BASIC_COLORS" ]; then
+    echo "BASIC_COLORS: file not found \'$BASIC_COLORS\'"
+  else
+    . "$BASIC_COLORS"
+  fi
+fi
+fi
+export basCOLORS_DONE=1
+exit 0
