@@ -1,63 +1,81 @@
 from PIL import Image
-import argparse
-import numpy as np
 
-def pack_row(pixels):
-    """Pack 16 2-bit pixels into two 16-bit words"""
-    word1 = sum((pix << (14 - i*2)) for i, pix in enumerate(pixels[:8]))
-    word2 = sum((pix << (14 - i*2)) for i, pix in enumerate(pixels[8:]))
-    return word1, word2
-
-def process_tile(tile):
-    """Quantize tile to 4 colors and return mapped pixels + palette"""
-    # Convert to RGB for better color quantization
-    rgb_tile = tile.convert('RGB')
-    
-    # Quantize to 4 colors using median cut
-    quantized = rgb_tile.quantize(colors=4, method=1)
-    
-    # Get color mapping
-    palette = quantized.getpalette()
-    colors = []
-    for i in range(4):
-        colors.append(tuple(palette[i*3:i*3+3]))
-    
-    # Create pixel map
-    pixel_map = []
-    for y in range(16):
-        for x in range(16):
-            pixel_map.append(quantized.getpixel((x, y)))
-    
-    return pixel_map, colors
-
-def convert_gif(gif_path, output_path):
+def convert_gif_to_assembly(gif_path, output_path):
     img = Image.open(gif_path)
-    w, h = img.size
-    tile_size = 16
-    num_tiles = w // tile_size
+    img = img.convert('RGB')
+    width, height = img.size
+
+    if width % 16 != 0 or height % 16 != 0:
+        raise ValueError("Image dimensions must be multiples of 16.")
+
+    tiles_x = width // 16
+    tiles_y = height // 16
+
+    all_palettes = []
+    all_tiles = []
+
+    for ty in range(tiles_y):
+        for tx in range(tiles_x):
+            tile_pixels = []
+            for y in range(16):
+                row_y = ty * 16 + y
+                for x in range(16):
+                    pixel_x = tx * 16 + x
+                    pixel = img.getpixel((pixel_x, row_y))
+                    tile_pixels.append(pixel)
+
+            tile_rows = [tile_pixels[i*16:(i+1)*16] for i in range(16)]
+
+            unique_colors = []
+            for row in tile_rows:
+                for pixel in row:
+                    if pixel not in unique_colors:
+                        unique_colors.append(pixel)
+                        if len(unique_colors) > 4:
+                            raise ValueError(f"Tile ({tx},{ty}) has more than 4 colors.")
+
+            while len(unique_colors) < 4:
+                unique_colors.append(unique_colors[-1])
+
+            palette = tuple(unique_colors)
+            if palette not in all_palettes:
+                all_palettes.append(palette)
+            palette_index = all_palettes.index(palette)
+
+            indexed_rows = []
+            for row in tile_rows:
+                indexed_row = [unique_colors.index(p) for p in row]
+                indexed_rows.append(indexed_row)
+
+            tile_data = []
+            for row in indexed_rows:
+                left = row[:8]
+                right = row[8:]
+
+                left_word = 0
+                for p in left:
+                    left_word = (left_word << 2) | p
+                right_word = 0
+                for p in right:
+                    right_word = (right_word << 2) | p
+
+                tile_data.append((left_word, right_word))
+
+            all_tiles.append((palette_index, tile_data))
 
     with open(output_path, 'w') as f:
-        for tile_num in range(num_tiles):
-            # Extract tile
-            left = tile_num * tile_size
-            tile = img.crop((left, 0, left + tile_size, tile_size))
-            
-            # Process tile and get mapped pixels
-            pixels, palette_colors = process_tile(tile)
-            
-            # Write palette header (using tile number as palette ID)
-            f.write(f"db 0x{tile_num:02x}          ; Palette {tile_num}\n")
-            
-            # Write pixel rows
-            for y in range(16):
-                row_pixels = pixels[y*16:(y+1)*16]
-                word1, word2 = pack_row(row_pixels)
-                f.write(f"dw {bin(word1)}, {bin(word2)}\n")
+        for idx, (palette_index, tile_data) in enumerate(all_tiles):
+            f.write(f"db 0x{palette_index:02X}\n")
+            for left, right in tile_data:
+                left_bin = bin(left)[2:].zfill(16)
+                right_bin = bin(right)[2:].zfill(16)
+                f.write(f"dw {left_bin}b, {right_bin}b\n")
+            if idx != len(all_tiles) - 1:
+                f.write("\n")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Convert GIF tiles to ASM with individual palettes')
-    parser.add_argument('input', help='Input GIF file')
-    parser.add_argument('-o', '--output', default='tiles.asm', help='Output file')
-    
-    args = parser.parse_args()
-    convert_gif(args.input, args.output)
+    import sys
+    if len(sys.argv) != 3:
+        print("Usage: python converter.py input.gif output.txt")
+        sys.exit(1)
+    convert_gif_to_assembly(sys.argv[1], sys.argv[2])
