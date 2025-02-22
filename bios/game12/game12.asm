@@ -77,7 +77,7 @@ TILE_MOUNTAIN     equ 0x6
 
 MAP_SIZE             equ 64      ; Map size in cells DO NOT CHANGE
 VIEWPORT_WIDTH       equ 20      ; Full screen 320
-VIEWPORT_HEIGHT      equ 10      ; by 160
+VIEWPORT_HEIGHT      equ 12      ; by 192 pixels
 VIEWPORT_GRID_SIZE   equ 16      ; Individual cell size DO NOT CHANGE
 
 ; =========================================== COLORS / ARNE 16 =================
@@ -115,8 +115,8 @@ start:
 
    call initialize_custom_palette
    mov byte [_GAME_STATE_], STATE_INIT_ENGINE
-   mov word [_VIEWPORT_X_], MAP_WIDTH/2-VIEWPORT_WIDTH/2
-   mov word [_VIEWPORT_Y_], MAP_HEIGHT/2-VIEWPORT_HEIGHT/2
+   mov word [_VIEWPORT_X_], MAP_SIZE/2-VIEWPORT_WIDTH/2
+   mov word [_VIEWPORT_Y_], MAP_SIZE/2-VIEWPORT_HEIGHT/2
 
 ; =========================================== GAME LOOP ========================
 
@@ -166,6 +166,43 @@ check_keyboard:
    ; ========================================= GAME LOGIC INPUT ================
 
    ; todo: handle game logic inputs
+
+   cmp byte [_GAME_STATE_], STATE_GAME
+   jne .done
+
+   cmp ah, KB_UP
+   je .move_up
+   cmp ah, KB_DOWN
+   je .move_down
+   cmp ah, KB_LEFT
+   je .move_left
+   cmp ah, KB_RIGHT
+   je .move_right
+   jmp .done
+
+   .move_up:
+      cmp word [_VIEWPORT_Y_], 0
+      je .done
+      dec word [_VIEWPORT_Y_]
+      jmp .redraw_terrain
+   .move_down:
+      cmp word [_VIEWPORT_Y_], MAP_SIZE-VIEWPORT_HEIGHT
+      jae .done
+      inc word [_VIEWPORT_Y_]
+      jmp .redraw_terrain
+   .move_left:
+      cmp word [_VIEWPORT_X_], 0
+      je .done
+      dec word [_VIEWPORT_X_]
+      jmp .redraw_terrain
+   .move_right:
+      cmp word [_VIEWPORT_X_], MAP_SIZE-VIEWPORT_WIDTH
+      jae .done
+      inc word [_VIEWPORT_X_]
+      jmp .redraw_terrain
+
+   .redraw_terrain:
+      call draw_terrain
 
 .done:
 
@@ -352,33 +389,8 @@ jmp game_state_satisfied
 init_game:
    mov al, COLOR_DARK_TEAL
    call clear_screen
-
    
-   xor di, di
-   mov si, _MAP_ 
-   mov bx, Tiles        ; Terrain tiles array
-   mov cx, 12
-   .draw_line:
-      push cx
-
-      mov cx, 20
-      .draw_cell:
-         lodsb
-         movzx bx, al
-         shl bx, 1
-         add bx, Tiles
-         push si
-         mov si, [bx]
-         call draw_sprite
-         pop si
-
-         add di, 16
-      loop .draw_cell
-      add di, 320*16-320
-      add si, MAP_SIZE-1
-      pop cx
-   loop .draw_line
-
+   call draw_terrain
 
    mov byte [_GAME_STATE_], STATE_GAME
 jmp game_state_satisfied
@@ -587,6 +599,38 @@ generate_map:
          dec dx
       jnz .next_cell
    loop .next_row
+ret
+
+; =========================================== DRAW TERRAIN =====================
+; OUT: Terrain drawn on the screen
+draw_terrain:
+   xor di, di
+   mov si, _MAP_ 
+   mov ax, [_VIEWPORT_Y_]
+   shl ax, 6           ; Y * 64
+   add ax, [_VIEWPORT_X_]
+   add si, ax
+   mov bx, Tiles        ; Terrain tiles array
+   mov cx, VIEWPORT_HEIGHT
+   .draw_line:
+      push cx
+
+      mov cx, VIEWPORT_WIDTH
+      .draw_cell:
+         lodsb
+         movzx bx, al
+         shl bx, 1
+         add bx, Tiles
+         push si
+         mov si, [bx]
+         call draw_sprite
+         pop si
+         add di, 16
+      loop .draw_cell
+      add di, 320*15
+      add si, MAP_SIZE-VIEWPORT_WIDTH
+      pop cx
+   loop .draw_line
 ret
 
 ; =========================================== DRAW SPRITE PROCEDURE ============
