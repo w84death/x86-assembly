@@ -77,6 +77,8 @@ TILE_MOUNTAIN     equ 0x6
 
 ; =========================================== MISC SETTINGS ====================
 
+SCREEN_WIDTH         equ 320
+SCREEN_HEIGHT        equ 200
 MAP_SIZE             equ 64      ; Map size in cells DO NOT CHANGE
 VIEWPORT_WIDTH       equ 20      ; Full screen 320
 VIEWPORT_HEIGHT      equ 12      ; by 192 pixels
@@ -303,7 +305,7 @@ init_title_screen:
    mov al, COLOR_BLACK
    call clear_screen
    
-   mov di, 320*48
+   mov di, SCREEN_WIDTH*48
    mov al, COLOR_DARK_BLUE
    call draw_gradient
 
@@ -341,7 +343,7 @@ init_menu:
    mov al, COLOR_BLACK
    call clear_screen
 
-   mov di, 320*72
+   mov di, SCREEN_WIDTH*72
    mov al, COLOR_YELLOW
    call draw_gradient
 
@@ -368,21 +370,13 @@ init_menu:
    loop .next_menu_entry
    .done:
 
-   xor di, di
-   mov ax, 0
-   call draw_tile
-
-      inc ax
-      add di, 16
-   call draw_tile
-
    xor bx, bx
-   mov di, 320*80+120
+   mov di, SCREEN_WIDTH*80+120
    mov cx, 5
    .draw_next_sprite:
       mov si, [Sprites+bx]
       call draw_sprite
-      add di, 320*17
+      add di, SCREEN_WIDTH*17
       add bx, 2
    loop .draw_next_sprite
 
@@ -413,7 +407,7 @@ init_map_view:
    mov al, COLOR_DARK_BLUE
    call clear_screen
 
-   mov di, 320*30+90
+   mov di, SCREEN_WIDTH*30+90
    mov ax, COLOR_BROWN
    mov cx, 140
    .draw_line:
@@ -425,7 +419,7 @@ init_map_view:
    loop .draw_line
 
    mov si, _MAP_              ; Map data
-   mov di, 320*36+96          ; Map position on screen
+   mov di, SCREEN_WIDTH*36+96          ; Map position on screen
    mov bx, TerrainColors      ; Terrain colors array
    mov cx, MAP_SIZE           ; Columns
    .draw_loop:
@@ -443,7 +437,7 @@ init_map_view:
       add di, 320+320-MAP_SIZE*2    ; Move to next row
    loop .draw_loop
 
-   mov di, 320*35+96
+   mov di, SCREEN_WIDTH*35+96
    mov ax, [_VIEWPORT_Y_]  ; Y coordinate
    imul ax, 320
    add ax, [_VIEWPORT_X_]  ; Y * 64 + X
@@ -453,7 +447,7 @@ init_map_view:
    mov ah, al
    mov cx, VIEWPORT_WIDTH
    rep stosw
-   add di, 320*VIEWPORT_HEIGHT*2-VIEWPORT_WIDTH*2
+   add di, SCREEN_WIDTH*VIEWPORT_HEIGHT*2-VIEWPORT_WIDTH*2
    mov cx, VIEWPORT_WIDTH
    rep stosw
 
@@ -572,7 +566,7 @@ ret
 ; OUT: VGA memory cleared (fullscreen)
 clear_screen:
    mov ah, al
-   mov cx, 320*200/2    ; Number of pixels
+   mov cx, SCREEN_WIDTH*SCREEN_HEIGHT/2    ; Number of pixels
    xor di, di           ; Start at 0
    rep stosw            ; Write to the VGA memory
 ret
@@ -586,7 +580,7 @@ draw_gradient:
 mov ah, al
    mov dl, 0xD                ; Number of bars to draw
    .draw_gradient:
-      mov cx, 320*4           ; Number of pixels high for each bar
+      mov cx, SCREEN_WIDTH*4           ; Number of pixels high for each bar
       rep stosw               ; Write to the VGA memory
       
       cmp dl, 0x8             ; Check if we are in the middle
@@ -670,7 +664,7 @@ draw_terrain:
          call draw_tile
          add di, SPRITE_SIZE
       loop .draw_cell
-      add di, 320*SPRITE_SIZE
+      add di, SCREEN_WIDTH*(SPRITE_SIZE-1)
       add si, MAP_SIZE-VIEWPORT_WIDTH
       pop cx
    loop .draw_line
@@ -679,7 +673,7 @@ ret
 ; =========================================== DRAW SPRITE PROCEDURE ============
 ; Expects:
 ; SI - sprite data
-; DI - positon (linear)
+; DI - position (linear)
 ; Return: -
 draw_sprite:
    pusha
@@ -731,12 +725,10 @@ decompress_sprite:
    mov cx, SPRITE_SIZE    ; Sprite width
   .plot_line:
       push cx           ; Save lines
-      
       lodsw             ; Load 16 pixels
      
       mov cx, SPRITE_SIZE      ; 16 pixels in line
       .draw_pixel:
-
          cmp cx, SPRITE_SIZE/2
          jnz .cont
             lodsw
@@ -762,7 +754,7 @@ decompress_tiles:
    .decompress_next:
       push cx
 
-      mov bx,TilesCompressedEnd-TilesCompressed
+      mov bx, TilesCompressedEnd-TilesCompressed
       sub bx, cx
       shl bx, 1
       mov si, [TilesCompressed+bx] 
@@ -781,15 +773,13 @@ draw_tile:
    shl ax, 8
    mov si, _TILES_
    add si, ax
-  
-   mov cx, 0x10   ; Tile height
+   mov bx, 0x10      ; Tile height
    .draw_tile_line:
-   push cx
-      mov cx, 0x8    ; Tile width
-      rep movsw
-      add di, 320-SPRITE_SIZE
-   pop cx
-   loop .draw_tile_line
+      mov cx, 0x8    ; Tile width / 2
+      rep movsw      ; Move 2px at a time
+      add di, SCREEN_WIDTH-SPRITE_SIZE ; Next line
+      dec bx
+   jnz .draw_tile_line
    popa
 ret
 
