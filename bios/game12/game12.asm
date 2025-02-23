@@ -374,10 +374,11 @@ init_menu:
    mov di, SCREEN_WIDTH*80+120
    mov cx, 5
    .draw_next_sprite:
-      mov si, [Sprites+bx]
+      mov al, bl
+      add al, (SpritesCompressed - TilesCompressed)/2
       call draw_sprite
       add di, SCREEN_WIDTH*17
-      add bx, 2
+      add bx, 1
    loop .draw_next_sprite
 
    mov byte [_GAME_STATE_], STATE_MENU
@@ -670,50 +671,6 @@ draw_terrain:
    loop .draw_line
 ret
 
-; =========================================== DRAW SPRITE PROCEDURE ============
-; Expects:
-; SI - sprite data
-; DI - position (linear)
-; Return: -
-draw_sprite:
-   pusha
-
-   lodsb
-   movzx dx, al   ; save palette
-   shl dx, 2      ; multiply by 4 (palette size)
-
-   mov cx, SPRITE_SIZE    ; Sprite width
-  .plot_line:
-      push cx           ; Save lines
-      
-      lodsw             ; Load 16 pixels
-     
-      mov cx, SPRITE_SIZE      ; 16 pixels in line
-      .draw_pixel:
-
-         cmp cx, SPRITE_SIZE/2
-         jnz .cont
-            lodsw
-         .cont:
-         rol ax, 2        ; Shift to next pixel
-
-         mov bx, ax     ; Saves word
-         and bx, 0x3    ; Cut last 2 bits
-         add bx, dx     ; add palette shift
-         mov byte bl, [Palettes+bx] ; get color from palette
-         cmp bl, 0x0
-         je .skip_transparent_pixel
-         mov byte [es:di], bl  ; Write pixel color 
-         .skip_transparent_pixel:      
-         inc di           ; Move destination to next pixel (+1)
-      loop .draw_pixel
-
-      add di, 320-SPRITE_SIZE          ; Move to next line in destination
-
-   pop cx                   ; Restore line counter
-   loop .plot_line
-  popa
-ret
 
 decompress_sprite:
    pusha
@@ -740,7 +697,7 @@ decompress_sprite:
          add bx, dx     ; add palette shift
          mov byte bl, [Palettes+bx] ; get color from palette
          mov byte [_TILES_+di], bl  ; Write pixel color 
-         inc di           ; Move destination to next pixel (+1)
+         inc di           ; Move destination to next pixel
       loop .draw_pixel
 
    pop cx                   ; Restore line counter
@@ -782,6 +739,32 @@ draw_tile:
    jnz .draw_tile_line
    popa
 ret
+
+; in AL tile id
+; di position
+draw_sprite:  
+   pusha
+   shl ax, 8
+   mov si, _TILES_
+   add si, ax
+   mov bx, 0x10      ; Tile height
+   .draw_tile_line:
+      mov cx, 0x10    ; Tile width
+      .draw_next_pixel:
+      mov al, [si]
+      cmp al, COLOR_BLACK
+      jz .skip_transparent_pixel
+         mov byte [es:di], al
+      .skip_transparent_pixel:
+      inc di
+      inc si
+      loop .draw_next_pixel
+      add di, SCREEN_WIDTH-SPRITE_SIZE ; Next line
+      dec bx
+   jnz .draw_tile_line
+   popa
+ret
+
 
 ; Calculate screen position for a tile at (X, Y) in a grid:
 ; mov  bx, [x_pos]      ; BX = X coordinate
@@ -886,9 +869,9 @@ db COLOR_YELLOW      ; Mountain
 
 TilesCompressed:
 dw SwampTile, MudTile, SomeGrassTile, DenseGrassTile, BushTile, TreeTile, MountainTile
-TilesCompressedEnd:
-Sprites:
+SpritesCompressed:
 dw EggSprite, WormSprite, BeetleSprite, SpiderSprite, InsectSprite 
+TilesCompressedEnd:
 
 Palettes:
 db COLOR_GREEN, COLOR_ORANGE_BROWN, COLOR_DARK_TEAL, COLOR_BLUE   ; Swamp, Mud
