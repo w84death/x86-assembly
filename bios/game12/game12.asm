@@ -79,7 +79,7 @@ TILE_MOUNTAIN     equ 0x6
 
 SCREEN_WIDTH         equ 320
 SCREEN_HEIGHT        equ 200
-MAP_SIZE             equ 64      ; Map size in cells DO NOT CHANGE
+MAP_SIZE             equ 128      ; Map size in cells DO NOT CHANGE
 VIEWPORT_WIDTH       equ 20      ; Full screen 320
 VIEWPORT_HEIGHT      equ 12      ; by 192 pixels
 VIEWPORT_GRID_SIZE   equ 16      ; Individual cell size DO NOT CHANGE
@@ -408,50 +408,51 @@ init_map_view:
    mov al, COLOR_DARK_BLUE
    call clear_screen
 
-   mov di, SCREEN_WIDTH*30+90
-   mov ax, COLOR_BROWN
-   mov cx, 140
-   .draw_line:
-      push cx
-      mov cx, 70
+   .draw_frame:
+      mov di, SCREEN_WIDTH*30+90
+      mov ax, COLOR_BROWN
+      mov cx, 140
+      .draw_line:
+         push cx
+         mov cx, 70
+         rep stosw
+         pop cx
+         add di, 320-140
+      loop .draw_line
+
+   .draw_mini_map:
+      mov si, _MAP_              ; Map data
+      mov di, SCREEN_WIDTH*36+96          ; Map position on screen
+      mov bx, TerrainColors      ; Terrain colors array
+      mov cx, MAP_SIZE           ; Columns
+      .draw_loop:
+         push cx
+         mov cx, MAP_SIZE        ; Rows
+         .draw_row:
+            lodsb                ; Load map cell
+            xlatb                ; Translate to color
+            mov ah, al           ; Copy color for second pixel
+            mov [es:di], al      ; Draw 1 pixels
+            ; mov [es:di+320], ax  ; And another 2 pixels below
+            add di, 1            ; Move to next column
+         loop .draw_row
+         pop cx
+         add di, 320-MAP_SIZE;*2    ; Move to next row
+      loop .draw_loop
+
+   .draw_viewport_box:
+      mov di, SCREEN_WIDTH*35+96
+      mov ax, [_VIEWPORT_Y_]  ; Y coordinate
+      imul ax, 320
+      add ax, [_VIEWPORT_X_]  ; Y * 64 + X
+      add di, ax
+      mov ax, COLOR_WHITE
+      mov ah, al
+      mov cx, VIEWPORT_WIDTH/2
       rep stosw
-      pop cx
-      add di, 320-140
-   loop .draw_line
-
-   mov si, _MAP_              ; Map data
-   mov di, SCREEN_WIDTH*36+96          ; Map position on screen
-   mov bx, TerrainColors      ; Terrain colors array
-   mov cx, MAP_SIZE           ; Columns
-   .draw_loop:
-      push cx
-      mov cx, MAP_SIZE        ; Rows
-      .draw_row:
-         lodsb                ; Load map cell
-         xlatb                ; Translate to color
-         mov ah, al           ; Copy color for second pixel
-         mov [es:di], ax      ; Draw 2 pixels
-         mov [es:di+320], ax  ; And another 2 pixels below
-         add di, 2            ; Move to next column
-      loop .draw_row
-      pop cx
-      add di, 320+320-MAP_SIZE*2    ; Move to next row
-   loop .draw_loop
-
-   mov di, SCREEN_WIDTH*35+96
-   mov ax, [_VIEWPORT_Y_]  ; Y coordinate
-   imul ax, 320
-   add ax, [_VIEWPORT_X_]  ; Y * 64 + X
-   shl ax, 1               ; Multiply by 2 (2 pixels per cell)
-   add di, ax
-   mov ax, COLOR_WHITE
-   mov ah, al
-   mov cx, VIEWPORT_WIDTH
-   rep stosw
-   add di, SCREEN_WIDTH*VIEWPORT_HEIGHT*2-VIEWPORT_WIDTH*2
-   mov cx, VIEWPORT_WIDTH
-   rep stosw
-
+      add di, SCREEN_WIDTH*VIEWPORT_HEIGHT-VIEWPORT_WIDTH
+      mov cx, VIEWPORT_WIDTH/2
+      rep stosw
 
    mov byte [_GAME_STATE_], STATE_MAP_VIEW
 jmp game_state_satisfied
@@ -652,7 +653,7 @@ draw_terrain:
    xor di, di
    mov si, _MAP_ 
    mov ax, [_VIEWPORT_Y_]  ; Y coordinate
-   shl ax, 6               ; Y * 64
+   shl ax, 7               ; Y * 64
    add ax, [_VIEWPORT_X_]  ; Y * 64 + X
    add si, ax
    xor ax, ax
