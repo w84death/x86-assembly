@@ -316,8 +316,8 @@ init_title_screen:
    call draw_text
 
    mov si, TitleText
-   mov dh, 0xC      ; Y position
-   mov dl, 0x7       ; X position
+   mov dh, 0xC       ; Y position
+   mov dl, 0x5       ; X position
    mov bl, COLOR_WHITE
    call draw_text
 
@@ -343,18 +343,18 @@ init_menu:
    mov al, COLOR_BLACK
    call clear_screen
 
-   mov di, SCREEN_WIDTH*72
+   mov di, SCREEN_WIDTH*48
    mov al, COLOR_YELLOW
    call draw_gradient
 
    mov si, MainMenuText
-   mov dx, 0x0204
+   mov dx, 0x0904
    mov bl, COLOR_YELLOW
    call draw_text
 
    mov si, MainMenu
    add dh, 2
-   mov bl, COLOR_GREEN
+   mov bl, COLOR_LIME
 
    mov cx, EndMainMenu - MainMenu
    .next_menu_entry:
@@ -369,17 +369,6 @@ init_menu:
       pop si
    loop .next_menu_entry
    .done:
-
-   xor bx, bx
-   mov di, SCREEN_WIDTH*80+120
-   mov cx, 5
-   .draw_next_sprite:
-      mov al, bl
-      add al, (SpritesCompressed - TilesCompressed)/2
-      call draw_sprite
-      add di, SCREEN_WIDTH*17
-      add bx, 1
-   loop .draw_next_sprite
 
    mov byte [_GAME_STATE_], STATE_MENU
 jmp game_state_satisfied
@@ -728,6 +717,8 @@ ret
 ; di position
 draw_tile:  
    pusha
+   
+
    shl ax, 8
    mov si, _TILES_
    add si, ax
@@ -745,6 +736,8 @@ ret
 ; di position
 draw_sprite:  
    pusha
+   
+
    shl ax, 8
    mov si, _TILES_
    add si, ax
@@ -822,28 +815,12 @@ MenuGenerateMapText  db ' [F2] Continue game',0x0
 MenuQuitText         db '[ESC] Quit game',0x0
 MenuSpaceText        db '',0x0
 MenuInstructionText  db '[TAB] Toggle map / [ARROWS] Pan',0x0
-MenuAlien1Text       db 'Nectocyte',0x0
-MenuAlien2Text       db 'Gloopendra',0x0
-MenuAlien3Text       db 'Mycelurk',0x0
-MenuAlien4Text       db 'Venomire',0x0
-MenuAlien5Text       db 'Whirlygig',0x0
 MainMenu:
 dw MenuStartNewGameText
 dw MenuGenerateMapText
 dw MenuInstructionText
+dw MenuSpaceText
 dw MenuQuitText
-dw MenuSpaceText
-dw MenuSpaceText
-dw MenuSpaceText
-dw MenuAlien1Text
-dw MenuSpaceText
-dw MenuAlien2Text
-dw MenuSpaceText
-dw MenuAlien3Text
-dw MenuSpaceText
-dw MenuAlien4Text
-dw MenuSpaceText
-dw MenuAlien5Text
 EndMainMenu:
 
 ; =========================================== TERRAIN GEN RULES ================
@@ -858,20 +835,20 @@ db 4, 5, 5, 6  ; Tree
 db 5, 5, 6, 6  ; Mountain
 
 TerrainColors:
-db COLOR_DARK_BLUE        ; Swamp
-db COLOR_ORANGE_BROWN        ; Mud
-db COLOR_GREEN           ; Some Grass
-db COLOR_GREEN              ; Dense Grass
-db COLOR_GREEN       ; Bush
-db COLOR_DARK_TEAL       ; Forest
-db COLOR_YELLOW      ; Mountain
+db COLOR_DARK_BLUE      ; Swamp
+db COLOR_ORANGE_BROWN   ; Mud
+db COLOR_GREEN          ; Some Grass
+db COLOR_GREEN          ; Dense Grass
+db COLOR_GREEN          ; Bush
+db COLOR_DARK_TEAL      ; Forest
+db COLOR_YELLOW         ; Mountain
 
 ; =========================================== TILES ============================
 
 TilesCompressed:
 dw SwampTile, MudTile, SomeGrassTile, DenseGrassTile, BushTile, TreeTile, MountainTile
 SpritesCompressed:
-dw EggSprite, WormSprite, BeetleSprite, SpiderSprite, InsectSprite 
+dw NectocyteSprite, GloopendraSprite, MycelurkSprite, VenomireSprite, WhirlygigSprite
 TilesCompressedEnd:
 
 Palettes:
@@ -1030,7 +1007,7 @@ dw 0011110000111100b, 0000110011000101b
 dw 0011000011110011b, 0000111101010100b
 dw 0100000100000001b, 0001011101010001b
 dw 0101000000000000b, 0100000001000100b
-EggSprite:
+NectocyteSprite:
 db 0x05
 dw 0000000000000000b, 0000000000000000b
 dw 0000000000000101b, 0100000000000000b
@@ -1048,7 +1025,7 @@ dw 0000000010011111b, 1101100000000000b
 dw 0000000000101010b, 1010000000000000b
 dw 0000000000000000b, 0000000000000000b
 dw 0000000000000000b, 0000000000000000b
-WormSprite:
+GloopendraSprite:
 db 0x06
 dw 0000000000000101b, 0101000000000000b
 dw 0000000000010101b, 0101010000000000b
@@ -1066,7 +1043,7 @@ dw 0010101010010110b, 1001100110000000b
 dw 0000000010011110b, 1110101010000000b
 dw 0000000000101010b, 1010100000000000b
 dw 0000000000000000b, 0000000000000000b
-BeetleSprite:
+MycelurkSprite:
 db 0x07
 dw 0000000000000000b, 0000000000000000b
 dw 0000000000000101b, 0101000000000000b
@@ -1084,7 +1061,7 @@ dw 0000110111111101b, 1001111111010000b
 dw 0000001110111111b, 1011111110110000b
 dw 0000000011110011b, 1011001111000000b
 dw 0000000000000000b, 1100000000000000b
-SpiderSprite:
+VenomireSprite:
 db 0x08
 dw 0000000001010101b, 0000000000000000b
 dw 0000001010101010b, 1000000000000000b
@@ -1102,7 +1079,7 @@ dw 0001000000101000b, 0000101000001000b
 dw 0010000000100100b, 0000011000000000b
 dw 0000000000010000b, 0000000100000000b
 dw 0000000000010000b, 0000000100000000b
-InsectSprite:
+WhirlygigSprite:
 db 0x09
 dw 0000000001000000b, 0000000100000000b
 dw 0000000100010000b, 0100010001000000b
