@@ -75,6 +75,8 @@ TILE_BUSH         equ 0x4
 TILE_FOREST       equ 0x5
 TILE_MOUNTAIN     equ 0x6
 
+META_DIRTY_TILE   equ 0x80
+
 ; =========================================== MISC SETTINGS ====================
 
 SCREEN_WIDTH         equ 320
@@ -348,27 +350,23 @@ init_menu:
    call draw_gradient
 
    mov si, MainMenuText
-   mov dx, 0x0904
+   mov dx, 0x0904          ; Y/X position
    mov bl, COLOR_YELLOW
    call draw_text
 
    mov si, MainMenu
-   add dh, 2
+   add dh, 2            ; Skip 2 lines
    mov bl, COLOR_LIME
 
-   mov cx, EndMainMenu - MainMenu
+   mov cx, (MainMenuEnd - MainMenu)/2
    .next_menu_entry:
-      lodsw
-      test ax, ax
-      jz .done
-      
+      lodsw     
       push si
       mov si, ax
       call draw_text
       inc dh
       pop si
    loop .next_menu_entry
-   .done:
 
    mov byte [_GAME_STATE_], STATE_MENU
 jmp game_state_satisfied
@@ -629,7 +627,6 @@ generate_map:
          mov [di], bl
          .skip_first_row:       
 
-
          inc di
          dec dx
       jnz .next_cell
@@ -661,6 +658,20 @@ draw_terrain:
    loop .draw_line
 ret
 
+; =========================================== DRAW TERRAIN TILE ===============
+; IN: BX - Y/X
+; OUT: Tile drawn on the screen
+redraw_terrain_tile: 
+   push si
+   mov si, _MAP_ 
+   movzx ax, bh
+   shl ax, 7               ; Y * 64
+   add al, bl  ; Y * 64 + X
+   add si, ax
+   lodsb
+   call draw_tile
+   pop si
+ret
 
 decompress_sprite:
    pusha
@@ -821,7 +832,7 @@ dw MenuGenerateMapText
 dw MenuInstructionText
 dw MenuSpaceText
 dw MenuQuitText
-EndMainMenu:
+MainMenuEnd:
 
 ; =========================================== TERRAIN GEN RULES ================
 
