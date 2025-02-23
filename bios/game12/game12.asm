@@ -27,7 +27,8 @@ _TRAIN_X_      equ _BASE_ + 0x10    ; 2 byte
 _TRAIN_Y_      equ _BASE_ + 0x11    ; 2 byte
 _TRAIN_DIR_    equ _BASE_ + 0x12    ; 1 byte
 
-_ENTITIES_        equ 0x2000  ; Entities data
+_TILES_           equ _BASE_ + 0x20
+_ENTITIES_        equ _BASE_ + 0x100  ; Entities data
 _MAP_             equ 0x3000  ; Map data 64x64
 _MAP_METADATA_    equ 0x4000  ; Map metadata 64x64
 
@@ -80,6 +81,7 @@ MAP_SIZE             equ 64      ; Map size in cells DO NOT CHANGE
 VIEWPORT_WIDTH       equ 20      ; Full screen 320
 VIEWPORT_HEIGHT      equ 12      ; by 192 pixels
 VIEWPORT_GRID_SIZE   equ 16      ; Individual cell size DO NOT CHANGE
+SPRITE_SIZE          equ 16      ; Sprite size 16x16
 
 ; =========================================== COLORS / ARNE 16 =================
 
@@ -290,6 +292,7 @@ init_engine:
    mov word [_CUR_X_], VIEWPORT_WIDTH/2
    mov word [_CUR_Y_], VIEWPORT_HEIGHT/2
 
+   call decompress_tiles
    call generate_map
 
    mov byte [_GAME_STATE_], STATE_TITLE_SCREEN_INIT
@@ -365,6 +368,14 @@ init_menu:
    loop .next_menu_entry
    .done:
 
+   xor di, di
+   mov ax, 0
+   call draw_tile
+
+      inc ax
+      add di, 16
+   call draw_tile
+
    xor bx, bx
    mov di, 320*80+120
    mov cx, 5
@@ -390,9 +401,7 @@ new_game:
 init_game:
    mov al, COLOR_DARK_TEAL
    call clear_screen
-   
    call draw_terrain
-
    mov byte [_GAME_STATE_], STATE_GAME
 jmp game_state_satisfied
 
@@ -651,24 +660,17 @@ draw_terrain:
    shl ax, 6               ; Y * 64
    add ax, [_VIEWPORT_X_]  ; Y * 64 + X
    add si, ax
-   mov bx, Tiles           ; Terrain tiles array
+   xor ax, ax
    mov cx, VIEWPORT_HEIGHT
    .draw_line:
       push cx
-
       mov cx, VIEWPORT_WIDTH
       .draw_cell:
          lodsb
-         movzx bx, al
-         shl bx, 1
-         add bx, Tiles
-         push si
-         mov si, [bx]
-         call draw_sprite
-         pop si
-         add di, 16
+         call draw_tile
+         add di, SPRITE_SIZE
       loop .draw_cell
-      add di, 320*15
+      add di, 320*SPRITE_SIZE
       add si, MAP_SIZE-VIEWPORT_WIDTH
       pop cx
    loop .draw_line
@@ -686,16 +688,16 @@ draw_sprite:
    movzx dx, al   ; save palette
    shl dx, 2      ; multiply by 4 (palette size)
 
-   mov cx, 0x10    ; Sprite width
+   mov cx, SPRITE_SIZE    ; Sprite width
   .plot_line:
       push cx           ; Save lines
       
       lodsw             ; Load 16 pixels
      
-      mov cx, 0x10      ; 16 pixels in line
+      mov cx, SPRITE_SIZE      ; 16 pixels in line
       .draw_pixel:
 
-         cmp cx, 0x8
+         cmp cx, SPRITE_SIZE/2
          jnz .cont
             lodsw
          .cont:
@@ -712,13 +714,84 @@ draw_sprite:
          inc di           ; Move destination to next pixel (+1)
       loop .draw_pixel
 
-      add di, 320-16          ; Move to next line in destination
+      add di, 320-SPRITE_SIZE          ; Move to next line in destination
 
    pop cx                   ; Restore line counter
    loop .plot_line
   popa
 ret
 
+decompress_sprite:
+   pusha
+
+   lodsb
+   movzx dx, al   ; save palette
+   shl dx, 2      ; multiply by 4 (palette size)
+
+   mov cx, SPRITE_SIZE    ; Sprite width
+  .plot_line:
+      push cx           ; Save lines
+      
+      lodsw             ; Load 16 pixels
+     
+      mov cx, SPRITE_SIZE      ; 16 pixels in line
+      .draw_pixel:
+
+         cmp cx, SPRITE_SIZE/2
+         jnz .cont
+            lodsw
+         .cont:
+         rol ax, 2        ; Shift to next pixel
+
+         mov bx, ax     ; Saves word
+         and bx, 0x3    ; Cut last 2 bits
+         add bx, dx     ; add palette shift
+         mov byte bl, [Palettes+bx] ; get color from palette
+         mov byte [_TILES_+di], bl  ; Write pixel color 
+         inc di           ; Move destination to next pixel (+1)
+      loop .draw_pixel
+
+   pop cx                   ; Restore line counter
+   loop .plot_line
+  popa
+ret
+
+decompress_tiles:
+   xor di, di
+   mov cx, TilesCompressedEnd-TilesCompressed
+   .decompress_next:
+      push cx
+
+      mov bx,TilesCompressedEnd-TilesCompressed
+      sub bx, cx
+      shl bx, 1
+      mov si, [TilesCompressed+bx] 
+      
+      call decompress_sprite
+      add di, SPRITE_SIZE*SPRITE_SIZE
+
+      pop cx
+   loop .decompress_next
+ret
+
+; in AL tile id
+; di position
+draw_tile:  
+   pusha
+   shl ax, 8
+   mov si, _TILES_
+   add si, ax
+  
+   mov cx, 0x10   ; Tile height
+   .draw_tile_line:
+   push cx
+      mov cx, 0x8    ; Tile width
+      rep movsw
+      add di, 320-SPRITE_SIZE
+   pop cx
+   loop .draw_tile_line
+   popa
+ret
 
 ; Calculate screen position for a tile at (X, Y) in a grid:
 ; mov  bx, [x_pos]      ; BX = X coordinate
@@ -821,8 +894,9 @@ db COLOR_YELLOW      ; Mountain
 
 ; =========================================== TILES ============================
 
-Tiles:
+TilesCompressed:
 dw SwampTile, MudTile, SomeGrassTile, DenseGrassTile, BushTile, TreeTile, MountainTile
+TilesCompressedEnd:
 Sprites:
 dw EggSprite, WormSprite, BeetleSprite, SpiderSprite, InsectSprite 
 
