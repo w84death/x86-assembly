@@ -143,10 +143,8 @@ check_keyboard:
 
    ; ========================================= STATE TRANSITIONS ===============
    mov si, StateTransitionTable
-   .check_transitions:
-      cmp byte [si], 0xFF ; Check for end of table
-      je .transitions_done
-      
+   mov cx, StateTransitionTableEnd-StateTransitionTable
+   .check_transitions:      
       mov bl, [_GAME_STATE_]
       cmp bl, [si]        ; Check current state
       jne .next_entry
@@ -160,7 +158,7 @@ check_keyboard:
 
    .next_entry:
       add si, 3           ; Move to next entry
-      jmp .check_transitions
+      loop .check_transitions
 
    .transitions_done:
 
@@ -279,7 +277,7 @@ StateTransitionTable:
     db STATE_GAME,         KB_TAB,   STATE_MAP_VIEW_INIT
     db STATE_MAP_VIEW,     KB_ESC,   STATE_GAME_INIT
     db STATE_MAP_VIEW,     KB_TAB,   STATE_GAME_INIT
-    db 0xFF
+StateTransitionTableEnd:
 
 init_engine:
    mov byte [_GAME_TICK_], 0x0
