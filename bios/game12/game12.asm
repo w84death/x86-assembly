@@ -39,11 +39,12 @@ STATE_TITLE_SCREEN_INIT equ 2
 STATE_TITLE_SCREEN      equ 3
 STATE_MENU_INIT         equ 4
 STATE_MENU              equ 5
-STATE_GAME_INIT         equ 6
-STATE_GAME              equ 7
-STATE_MAP_VIEW_INIT     equ 8
-STATE_MAP_VIEW          equ 9
-STATE_GENERATE_MAP      equ 10
+STATE_GAME_NEW          equ 6
+STATE_GAME_INIT         equ 7
+STATE_GAME              equ 8
+STATE_MAP_VIEW_INIT     equ 9
+STATE_MAP_VIEW          equ 10
+STATE_GENERATE_MAP      equ 12
 
 ; =========================================== KEYBOARD CODES ===================
 
@@ -261,6 +262,7 @@ StateJumpTable:
    dw live_title_screen
    dw init_menu
    dw live_menu
+   dw new_game
    dw init_game
    dw live_game
    dw init_map_view
@@ -271,13 +273,12 @@ StateTransitionTable:
     db STATE_TITLE_SCREEN, KB_ESC,   STATE_QUIT
     db STATE_TITLE_SCREEN, KB_ENTER, STATE_MENU_INIT
     db STATE_MENU,         KB_ESC,   STATE_QUIT
-    db STATE_MENU,         KB_F1,    STATE_GAME_INIT
-    db STATE_MENU,         KB_F2,    STATE_GENERATE_MAP
+    db STATE_MENU,         KB_F1,    STATE_GAME_NEW
+    db STATE_MENU,         KB_F2,    STATE_GAME_INIT
     db STATE_GAME,         KB_ESC,   STATE_MENU_INIT
     db STATE_GAME,         KB_TAB,   STATE_MAP_VIEW_INIT
     db STATE_MAP_VIEW,     KB_ESC,   STATE_GAME_INIT
     db STATE_MAP_VIEW,     KB_TAB,   STATE_GAME_INIT
-    db STATE_MAP_VIEW,     KB_F2,    STATE_GENERATE_MAP
     db 0xFF
 
 init_engine:
@@ -303,24 +304,7 @@ init_title_screen:
    
    mov di, 320*48
    mov al, COLOR_DARK_BLUE
-   mov ah, al
-   mov dl, 0xD                ; Number of bars to draw
-   .draw_gradient:
-      mov cx, 320*4           ; Number of pixels high for each bar
-      rep stosw               ; Write to the VGA memory
-      
-      cmp dl, 0x8             ; Check if we are in the middle
-      jl .down                ; If not, decrease 
-      inc al                  ; Increase color in right pixel
-      jmp .up
-      .down:
-      dec al                  ; Decrease color in left pixel
-      .up:
-      
-      xchg al, ah             ; Swap colors (left/right pixel)
-      dec dl                  ; Decrease number of bars to draw
-      jg .draw_gradient       ; Loop until all bars are drawn
-
+   call draw_gradient
 
    mov si, WelcomeText
    mov dh, 0x2          ; Y position
@@ -356,14 +340,18 @@ init_menu:
    mov al, COLOR_BLACK
    call clear_screen
 
+   mov di, 320*72
+   mov al, COLOR_YELLOW
+   call draw_gradient
+
    mov si, MainMenuText
-   mov dx, 0x0404
-   mov bl, COLOR_WHITE
+   mov dx, 0x0204
+   mov bl, COLOR_YELLOW
    call draw_text
 
    mov si, MainMenu
    add dh, 2
-   mov bl, COLOR_LIGHT_BLUE
+   mov bl, COLOR_GREEN
 
    mov cx, EndMainMenu - MainMenu
    .next_menu_entry:
@@ -380,12 +368,12 @@ init_menu:
    .done:
 
    xor bx, bx
-   mov di, 320*124+32
+   mov di, 320*80+120
    mov cx, 5
    .draw_next_sprite:
       mov si, [Sprites+bx]
       call draw_sprite
-      add di, 24
+      add di, 320*17
       add bx, 2
    loop .draw_next_sprite
 
@@ -395,6 +383,9 @@ jmp game_state_satisfied
 live_menu:
    nop
 jmp game_state_satisfied
+
+new_game:
+   call generate_map
 
 init_game:
    mov al, COLOR_DARK_TEAL
@@ -577,6 +568,31 @@ clear_screen:
    rep stosw            ; Write to the VGA memory
 ret
 
+; =========================================== DRAW GRADIENT ====================
+; IN:
+; DI - Position
+; AL - Color
+; OUT: VGA memory filled with gradient
+draw_gradient:
+mov ah, al
+   mov dl, 0xD                ; Number of bars to draw
+   .draw_gradient:
+      mov cx, 320*4           ; Number of pixels high for each bar
+      rep stosw               ; Write to the VGA memory
+      
+      cmp dl, 0x8             ; Check if we are in the middle
+      jl .down                ; If not, decrease 
+      inc al                  ; Increase color in right pixel
+      jmp .up
+      .down:
+      dec al                  ; Decrease color in left pixel
+      .up:
+      
+      xchg al, ah             ; Swap colors (left/right pixel)
+      dec dl                  ; Decrease number of bars to draw
+      jg .draw_gradient       ; Loop until all bars are drawn
+ret
+
 ; =========================================== GENERATE MAP =====================
 generate_map:
    mov di, _MAP_
@@ -750,23 +766,37 @@ ret
 ; =========================================== TEXT DATA ========================
 
 WelcomeText db 'KKJ^P1X PRESENTS A 2025 PRODUCTION', 0x0
-TitleText db '12-TH ASSEMBLY GAME ENGINE', 0x0
+TitleText db '* 12-TH ASSEMBLY GAME ENGINE *', 0x0
 PressEnterText db 'Press [ENTER] to start engine!', 0x0
 QuitText db 'Good bye!',0x0D,0x0A,'Visit http://smol.p1x.in/assembly/ for more games :)', 0x0
-MainMenuText         db 'MAIN MENU',0x0
+MainMenuText         db '"Mycelium Overlords"',0x0
 MenuStartNewGameText db ' [F1] Start new game',0x0
-MenuGenerateMapText  db ' [F2] Generate new map',0x0
+MenuGenerateMapText  db ' [F2] Continue game',0x0
 MenuQuitText         db '[ESC] Quit game',0x0
-MenuInstruction1Text db '',0x0
-MenuInstruction2Text db '[TAB] Toggle map view',0x0
-MenuInstruction3Text db '[ARROWS] Move cursor',0x0
+MenuSpaceText        db '',0x0
+MenuInstructionText  db '[TAB] Toggle map / [ARROWS] Pan',0x0
+MenuAlien1Text       db 'Nectocyte',0x0
+MenuAlien2Text       db 'Gloopendra',0x0
+MenuAlien3Text       db 'Mycelurk',0x0
+MenuAlien4Text       db 'Venomire',0x0
+MenuAlien5Text       db 'Whirlygig',0x0
 MainMenu:
 dw MenuStartNewGameText
 dw MenuGenerateMapText
+dw MenuInstructionText
 dw MenuQuitText
-dw MenuInstruction1Text
-dw MenuInstruction2Text
-dw MenuInstruction3Text
+dw MenuSpaceText
+dw MenuSpaceText
+dw MenuSpaceText
+dw MenuAlien1Text
+dw MenuSpaceText
+dw MenuAlien2Text
+dw MenuSpaceText
+dw MenuAlien3Text
+dw MenuSpaceText
+dw MenuAlien4Text
+dw MenuSpaceText
+dw MenuAlien5Text
 EndMainMenu:
 
 ; =========================================== TERRAIN GEN RULES ================
