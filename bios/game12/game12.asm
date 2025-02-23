@@ -384,6 +384,8 @@ jmp game_state_satisfied
 
 new_game:
    call generate_map
+   mov byte [_VIEWPORT_X_], MAP_SIZE/2-VIEWPORT_WIDTH/2
+   mov byte [_VIEWPORT_Y_], MAP_SIZE/2-VIEWPORT_HEIGHT/2
 
 init_game:
    mov al, COLOR_DARK_TEAL
