@@ -796,7 +796,7 @@ ret
 ; =========================================== INIT ENTITIES ====================
 init_entities:
     mov di, _ENTITIES_
-    mov cx, 0x40
+    mov cx, 0xFF
     .next_entity:
         call get_random
         and al, MAP_SIZE-1    ; X position (0-127)
@@ -805,9 +805,9 @@ init_entities:
         add di, 2
 
         call get_random
-        and ax, 0x4          ; Limit to 5 types (0-4)
-        mov byte [di], al    ; Store entity type
-        inc di               ; Move to next entity
+        and ax, 0x7           ; Entity type (0-7)
+        mov byte [di], al     ; Store entity type
+        inc di                ; Move to next entity
 
         loop .next_entity
 
@@ -925,7 +925,7 @@ db COLOR_YELLOW         ; Mountain
 TilesCompressed:
 dw SwampTile, MudTile, SomeGrassTile, DenseGrassTile, BushTile, TreeTile, MountainTile
 SpritesCompressed:
-dw NectocyteSprite, GloopendraSprite, MycelurkSprite, VenomireSprite, WhirlygigSprite
+dw NectocyteSprite, GloopendraSprite, MycelurkSprite, VenomireSprite, WhirlygigSprite, NectocyteSprite, NectocyteSprite, BushCoverTile
 TilesCompressedEnd:
 
 Palettes:
