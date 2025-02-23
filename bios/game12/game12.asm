@@ -443,6 +443,21 @@ init_map_view:
       add di, 320+320-MAP_SIZE*2    ; Move to next row
    loop .draw_loop
 
+   mov di, 320*35+96
+   mov ax, [_VIEWPORT_Y_]  ; Y coordinate
+   imul ax, 320
+   add ax, [_VIEWPORT_X_]  ; Y * 64 + X
+   shl ax, 1               ; Multiply by 2 (2 pixels per cell)
+   add di, ax
+   mov ax, COLOR_WHITE
+   mov ah, al
+   mov cx, VIEWPORT_WIDTH
+   rep stosw
+   add di, 320*VIEWPORT_HEIGHT*2-VIEWPORT_WIDTH*2
+   mov cx, VIEWPORT_WIDTH
+   rep stosw
+
+
    mov byte [_GAME_STATE_], STATE_MAP_VIEW
 jmp game_state_satisfied
 
@@ -616,11 +631,11 @@ ret
 draw_terrain:
    xor di, di
    mov si, _MAP_ 
-   mov ax, [_VIEWPORT_Y_]
-   shl ax, 6           ; Y * 64
-   add ax, [_VIEWPORT_X_]
+   mov ax, [_VIEWPORT_Y_]  ; Y coordinate
+   shl ax, 6               ; Y * 64
+   add ax, [_VIEWPORT_X_]  ; Y * 64 + X
    add si, ax
-   mov bx, Tiles        ; Terrain tiles array
+   mov bx, Tiles           ; Terrain tiles array
    mov cx, VIEWPORT_HEIGHT
    .draw_line:
       push cx
@@ -766,13 +781,13 @@ db 4, 5, 5, 6  ; Tree
 db 5, 5, 6, 6  ; Mountain
 
 TerrainColors:
-db COLOR_SKY_BLUE        ; Swamp
-db COLOR_BROWN          ; Mud
+db COLOR_DARK_BLUE        ; Swamp
+db COLOR_ORANGE_BROWN        ; Mud
 db COLOR_GREEN           ; Some Grass
-db COLOR_LIME              ; Dense Grass
-db COLOR_ORANGE_BROWN       ; Bush
-db COLOR_LIGHT_BLUE       ; Forest
-db COLOR_LIGHT_GRAY      ; Mountain
+db COLOR_GREEN              ; Dense Grass
+db COLOR_GREEN       ; Bush
+db COLOR_DARK_TEAL       ; Forest
+db COLOR_YELLOW      ; Mountain
 
 ; =========================================== TILES ============================
 
