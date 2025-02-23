@@ -28,9 +28,8 @@ _TRAIN_Y_      equ _BASE_ + 0x11    ; 2 byte
 _TRAIN_DIR_    equ _BASE_ + 0x12    ; 1 byte
 
 _TILES_           equ _BASE_ + 0x20
-_ENTITIES_        equ _BASE_ + 0x100  ; Entities data
-_MAP_             equ 0x3000  ; Map data 64x64
-_MAP_METADATA_    equ 0x4000  ; Map metadata 64x64
+_ENTITIES_        equ 0x3000  ; Entities data
+_MAP_             equ 0x4000  ; Map data 64x64
 
 ; =========================================== GAME STATES ======================
 
@@ -208,6 +207,7 @@ check_keyboard:
 
    .redraw_terrain:
       call draw_terrain
+      call draw_entities
 
 .done:
 
@@ -271,7 +271,6 @@ StateJumpTable:
    dw live_game
    dw init_map_view
    dw live_map_view
-   dw map_generate
 
 StateTransitionTable:
     db STATE_TITLE_SCREEN, KB_ESC,   STATE_QUIT
@@ -298,6 +297,7 @@ init_engine:
 
    call decompress_tiles
    call generate_map
+   call init_entities
 
    mov byte [_GAME_STATE_], STATE_TITLE_SCREEN_INIT
 
@@ -377,6 +377,7 @@ jmp game_state_satisfied
 
 new_game:
    call generate_map
+   call init_entities
    mov byte [_VIEWPORT_X_], MAP_SIZE/2-VIEWPORT_WIDTH/2
    mov byte [_VIEWPORT_Y_], MAP_SIZE/2-VIEWPORT_HEIGHT/2
 
@@ -384,6 +385,7 @@ init_game:
    mov al, COLOR_DARK_TEAL
    call clear_screen
    call draw_terrain
+   call draw_entities
    mov byte [_GAME_STATE_], STATE_GAME
 jmp game_state_satisfied
 
@@ -427,6 +429,24 @@ init_map_view:
          add di, 320-MAP_SIZE;*2    ; Move to next row
       loop .draw_loop
 
+      xor ax, ax
+   
+   mov si, _ENTITIES_
+   .next_entity:
+      lodsw
+      test ax, ax
+      jz .end_entities
+      movzx bx, ah
+      imul bx, SCREEN_WIDTH
+      movzx cx, al
+      add bx, cx
+      mov di, SCREEN_WIDTH*35+96
+      add di, bx
+      inc si
+      mov byte [es:di], COLOR_RED
+   loop .next_entity
+   .end_entities:
+
    .draw_viewport_box:
       mov di, SCREEN_WIDTH*35+96
       mov ax, [_VIEWPORT_Y_]  ; Y coordinate
@@ -447,12 +467,6 @@ jmp game_state_satisfied
 live_map_view:
    nop
 jmp game_state_satisfied
-
-map_generate:
-   call generate_map
-   mov byte [_GAME_STATE_], STATE_MAP_VIEW_INIT
-jmp game_state_satisfied
-
 
 
 
@@ -664,15 +678,18 @@ ret
 redraw_terrain_tile: 
    push si
    mov si, _MAP_ 
-   movzx ax, bh
-   shl ax, 7               ; Y * 64
-   add al, bl  ; Y * 64 + X
+   movzx ax, bh   ; Y coordinate
+   shl ax, 7      ; Y * 64
+   add al, bl     ; Y * 64 + X
    add si, ax
    lodsb
    call draw_tile
    pop si
 ret
 
+; =========================================== DECOMPRESS SPRITE ===============
+; IN: SI - Compressed sprite data
+; OUT: Sprite decompressed to _TILES_
 decompress_sprite:
    pusha
 
@@ -706,6 +723,8 @@ decompress_sprite:
   popa
 ret
 
+; =========================================== DECOMPRESS TILES ===============
+; OUT: Tiles decompressed to _TILES_
 decompress_tiles:
    xor di, di
    mov cx, TilesCompressedEnd-TilesCompressed
@@ -724,18 +743,21 @@ decompress_tiles:
    loop .decompress_next
 ret
 
-; in AL tile id
-; di position
-draw_tile:  
-   pusha
-   
+; =========================================== DRAW TILE ========================
+; IN: SI - Tile data
+; AL - Tile ID
+; DI - Position
+; OUT: Tile drawn on the screen
 
-   shl ax, 8
-   mov si, _TILES_
-   add si, ax
-   mov bx, 0x10      ; Tile height
+draw_tile:  
+   pusha 
+
+   shl ax, 8         ; Multiply by 256 (tile size in array)
+   mov si, _TILES_   ; Point to tile data
+   add si, ax        ; Point to tile data
+   mov bx, SPRITE_SIZE
    .draw_tile_line:
-      mov cx, 0x8    ; Tile width / 2
+      mov cx, SPRITE_SIZE/2
       rep movsw      ; Move 2px at a time
       add di, SCREEN_WIDTH-SPRITE_SIZE ; Next line
       dec bx
@@ -743,26 +765,27 @@ draw_tile:
    popa
 ret
 
-; in AL tile id
-; di position
+; =========================================== DRAW SPRITE ======================
+; IN:
+; AL - Sprite ID
+; DI - Position
+; OUT: Sprite drawn on the screen
 draw_sprite:  
    pusha
-   
-
-   shl ax, 8
-   mov si, _TILES_
-   add si, ax
-   mov bx, 0x10      ; Tile height
+   shl ax, 8         ; Multiply by 256 (tile size in array)
+   mov si, _TILES_   ; Point to tile data
+   add si, ax        ; Point to sprite data
+   mov bx, SPRITE_SIZE
    .draw_tile_line:
-      mov cx, 0x10    ; Tile width
+      mov cx, SPRITE_SIZE
       .draw_next_pixel:
-      mov al, [si]
-      cmp al, COLOR_BLACK
-      jz .skip_transparent_pixel
-         mov byte [es:di], al
-      .skip_transparent_pixel:
-      inc di
-      inc si
+         mov al, [si]
+         cmp al, COLOR_BLACK
+         jz .skip_transparent_pixel
+            mov byte [es:di], al
+         .skip_transparent_pixel:
+         inc di
+         inc si
       loop .draw_next_pixel
       add di, SCREEN_WIDTH-SPRITE_SIZE ; Next line
       dec bx
@@ -770,24 +793,67 @@ draw_sprite:
    popa
 ret
 
+; =========================================== INIT ENTITIES ====================
+init_entities:
+    mov di, _ENTITIES_
+    mov cx, 0x40
+    .next_entity:
+        call get_random
+        and al, MAP_SIZE-1    ; X position (0-127)
+        and ah, MAP_SIZE-1    ; Y position (0-127)
+        mov word [di], ax     ; Store X,Y position
+        add di, 2
 
-; Calculate screen position for a tile at (X, Y) in a grid:
-; mov  bx, [x_pos]      ; BX = X coordinate
-; mov  si, [y_pos]      ; SI = Y coordinate
-; lea  di, [bx + si*320] ; DI = X + Y*320 (for 16-pixel tiles)
-; add  di, VIEWPORT_POS ; Add base offset
-; MOV AX, YCoordinate          ; Y coordinate
-; SHL AX, 6                     ; Y * 64
-; LEA SI, [AX + XCoordinate]   ; SI = Y * 320 + X (offset in video memory)
+        call get_random
+        and ax, 0x4          ; Limit to 5 types (0-4)
+        mov byte [di], al    ; Store entity type
+        inc di               ; Move to next entity
 
-; ; Load a far pointer stored in memory
-; les  di, [video_ptr]  ; ES = segment, DI = offset
+        loop .next_entity
 
+    mov word [di], 0x0      ; Terminator
+    ret
 
-; mov  bx, PaletteTable  ; BX = address of palette data
-; mov  al, [ColorIndex]  ; AL = index (0–255)
-; xlatb                  ; AL = palette entry for ColorIndex
-; mov  [es:di], al       ; Write to VGA memory
+; =========================================== DRAW ENTITIES ====================
+; OUT: Entities drawn on the screen
+draw_entities:
+   xor ax, ax
+   mov si, _ENTITIES_
+   .next_entity:
+      lodsw
+      test ax, ax
+      jz .done
+
+      .check_bounds:
+         movzx bx, ah
+         sub bx, [_VIEWPORT_Y_]
+         jc .skip_entity
+         cmp bx, VIEWPORT_HEIGHT
+         jge .skip_entity
+
+         movzx cx, al
+         sub cx, [_VIEWPORT_X_]
+         jc .skip_entity
+         cmp cx, VIEWPORT_WIDTH
+         jge .skip_entity
+         
+      .calculate_position:
+         shl bx, 4
+         shl cx, 4
+         imul bx, SCREEN_WIDTH
+         add bx, cx               ; AX = Y * 16 * 320 + X * 16
+         mov di, bx               ; Move result to DI
+
+      .draw_on_screen:
+         lodsb
+         add ax, 0x7
+         call draw_sprite
+         jmp .next_entity
+      .skip_entity:
+         add si, 1
+         jmp .next_entity
+   .done:
+ret
 
 
 ; mov  bx, TileTable     ; BX = tile graphic offsets
