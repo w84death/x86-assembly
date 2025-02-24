@@ -840,6 +840,7 @@ draw_entities:
       .calculate_position:
          shl bx, 4
          shl cx, 4
+         sub bx, 4 ; Offset -4 on Y
          imul bx, SCREEN_WIDTH
          add bx, cx               ; AX = Y * 16 * 320 + X * 16
          mov di, bx               ; Move result to DI
