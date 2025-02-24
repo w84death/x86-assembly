@@ -904,13 +904,13 @@ MainMenuEnd:
 ; =========================================== TERRAIN GEN RULES ================
 
 TerrainRules:
-db 0, 0, 0, 1  ; Swamp
-db 0, 1, 1, 2  ; Mud
+db 0, 1, 1, 1  ; Swamp
+db 0, 1, 2, 2  ; Mud
 db 1, 2, 2, 3  ; Some Grass
 db 2, 3, 3, 4  ; Dense Grass
-db 3, 4, 4, 5  ; Bush
+db 2, 3, 4, 5  ; Bush
 db 4, 5, 5, 6  ; Tree
-db 5, 5, 6, 6  ; Mountain
+db 5, 5, 5, 6  ; Mountain
 
 TerrainColors:
 db COLOR_DARK_BLUE      ; Swamp
