@@ -277,7 +277,7 @@ StateTransitionTable:
     db STATE_TITLE_SCREEN, KB_ENTER, STATE_MENU_INIT
     db STATE_MENU,         KB_ESC,   STATE_QUIT
     db STATE_MENU,         KB_F1,    STATE_GAME_NEW
-    db STATE_MENU,         KB_F2,    STATE_GAME_INIT
+    db STATE_MENU,         KB_ENTER, STATE_GAME_INIT
     db STATE_GAME,         KB_ESC,   STATE_MENU_INIT
     db STATE_GAME,         KB_TAB,   STATE_MAP_VIEW_INIT
     db STATE_MAP_VIEW,     KB_ESC,   STATE_GAME_INIT
@@ -304,7 +304,7 @@ init_engine:
 jmp game_state_satisfied
 
 init_title_screen:
-   mov al, COLOR_BLACK
+   mov al, COLOR_DARK_TEAL
    call clear_screen
    
    mov di, SCREEN_WIDTH*48
@@ -312,14 +312,8 @@ init_title_screen:
    call draw_gradient
 
    mov si, WelcomeText
-   mov dh, 0x2          ; Y position
-   mov dl, 0x3          ; X position
-   mov bl, COLOR_LIGHT_BLUE
-   call draw_text
-
-   mov si, TitleText
    mov dh, 0xC       ; Y position
-   mov dl, 0x5       ; X position
+   mov dl, 0x8       ; X position
    mov bl, COLOR_WHITE
    call draw_text
 
@@ -330,8 +324,8 @@ jmp game_state_satisfied
 
 live_title_screen:
    mov si, PressEnterText
-   mov dh, 0x16      ; Y position
-   mov dl, 0x5       ; X position
+   mov dh, 0xE      ; Y position
+   mov dl, 0x8      ; X position
    mov bl, COLOR_LIGHT_BLUE
    test word [_GAME_TICK_], 0x4
    je .blink
@@ -342,31 +336,32 @@ live_title_screen:
 jmp game_state_satisfied
 
 init_menu:
-   mov al, COLOR_BLACK
-   call clear_screen
+   call draw_terrain
 
    mov di, SCREEN_WIDTH*48
    mov al, COLOR_YELLOW
    call draw_gradient
 
+   call draw_minimap
+
    mov si, MainMenuText
-   mov dx, 0x0904          ; Y/X position
-   mov bl, COLOR_YELLOW
+   mov dx, 0x060a          ; Y/X position
+   mov bl, COLOR_WHITE
    call draw_text
 
    mov si, MainMenu
-   add dh, 2            ; Skip 2 lines
-   mov bl, COLOR_LIME
-
-   mov cx, (MainMenuEnd - MainMenu)/2
+   mov dx, 0x090d            ; Skip 2 lines
+   mov bl, COLOR_YELLOW
+   mov cx, 5            ; Number of menu entries
    .next_menu_entry:
-      lodsw     
-      push si
-      mov si, ax
+      pusha
       call draw_text
+      popa
       inc dh
-      pop si
+      inc dh
+      add si, MainMenuEnd-MainMenu
    loop .next_menu_entry
+   .end_menu:
 
    mov byte [_GAME_STATE_], STATE_MENU
 jmp game_state_satisfied
@@ -380,6 +375,8 @@ new_game:
    call init_entities
    mov byte [_VIEWPORT_X_], MAP_SIZE/2-VIEWPORT_WIDTH/2
    mov byte [_VIEWPORT_Y_], MAP_SIZE/2-VIEWPORT_HEIGHT/2
+   mov byte [_GAME_STATE_], STATE_MENU_INIT
+jmp game_state_satisfied
 
 init_game:
    mov al, COLOR_DARK_TEAL
@@ -394,73 +391,7 @@ live_game:
 jmp game_state_satisfied
 
 init_map_view:
-   mov al, COLOR_DARK_BLUE
-   call clear_screen
-
-   .draw_frame:
-      mov di, SCREEN_WIDTH*30+90
-      mov ax, COLOR_BROWN
-      mov cx, 140
-      .draw_line:
-         push cx
-         mov cx, 70
-         rep stosw
-         pop cx
-         add di, 320-140
-      loop .draw_line
-
-   .draw_mini_map:
-      mov si, _MAP_              ; Map data
-      mov di, SCREEN_WIDTH*36+96          ; Map position on screen
-      mov bx, TerrainColors      ; Terrain colors array
-      mov cx, MAP_SIZE           ; Columns
-      .draw_loop:
-         push cx
-         mov cx, MAP_SIZE        ; Rows
-         .draw_row:
-            lodsb                ; Load map cell
-            xlatb                ; Translate to color
-            mov ah, al           ; Copy color for second pixel
-            mov [es:di], al      ; Draw 1 pixels
-            ; mov [es:di+320], ax  ; And another 2 pixels below
-            add di, 1            ; Move to next column
-         loop .draw_row
-         pop cx
-         add di, 320-MAP_SIZE;*2    ; Move to next row
-      loop .draw_loop
-
-      xor ax, ax
-   
-   mov si, _ENTITIES_
-   .next_entity:
-      lodsw
-      test ax, ax
-      jz .end_entities
-      movzx bx, ah
-      imul bx, SCREEN_WIDTH
-      movzx cx, al
-      add bx, cx
-      mov di, SCREEN_WIDTH*35+96
-      add di, bx
-      inc si
-      mov byte [es:di], COLOR_RED
-   loop .next_entity
-   .end_entities:
-
-   .draw_viewport_box:
-      mov di, SCREEN_WIDTH*35+96
-      mov ax, [_VIEWPORT_Y_]  ; Y coordinate
-      imul ax, 320
-      add ax, [_VIEWPORT_X_]  ; Y * 64 + X
-      add di, ax
-      mov ax, COLOR_WHITE
-      mov ah, al
-      mov cx, VIEWPORT_WIDTH/2
-      rep stosw
-      add di, SCREEN_WIDTH*VIEWPORT_HEIGHT-VIEWPORT_WIDTH
-      mov cx, VIEWPORT_WIDTH/2
-      rep stosw
-
+   call draw_minimap
    mov byte [_GAME_STATE_], STATE_MAP_VIEW
 jmp game_state_satisfied
 
@@ -857,6 +788,72 @@ draw_entities:
 ret
 
 
+draw_minimap:
+.draw_frame:
+      mov di, SCREEN_WIDTH*30+90
+      mov ax, COLOR_BROWN
+      mov cx, 140
+      .draw_line:
+         push cx
+         mov cx, 70
+         rep stosw
+         pop cx
+         add di, 320-140
+      loop .draw_line
+
+   .draw_mini_map:
+      mov si, _MAP_              ; Map data
+      mov di, SCREEN_WIDTH*36+96          ; Map position on screen
+      mov bx, TerrainColors      ; Terrain colors array
+      mov cx, MAP_SIZE           ; Columns
+      .draw_loop:
+         push cx
+         mov cx, MAP_SIZE        ; Rows
+         .draw_row:
+            lodsb                ; Load map cell
+            xlatb                ; Translate to color
+            mov ah, al           ; Copy color for second pixel
+            mov [es:di], al      ; Draw 1 pixels
+            ; mov [es:di+320], ax  ; And another 2 pixels below
+            add di, 1            ; Move to next column
+         loop .draw_row
+         pop cx
+         add di, 320-MAP_SIZE;*2    ; Move to next row
+      loop .draw_loop
+
+      xor ax, ax
+   
+   mov si, _ENTITIES_
+   .next_entity:
+      lodsw
+      test ax, ax
+      jz .end_entities
+      movzx bx, ah
+      imul bx, SCREEN_WIDTH
+      movzx cx, al
+      add bx, cx
+      mov di, SCREEN_WIDTH*35+96
+      add di, bx
+      inc si
+      mov byte [es:di], COLOR_RED
+   loop .next_entity
+   .end_entities:
+
+   .draw_viewport_box:
+      mov di, SCREEN_WIDTH*35+96
+      mov ax, [_VIEWPORT_Y_]  ; Y coordinate
+      imul ax, 320
+      add ax, [_VIEWPORT_X_]  ; Y * 64 + X
+      add di, ax
+      mov ax, COLOR_WHITE
+      mov ah, al
+      mov cx, VIEWPORT_WIDTH/2
+      rep stosw
+      add di, SCREEN_WIDTH*VIEWPORT_HEIGHT-VIEWPORT_WIDTH
+      mov cx, VIEWPORT_WIDTH/2
+      rep stosw
+ret
+
 ; mov  bx, TileTable     ; BX = tile graphic offsets
 ; mov  al, [TileID]      ; AL = tile index
 ; xlatb                  ; AL = offset of tile graphic
@@ -883,23 +880,18 @@ ret
 
 ; =========================================== TEXT DATA ========================
 
-WelcomeText db 'KKJ^P1X PRESENTS A 2025 PRODUCTION', 0x0
-TitleText db '* 12-TH ASSEMBLY GAME ENGINE *', 0x0
-PressEnterText db 'Press [ENTER] to start engine!', 0x0
-QuitText db 'Good bye!',0x0D,0x0A,'Visit http://smol.p1x.in/assembly/ for more games :)', 0x0
-MainMenuText         db '"Mycelium Overlords"',0x0
-MenuStartNewGameText db ' [F1] Start new game',0x0
-MenuGenerateMapText  db ' [F2] Continue game',0x0
-MenuQuitText         db '[ESC] Quit game',0x0
-MenuSpaceText        db '',0x0
-MenuInstructionText  db '[TAB] Toggle map / [ARROWS] Pan',0x0
+WelcomeText db 'KKJ^P1X - ASM_ENGINE_V12', 0x0
+PressEnterText db 'ENTER: Start game...', 0x0
+QuitText db 'Bye!',0x0D,0x0A,'Visit http://smol.p1x.in for more :)', 0x0
+MainMenuText db '"Mycelium Overlords"',0x0
 MainMenu:
-dw MenuStartNewGameText
-dw MenuGenerateMapText
-dw MenuInstructionText
-dw MenuSpaceText
-dw MenuQuitText
+   ;----+----+----14
+db 'F1: New Map   ',0x0
 MainMenuEnd:
+db 'ENTER: Play   ',0x0
+db 'TAB: Minimap  ',0x0
+db 'ARR: Pan view ',0x0
+db 'ESC: Quit/Menu',0x0
 
 ; =========================================== TERRAIN GEN RULES ================
 
