@@ -6,6 +6,7 @@
         "Krzysztof",
         "lodsb",
         "lodsw",
+        "movsw",
         "movzx",
         "popa",
         "pusha",
