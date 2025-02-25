@@ -280,7 +280,7 @@ StateTransitionTable:
     db STATE_MENU,         KB_ENTER, STATE_GAME_INIT
     db STATE_GAME,         KB_ESC,   STATE_MENU_INIT
     db STATE_GAME,         KB_TAB,   STATE_MAP_VIEW_INIT
-    db STATE_MAP_VIEW,     KB_ESC,   STATE_GAME_INIT
+    db STATE_MAP_VIEW,     KB_ESC,   STATE_MENU_INIT
     db STATE_MAP_VIEW,     KB_TAB,   STATE_GAME_INIT
 StateTransitionTableEnd:
 
@@ -304,29 +304,30 @@ init_engine:
 jmp game_state_satisfied
 
 init_title_screen:
-   mov al, COLOR_DARK_TEAL
-   call clear_screen
-   
-   mov di, SCREEN_WIDTH*48
-   mov al, COLOR_DARK_BLUE
-   call draw_gradient
+   mov si, start
+   mov cx, 80*25
+   .random_numbers:
+   lodsb
+   and ax, 0x1
+add al, 0x30
+mov ah, 0x0e
+mov bh, 0
+mov bl, 0x12
+int 0x10
+loop .random_numbers
 
    mov si, WelcomeText
-   mov dh, 0xC       ; Y position
-   mov dl, 0x8       ; X position
+   mov dx, 0x140B
    mov bl, COLOR_WHITE
    call draw_text
 
    mov byte [_GAME_STATE_], STATE_TITLE_SCREEN
-
 jmp game_state_satisfied
-
 
 live_title_screen:
    mov si, PressEnterText
-   mov dh, 0xE      ; Y position
-   mov dl, 0x8      ; X position
-   mov bl, COLOR_LIGHT_BLUE
+   mov dx, 0x1516
+   mov bl, COLOR_WHITE
    test word [_GAME_TICK_], 0x4
    je .blink
       mov bl, COLOR_BLACK
@@ -880,9 +881,9 @@ ret
 
 ; =========================================== TEXT DATA ========================
 
-WelcomeText db 'KKJ^P1X - ASM_ENGINE_V12', 0x0
-PressEnterText db 'ENTER: Start game...', 0x0
-QuitText db 'Bye!',0x0D,0x0A,'Visit http://smol.p1x.in for more :)', 0x0
+WelcomeText db 'P1X ASSEMBLY ENGINE V12.01', 0x0
+PressEnterText db 'PRESS ENTER', 0x0
+QuitText db 'Thanks for playing!',0x0D,0x0A,'Visit http://smol.p1x.in for more games..', 0x0D, 0x0A, 0x0
 MainMenuText db '"Mycelium Overlords"',0x0
 MainMenu:
    ;----+----+----14
