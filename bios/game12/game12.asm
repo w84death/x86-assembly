@@ -17,19 +17,13 @@ _BASE_         equ 0x2000           ; Start of memory
 _GAME_TICK_    equ _BASE_ + 0x00    ; 2 bytes
 _GAME_STATE_   equ _BASE_ + 0x02    ; 1 byte
 _RNG_          equ _BASE_ + 0x03    ; 2 bytes
-_CUR_X_        equ _BASE_ + 0x05    ; 2 bytes
-_CUR_Y_        equ _BASE_ + 0x07    ; 2 bytes
-_TOOL_         equ _BASE_ + 0x09    ; 1 byte
-_VIEWPORT_X_   equ _BASE_ + 0x0A    ; 2 bytes
-_VIEWPORT_Y_   equ _BASE_ + 0x0C    ; 2 bytes
-_TUNE_POS_     equ _BASE_ + 0x0E    ; 1 byte
-_TRAIN_X_      equ _BASE_ + 0x10    ; 2 byte
-_TRAIN_Y_      equ _BASE_ + 0x11    ; 2 byte
-_TRAIN_DIR_    equ _BASE_ + 0x12    ; 1 byte
-
-_TILES_           equ _BASE_ + 0x20
-_ENTITIES_        equ 0x3000  ; Entities data
-_MAP_             equ 0x4000  ; Map data 64x64
+_VIEWPORT_X_   equ _BASE_ + 0x05    ; 2 bytes
+_VIEWPORT_Y_   equ _BASE_ + 0x07    ; 2 byte
+; 25b free t ouse
+_TILES_        equ _BASE_ + 0x20    ; 48 tiles * 201b = 9648 bytes = 0x25B0
+_MAP_          equ _BASE_ + 0x27B0  ; Map data 128*128*1b= 0x4000
+_ENTITIES_     equ _BASE_ + 0x67B0  ; Entities 255 * 3 = 0x2FD
+; 6aad = 26.6K
 
 ; =========================================== GAME STATES ======================
 
@@ -290,10 +284,6 @@ init_engine:
 
    mov word [_VIEWPORT_X_], MAP_SIZE/2-VIEWPORT_WIDTH/2
    mov word [_VIEWPORT_Y_], MAP_SIZE/2-VIEWPORT_HEIGHT/2
-   
-   mov byte [_TOOL_], 0x0
-   mov word [_CUR_X_], VIEWPORT_WIDTH/2
-   mov word [_CUR_Y_], VIEWPORT_HEIGHT/2
 
    call decompress_tiles
    call generate_map
@@ -364,9 +354,9 @@ init_menu:
    loop .next_menu_entry
    .end_menu:
 
-   mov di, 320*120+24
-   mov ax, 22-16
-   mov cx, 16
+   mov di, 320*8+8
+   mov ax, 22-15
+   mov cx, 15
    .spr:
    call draw_sprite
    inc ax
@@ -931,7 +921,7 @@ TilesCompressedEnd:
 
 Palettes:
 db COLOR_GREEN, COLOR_ORANGE_BROWN, COLOR_DARK_TEAL, COLOR_BLUE   ; Swamp, Mud
-db COLOR_GREEN, COLOR_ORANGE_BROWN, COLOR_LIME, 0x0   ; Some Grass
+db COLOR_GREEN, COLOR_ORANGE_BROWN, COLOR_LIME, COLOR_BLACK   ; Some Grass
 db COLOR_GREEN, COLOR_LIME, COLOR_DARK_TEAL, COLOR_LIME  ; Dense Grass, Bush
 db COLOR_GREEN, COLOR_LIME, COLOR_WHITE, COLOR_YELLOW ; Mountain
 db COLOR_BLACK, COLOR_LIME, COLOR_DARK_TEAL, COLOR_GREEN ; Bush cover
