@@ -45,13 +45,14 @@ cp floppy.img "${filename}/${filename}_floppy.img"
 
 echo ""
 echo "Running..."
-qemu-system-i386 \
--m 1 \
--k en-us \
--rtc base=localtime \
--vga std \
--cpu 486 \
--boot a \
--fda floppy.img
+# qemu-system-i386 \
+# -m 1 \
+# -k en-us \
+# -rtc base=localtime \
+# -vga std \
+# -cpu 486 \
+# -boot a \
+# -fda floppy.img
 
 # dosemu "${filename}/com/game.com"
+dosbox-x "${filename}/com/game.com"
