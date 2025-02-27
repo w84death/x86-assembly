@@ -303,16 +303,16 @@ jmp game_state_satisfied
 
 init_title_screen:
    mov si, start
-   mov cx, 80*25
+   mov cx, 40*25
    .random_numbers:
-   lodsb
-   and ax, 0x1
-add al, 0x30
-mov ah, 0x0e
-mov bh, 0
-mov bl, 0x12
-int 0x10
-loop .random_numbers
+      lodsb
+      and ax, 0x1
+      add al, 0x30
+      mov ah, 0x0e
+      mov bh, 0
+      mov bl, COLOR_DARK_BLUE
+      int 0x10
+   loop .random_numbers
 
    mov si, WelcomeText
    mov dx, 0x140B
@@ -778,7 +778,7 @@ ret
 ; =========================================== INIT ENTITIES ====================
 init_entities:
     mov di, _ENTITIES_
-    mov cx, 0xFF
+    mov cx, 0x80
     .next_entity:
         call get_random
         and al, MAP_SIZE-1    ; X position (0-127)
@@ -799,7 +799,6 @@ init_entities:
 ; =========================================== DRAW ENTITIES ====================
 ; OUT: Entities drawn on the screen
 draw_entities:
-   xor ax, ax
    mov si, _ENTITIES_
    .next_entity:
       lodsw
