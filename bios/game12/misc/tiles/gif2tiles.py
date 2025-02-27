@@ -36,15 +36,27 @@ def convert_gif_to_assembly(gif_path, output_path):
 
             while len(unique_colors) < 4:
                 unique_colors.append(unique_colors[-1])
-
-            palette = tuple(unique_colors)
-            if palette not in all_palettes:
-                all_palettes.append(palette)
-            palette_index = all_palettes.index(palette)
-
+                
+            # Check if there's an existing palette with the same set of colors
+            palette_index = -1
+            for i, existing_palette in enumerate(all_palettes):
+                if set(existing_palette) == set(unique_colors):
+                    palette_index = i
+                    break
+                    
+            if palette_index == -1:
+                # No matching palette found, create a new one
+                all_palettes.append(tuple(unique_colors))
+                palette_index = len(all_palettes) - 1
+                
+            # Get the palette we'll use
+            palette = all_palettes[palette_index]
+            
+            # Map pixels to palette indices
             indexed_rows = []
             for row in tile_rows:
-                indexed_row = [unique_colors.index(p) for p in row]
+                # Find index of each pixel in the palette we're using
+                indexed_row = [palette.index(p) for p in row]
                 indexed_rows.append(indexed_row)
 
             tile_data = []
