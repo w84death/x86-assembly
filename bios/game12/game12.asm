@@ -69,8 +69,10 @@ TILE_GRASS        equ 0x3
 TILE_BUSH         equ 0x4
 TILE_FOREST       equ 0x5
 TILE_MOUNTAIN     equ 0x6
-
-META_DIRTY_TILE   equ 0x80
+META_TILES_MASK      equ 0x1F
+META_INVISIBLE_WALL  equ 0x20
+META_TRANSPORT       equ 0x40
+META_SPECIAL         equ 0x80
 
 ; =========================================== MISC SETTINGS ====================
 
@@ -565,7 +567,7 @@ generate_map:
          cmp dx, MAP_SIZE
          jne .not_first
             call get_random
-            and ax, 0x6
+            and ax, 0x3
             mov [di], al
             jmp .check_top
          .not_first:
@@ -577,7 +579,7 @@ generate_map:
          and ax, 0x3
          add bx, ax
          mov al, [si+bx]
-         mov [di], al
+         mov [di], al            ; Save terrain tile ID
 
          cmp cx, MAP_SIZE
          je .skip_first_row
@@ -592,13 +594,40 @@ generate_map:
          call get_random
          test ax, 0x1
          jnz .skip_first_row
-         mov [di], bl
+         mov [di], bl            ; Save terrain tile ID
+         mov al, bl
          .skip_first_row:       
 
          inc di
          dec dx
       jnz .next_cell
    loop .next_row
+   
+   call set_meta_data
+ret
+
+set_meta_data:
+   mov di, _MAP_
+   mov si, di
+   mov cx, MAP_SIZE*MAP_SIZE
+   .next_cell:
+         lodsb
+
+         .check_invisible_walls:
+         cmp al, TILE_MOUNTAIN
+         je .set_wall
+         cmp al, TILE_FOREST
+         je .set_wall
+         cmp al, TILE_BUSH
+         
+         jmp .skip_invisible_walls
+
+         .set_wall:
+            add al, META_INVISIBLE_WALL
+         .skip_invisible_walls:
+
+         stosb
+   loop .next_cell
 ret
 
 ; =========================================== DRAW TERRAIN =====================
@@ -617,6 +646,7 @@ draw_terrain:
       mov cx, VIEWPORT_WIDTH
       .draw_cell:
          lodsb
+         and al, META_TILES_MASK ; clear metadata
          call draw_tile
          add di, SPRITE_SIZE
       loop .draw_cell
@@ -637,6 +667,7 @@ redraw_terrain_tile:
    add al, bl     ; Y * 64 + X
    add si, ax
    lodsb
+   and al, META_TILES_MASK ; clear metadata
    call draw_tile
    pop si
 ret
@@ -831,6 +862,7 @@ draw_minimap:
          mov cx, MAP_SIZE        ; Rows
          .draw_row:
             lodsb                ; Load map cell
+            and al, META_TILES_MASK ; Clear metadata
             xlatb                ; Translate to color
             mov ah, al           ; Copy color for second pixel
             mov [es:di], al      ; Draw 1 pixels
@@ -934,6 +966,11 @@ db COLOR_DARK_TEAL      ; Forest
 db COLOR_YELLOW         ; Mountain
 
 ; =========================================== TILES ============================
+
+RailroadsList:
+dw 0, 1, 2, Railroads3Sprite, 4, Railroads5Sprite, Railroads6Sprite
+dw Railroads7Sprite, 8, Railroads9Sprite, Railroads10Sprite, Railroads11Sprite
+dw Railroads12Sprite, Railroads13Sprite, Railroads14Sprite, Railroads15Sprite
 
 TilesCompressed:
 dw SwampTile, MudTile, SomeGrassTile, DenseGrassTile, BushTile, TreeTile, MountainTile, BushCoverTile
