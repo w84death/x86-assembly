@@ -539,7 +539,70 @@ void convert_bmp_to_assembly(const char *bmp_path, const char *palette_path, con
         fclose(bmp_file);
         return;
     }
+
+       // Function to map RGB color to the closest color in our custom palette
+    // Returns the index in the DawnBringer 16 palette (0-15)
+    int map_color_to_palette_index(const RGB *color) {
+        // DawnBringer 16 palette (converted from the game's CustomPalette RGB values)
+        // Each entry is (R, G, B) in 0-255 range
+        static const RGB dawn_bringer[16] = {
+            {0, 0, 0},       // 0 - Black
+            {68, 32, 52},    // 1 - Deep purple
+            {48, 52, 109},   // 2 - Navy blue
+            {78, 74, 78},    // 3 - Dark gray
+            {133, 76, 48},   // 4 - Brown
+            {52, 101, 36},   // 5 - Dark green
+            {208, 70, 72},   // 6 - Red
+            {117, 113, 97},  // 7 - Light gray
+            {89, 125, 206},  // 8 - Blue
+            {210, 125, 44},  // 9 - Orange
+            {133, 149, 161}, // 10 - Steel blue
+            {109, 170, 44},  // 11 - Green
+            {210, 170, 153}, // 12 - Pink/Beige
+            {109, 194, 202}, // 13 - Cyan
+            {218, 212, 94},  // 14 - Yellow
+            {222, 238, 214}  // 15 - White
+        };
     
+        // Find closest match by calculating Euclidean distance in RGB space
+        int best_match = 0;
+        int min_distance = 255*255*3; // Max possible distance
+    
+        for (int i = 0; i < 16; i++) {
+            int dr = color->red - dawn_bringer[i].red;
+            int dg = color->green - dawn_bringer[i].green;
+            int db = color->blue - dawn_bringer[i].blue;
+            
+            int distance = dr*dr + dg*dg + db*db;
+            
+            if (distance < min_distance) {
+                min_distance = distance;
+                best_match = i;
+            }
+        }
+        
+        return best_match;
+    }
+    
+    // Replace the palette export section in the convert_bmp_to_assembly function with:
+    
+    // First, export the palette definitions
+    fprintf(out_file, "Palettes:\n");
+    for (int p = 0; p < num_palettes; p++) {
+        // For each palette, map the original colors to the custom palette indices
+        fprintf(out_file, "db ");
+        for (int c = 0; c < 4; c++) {
+            // Map each RGB color to the closest color in our DawnBringer palette
+            int color_index = map_color_to_palette_index(&palettes[p].colors[c]);
+            
+            fprintf(out_file, "0x%X", color_index);
+            if (c < 3) fprintf(out_file, ", ");
+        }
+        fprintf(out_file, " ; Palette 0x%X\n", p);
+    }
+    fprintf(out_file, "\n");
+    
+    // Then export the tiles data as before
     for (int i = 0; i < total_tiles; i++) {
         fprintf(out_file, "db 0x%02X ; %s\n", all_tiles[i].palette_index, 
                 all_tiles[i].is_sprite ? "sprite" : "tile");
