@@ -70,6 +70,10 @@ TILE_BUSH            equ 0x4
 TILE_TREE            equ 0x5
 TILE_MOUNTAIN        equ 0x6
 
+TILE_BUILDING_1      equ 26
+TILE_BUILDING_2      equ 27
+TILE_BUILDING_3      equ 28
+
 TILE_RESOURCE_BLUE   equ 31
 TILE_RESOURCE_ORANGE  equ 34
 TILE_RESOURCE_RED    equ 37
@@ -820,6 +824,7 @@ init_entities:
       inc di                ; Move to next entity
 
       mov byte [di], 0x0   ; META data
+      inc di
       loop .next_entity
 
    mov word [di], 0x0      ; Terminator
@@ -973,18 +978,25 @@ init_fake_gameplay:
    mov byte [di+2], 12
    mov byte [di+3], META_CART
    
-   mov word [di+4], 0x4043 ; 64x64
-   mov byte [di+6], 12
-   mov byte [di+7], META_CART+META_FULL_CART+META_RESOURCE_BLUE
+   add di, 4
+   mov word [di], 0x4043 ; 64x64
+   mov byte [di+2], 12
+   mov byte [di+3], META_CART+META_FULL_CART+META_RESOURCE_BLUE
 
-   mov word [di+8], 0x4044 ; 64x64
-   mov byte [di+10], 12
-   mov byte [di+11], META_CART+META_FULL_CART+META_RESOURCE_ORANGE
+   add di, 4
+   mov word [di], 0x4044 ; 64x64
+   mov byte [di+2], 12
+   mov byte [di+3], META_CART+META_FULL_CART+META_RESOURCE_ORANGE
 
-   mov word [di+12], 0x4045 ; 64x64
-   mov byte [di+14], 7
-   mov byte [di+15], META_TRAIN
+   add di, 4
+   mov word [di], 0x4045 ; 64x64
+   mov byte [di+2], 7
+   mov byte [di+3], META_TRAIN
 
+   add di, 4
+   mov word [di], 0x3F46 ; 64x64
+   mov byte [di+2], TILE_BUILDING_1
+   mov byte [di+3], META_EMPTY
 ret
 
 draw_fake_gameplay:
@@ -1853,7 +1865,7 @@ dw 0000000010111001b, 1001111010000000b
 dw 0000000101111010b, 0101111001000000b
 dw 0000000101011110b, 0101101001000000b
 dw 0000011001101010b, 0101100101000000b
-dw 0000001110010110b, 1011100100000000b
+dw 0000000000000000b, 0000000000000000b
 dw 0000000000000000b, 0000000000000000b
 dw 0000000000000000b, 0000000000000000b
 dw 0000000000000000b, 0000000000000000b
