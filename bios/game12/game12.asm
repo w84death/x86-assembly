@@ -70,6 +70,7 @@ TILE_BUSH            equ 0x4
 TILE_TREE            equ 0x5
 TILE_MOUNTAIN        equ 0x6
 TILE_PLATFORM        equ 0x7
+META_TILES_MASK         equ 0x1F
 
 TILE_TRAIN_HORIZONTAL   equ 0x7
 TILE_TRAIN_DOWN         equ 0x8
@@ -86,7 +87,6 @@ TILE_RESOURCE_RED       equ 38
 SHIFT_RESOURCE_VERTICAL    equ 1
 SHIFT_RESOURCE_HORIZONTAL  equ 2
 
-META_TILES_MASK         equ 0x1F
 META_INVISIBLE_WALL     equ 0x20    ; For collision detection
 META_TRANSPORT          equ 0x40    ; For railroads
 META_SPECIAL            equ 0x80
@@ -684,8 +684,32 @@ draw_terrain:
 
          test bl, META_TRANSPORT
          jz .skip_draw_transport
-            mov al, 19
+         .draw_transport:
+            xor ax, ax
+            dec si
+            .test_up:
+               test byte [si-MAP_SIZE], META_TRANSPORT
+               jz .test_right
+               add al, 0x8
+            .test_right:
+               test byte [si+1], META_TRANSPORT
+               jz .test_down
+               add al, 0x4
+            .test_down:
+            test byte [si+MAP_SIZE], META_TRANSPORT
+            jz .test_left
+               add al, 0x2
+            .test_left:
+            test byte [si-1], META_TRANSPORT
+            jz .done_calculating
+               add al, 0x1
+            .done_calculating:
+            inc si
+            mov bx, RailroadsList
+            xlatb
+            add al, 19  ; Shift to railroad tiles
             call draw_sprite
+
          .skip_draw_transport:
 
          add di, SPRITE_SIZE
@@ -968,11 +992,6 @@ draw_minimap:
       rep stosw
 ret
 
-; mov  bx, TileTable     ; BX = tile graphic offsets
-; mov  al, [TileID]      ; AL = tile index
-; xlatb                  ; AL = offset of tile graphic
-; mov  si, ax            ; SI now points to tile data
-
 init_gameplay_elements:
    mov di, _MAP_ + 128*64+64
    mov cx, 8
@@ -980,6 +999,11 @@ init_gameplay_elements:
       mov byte [di], TILE_MUD+META_TRANSPORT
       inc di
    loop .add_meta
+   mov byte [di-MAP_SIZE-8], TILE_MUD+META_TRANSPORT
+   mov byte [di-MAP_SIZE*2-8], TILE_MUD+META_TRANSPORT
+   mov byte [di+MAP_SIZE-2], TILE_MUD+META_TRANSPORT
+   mov byte [di+MAP_SIZE*2-2], TILE_MUD+META_TRANSPORT
+
 
    mov di, _MAP_ + 128*63+68
    mov cx, 4
@@ -1109,15 +1133,17 @@ db 0xA         ; Mountain
 ; =========================================== TILES ============================
 
 RailroadsList:
-dw 0, 1, 2, Railroads3Sprite, 4, Railroads5Sprite, Railroads6Sprite
-dw Railroads7Sprite, 8, Railroads9Sprite, Railroads10Sprite, Railroads11Sprite
-dw Railroads12Sprite, Railroads13Sprite, Railroads14Sprite, Railroads15Sprite
+db 1, 1, 5, 0
+db 1, 1, 2, 3
+db 5, 4, 5, 6
+db 7, 8, 9, 10, 11
 
 TilesCompressed:
 dw SwampTile, MudTile, SomeGrassTile, DenseGrassTile, BushTile, TreeTile, MountainTile, PlatformSprite ; 7
 dw NectocyteSprite, GloopendraSprite, MycelurkSprite, VenomireSprite, WhirlygigSprite, OgorSprite ; 5
 dw TrainHorizontalMotor, TrainVerticalMotor, TrainVertical2Motor, TrainVerticalEmpty, TrainHorizontalEmpty ; 10
-dw Railroads5Sprite, Railroads10Sprite, Railroads15Sprite, Railroads6Sprite, Railroads3Sprite, Railroads12Sprite, Railroads9Sprite, Railroads7Sprite, Railroads13Sprite, Railroads14Sprite, Railroads11Sprite ; 23
+dw Railroads3Sprite, Railroads5Sprite, Railroads6Sprite, Railroads7Sprite, Railroads9Sprite, Railroads10Sprite, Railroads11Sprite
+dw Railroads12Sprite, Railroads13Sprite, Railroads14Sprite, Railroads15Sprite
 dw House1Sprite, House2Sprite, House3Sprite ; 27
 dw ResourceBlueSprite, ResourceBlueHorizontalSprite, ResourceBlueVerticalSprite ;38
 dw ResourceOrangeSprite, ResourceOrangeHorizontalSprite, ResourceOrangeVerticalSprite ;41
