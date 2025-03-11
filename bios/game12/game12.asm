@@ -71,26 +71,33 @@ TILE_TREE            equ 0x5
 TILE_MOUNTAIN        equ 0x6
 TILE_PLATFORM        equ 0x7
 
-TILE_BUILDING_1      equ 25
-TILE_BUILDING_2      equ 26
-TILE_BUILDING_3      equ 27
+TILE_TRAIN_HORIZONTAL   equ 0x7
+TILE_TRAIN_DOWN         equ 0x8
+TILE_TRAIN_UP           equ 0x9
+TILE_CART_VERTICAL      equ 0xA
+TILE_CART_HORIZONTAl    equ 0xB
+TILE_BUILDING_1         equ 23
+TILE_BUILDING_2         equ 24
+TILE_BUILDING_3         equ 25
 
-TILE_RESOURCE_BLUE   equ 36
-TILE_RESOURCE_ORANGE  equ 39
-TILE_RESOURCE_RED    equ 42
+TILE_RESOURCE_BLUE      equ 32
+TILE_RESOURCE_ORANGE    equ 35
+TILE_RESOURCE_RED       equ 38
+SHIFT_RESOURCE_VERTICAL    equ 1
+SHIFT_RESOURCE_HORIZONTAL  equ 2
 
-META_TILES_MASK      equ 0x1F
-META_INVISIBLE_WALL  equ 0x20    ; For collision detection
-META_TRANSPORT       equ 0x40    ; For railroads
-META_SPECIAL         equ 0x80
+META_TILES_MASK         equ 0x1F
+META_INVISIBLE_WALL     equ 0x20    ; For collision detection
+META_TRANSPORT          equ 0x40    ; For railroads
+META_SPECIAL            equ 0x80
 
-META_EMPTY           equ 0x0
-META_TRAIN           equ 0x1
-META_CART            equ 0x2
-META_FULL_CART       equ 0x4
+META_EMPTY              equ 0x0
+META_TRAIN              equ 0x1
+META_EMPTY_CART         equ 0x2
+META_FULL_CART          equ 0x4
 META_RESOURCE_BLUE      equ 0x8
-META_RESOURCE_ORANGE      equ 0x10
-META_RESOURCE_RED      equ 0x20
+META_RESOURCE_ORANGE    equ 0x10
+META_RESOURCE_RED       equ 0x20
 
 ; =========================================== MISC SETTINGS ====================
 
@@ -317,7 +324,7 @@ init_engine:
    call decompress_tiles
    call generate_map
    call init_entities
-   call init_fake_gameplay
+   call init_gameplay_elements
 
    mov byte [_GAME_STATE_], STATE_TITLE_SCREEN_INIT
 
@@ -395,7 +402,7 @@ jmp game_state_satisfied
 new_game:
    call generate_map
    call init_entities
-   call init_fake_gameplay
+   call init_gameplay_elements
 
    mov byte [_VIEWPORT_X_], MAP_SIZE/2-VIEWPORT_WIDTH/2
    mov byte [_VIEWPORT_Y_], MAP_SIZE/2-VIEWPORT_HEIGHT/2
@@ -677,7 +684,7 @@ draw_terrain:
 
          test bl, META_TRANSPORT
          jz .skip_draw_transport
-            mov al, 21
+            mov al, 19
             call draw_sprite
          .skip_draw_transport:
 
@@ -878,12 +885,12 @@ draw_entities:
          jmp .next_entity
          
          .draw_orange_cart:
-            mov al, TILE_RESOURCE_ORANGE
+            mov al, TILE_RESOURCE_ORANGE+SHIFT_RESOURCE_HORIZONTAL
             call draw_sprite
             jmp .next_entity
 
          .draw_blue_cart:
-            mov al, TILE_RESOURCE_BLUE
+            mov al, TILE_RESOURCE_BLUE+SHIFT_RESOURCE_HORIZONTAL
             call draw_sprite
             jmp .next_entity
 
@@ -966,7 +973,7 @@ ret
 ; xlatb                  ; AL = offset of tile graphic
 ; mov  si, ax            ; SI now points to tile data
 
-init_fake_gameplay:
+init_gameplay_elements:
    mov di, _MAP_ + 128*64+64
    mov cx, 8
    .add_meta:
@@ -983,22 +990,22 @@ init_fake_gameplay:
 
    mov di, _ENTITIES_
    mov word [di], 0x4042 ; 64x64
-   mov byte [di+2], 12
-   mov byte [di+3], META_CART
+   mov byte [di+2], TILE_CART_HORIZONTAl
+   mov byte [di+3], META_EMPTY_CART
    
    add di, 4
    mov word [di], 0x4043 ; 64x64
-   mov byte [di+2], 12
-   mov byte [di+3], META_CART+META_FULL_CART+META_RESOURCE_BLUE
+   mov byte [di+2], TILE_CART_HORIZONTAl
+   mov byte [di+3], META_EMPTY_CART+META_FULL_CART+META_RESOURCE_BLUE
 
    add di, 4
    mov word [di], 0x4044 ; 64x64
-   mov byte [di+2], 12
-   mov byte [di+3], META_CART+META_FULL_CART+META_RESOURCE_ORANGE
+   mov byte [di+2], TILE_CART_HORIZONTAl
+   mov byte [di+3], META_EMPTY_CART+META_FULL_CART+META_RESOURCE_ORANGE
 
    add di, 4
    mov word [di], 0x4045 ; 64x64
-   mov byte [di+2], 7
+   mov byte [di+2], TILE_TRAIN_HORIZONTAL
    mov byte [di+3], META_TRAIN
 
    add di, 4
@@ -1013,24 +1020,6 @@ init_fake_gameplay:
    mov word [di], 0x3F47 ; 64x64
    mov byte [di+2], TILE_BUILDING_3
    mov byte [di+3], META_EMPTY
-ret
-
-draw_fake_gameplay:
-ret
-
-covox_play:
-   xor si, si
-   mov dx, 0378h
-   mov cx, 12*8
-   .sample_loop:
-   mov al, [AudioSamples+si]
-   out dx, al
-   inc si
-   nop
-   nop
-   nop
-   nop
-   loop .sample_loop  ; 486: 6 cycles
 ret
 
 init_sound:
@@ -1127,7 +1116,7 @@ dw Railroads12Sprite, Railroads13Sprite, Railroads14Sprite, Railroads15Sprite
 TilesCompressed:
 dw SwampTile, MudTile, SomeGrassTile, DenseGrassTile, BushTile, TreeTile, MountainTile, PlatformSprite ; 7
 dw NectocyteSprite, GloopendraSprite, MycelurkSprite, VenomireSprite, WhirlygigSprite, OgorSprite ; 5
-dw TrainHorizontalMotor, TrainVerticalMotor, TrainVertical2Motor, TrainVerticalEmpty, TrainVerticalFull, TrainHorizontalEmpty, TrainHorizontalFull ; 12
+dw TrainHorizontalMotor, TrainVerticalMotor, TrainVertical2Motor, TrainVerticalEmpty, TrainHorizontalEmpty ; 10
 dw Railroads5Sprite, Railroads10Sprite, Railroads15Sprite, Railroads6Sprite, Railroads3Sprite, Railroads12Sprite, Railroads9Sprite, Railroads7Sprite, Railroads13Sprite, Railroads14Sprite, Railroads11Sprite ; 23
 dw House1Sprite, House2Sprite, House3Sprite ; 27
 dw ResourceBlueSprite, ResourceBlueHorizontalSprite, ResourceBlueVerticalSprite ;38
@@ -1491,25 +1480,6 @@ dw 0000011010101010b, 1010101010010000b
 dw 0000000110101001b, 0110101001000000b
 dw 0000000001010111b, 1001010100000000b
 
-TrainVerticalFull:
-db 0x0A
-dw 0000000001010111b, 1001010100000000b
-dw 0000000101010101b, 0101010101000000b
-dw 0000010111111111b, 1111111101010000b
-dw 0000011110010111b, 1101011011010000b
-dw 0000011101101111b, 1111100110010000b
-dw 0000011010010111b, 1101011010010000b
-dw 0000011001101111b, 1111100110010000b
-dw 0000011010010111b, 1101011010010000b
-dw 0000011001101111b, 1111100110010000b
-dw 0000011010010111b, 1101011010010000b
-dw 0000011101111110b, 1011110111010000b
-dw 0000010111101010b, 1010101101010000b
-dw 0000011001010101b, 0101010110010000b
-dw 0000011010101010b, 1010101010010000b
-dw 0000000110101001b, 0110101001000000b
-dw 0000000001010111b, 1001010100000000b
-
 TrainHorizontalEmpty:
 db 0x0A
 dw 0000000000000000b, 0000000000000000b
@@ -1527,25 +1497,6 @@ dw 0110010101010101b, 0101010101011101b
 dw 0001101010101011b, 1011111111110100b
 dw 0001010101010101b, 0101010101010100b
 dw 0001011111101110b, 1010101010010100b
-dw 0000010101010101b, 0101010101010000b
-
-TrainHorizontalFull:
-db 0x0A
-dw 0000000000000000b, 0000000000000000b
-dw 0000000000000000b, 0000000000000000b
-dw 0000000000000000b, 0000000000000000b
-dw 0000111111111111b, 1111111110000000b
-dw 0011100110100110b, 1001101001100100b
-dw 0011111111111111b, 1111111111100100b
-dw 0011110110110110b, 1101101101100100b
-dw 0011110110110110b, 1101101101110100b
-dw 1011100110100110b, 1001101001111010b
-dw 1110100110100110b, 1001101001111011b
-dw 0101101010101010b, 1110111111010101b
-dw 0101010101010101b, 0101010101010101b
-dw 0001110101010101b, 0101010101100100b
-dw 0001011110101010b, 1010101010010100b
-dw 0001011111111011b, 1010101010010100b
 dw 0000010101010101b, 0101010101010000b
 
 Railroads5Sprite:
