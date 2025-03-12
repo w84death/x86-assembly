@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Binary/Hex Calculator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime&family=VT323&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #333;
+            font-family: 'Courier Prime', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .calculator {
+            background-color: #444;
+            border-radius: 15px;
+            padding: 20px;
+            width: 320px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            border: 2px solid #555;
+        }
+        
+        .brand {
+            text-align: right;
+            color: #aaa;
+            font-size: 12px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .display-container {
+            background-color: #555;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+        }
+        
+        .display {
+            background-color: #9ab89e;
+            color: #333;
+            font-family: 'VT323', monospace;
+            font-size: 28px;
+            padding: 15px;
+            text-align: right;
+            border-radius: 5px;
+            min-height: 40px;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            word-wrap: break-word;
+            border: 1px solid #666;
+        }
+        
+        .mode-display {
+            background-color: #777;
+            color: #fff;
+            font-size: 14px;
+            padding: 5px;
+            margin-top: 10px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+        
+        .button {
+            background: linear-gradient(to bottom, #777, #555);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            padding: 0;
+            height: 60px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), 
+                        inset 0 2px 2px rgba(255, 255, 255, 0.3),
+                        inset 0 -2px 2px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .button:active {
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3), 
+                        inset 0 1px 1px rgba(255, 255, 255, 0.1),
+                        inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+            transform: translateY(2px);
+            filter: brightness(0.9);
+        }
+        
+        .hex-button {
+            background: linear-gradient(to bottom, #4a6fb5, #344c80);
+        }
+        
+        .operation-button {
+            background: linear-gradient(to bottom, #d35400, #a04000);
+            font-size: 16px;
+        }
+        
+        .control-button {
+            background: linear-gradient(to bottom, #2c3e50, #1a2530);
+        }
+        
+        .equals-button {
+            background: linear-gradient(to bottom, #27ae60, #1e8449);
+        }
+        
+        .mode-button {
+            background: linear-gradient(to bottom, #8e44ad, #703688);
+        }
+        
+        .hex-buttons {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+            margin-top: 15px;
+        }
+        
+        .wide-button {
+            grid-column: span 2;
+            border-radius: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <div class="brand">VINTAGE LOGIC CALC</div>
+        <div class="display-container">
+            <div class="display" id="display">0</div>
+            <div class="mode-display" id="mode-display">DEC</div>
+        </div>
+        <div class="buttons">
+            <!-- Mode buttons -->
+            <button class="button mode-button" onclick="setMode('BIN')">BIN</button>
+            <button class="button mode-button" onclick="setMode('DEC')">DEC</button>
+            <button class="button mode-button" onclick="setMode('HEX')">HEX</button>
+            <button class="button control-button" onclick="clearDisplay()">C</button>
+            
+            <!-- Binary operations -->
+            <button class="button operation-button" onclick="performOperation('AND')">AND</button>
+            <button class="button operation-button" onclick="performOperation('OR')">OR</button>
+            <button class="button operation-button" onclick="performOperation('XOR')">XOR</button>
+            <button class="button operation-button" onclick="performOperation('NOT')">NOT</button>
+            
+            <!-- Shift operations -->
+            <button class="button operation-button" onclick="performOperation('SHL')">SHL</button>
+            <button class="button operation-button" onclick="performOperation('SHR')">SHR</button>
+            <button class="button control-button" onclick="backspace()">←</button>
+            <button class="button control-button" onclick="clearEntry()">CE</button>
+            
+            <!-- Number buttons -->
+            <button class="button" onclick="appendToDisplay('7')">7</button>
+            <button class="button" onclick="appendToDisplay('8')">8</button>
+            <button class="button" onclick="appendToDisplay('9')">9</button>
+            <button class="button equals-button" onclick="calculate()" style="grid-row: span 3;">=</button>
+            
+            <button class="button" onclick="appendToDisplay('4')">4</button>
+            <button class="button" onclick="appendToDisplay('5')">5</button>
+            <button class="button" onclick="appendToDisplay('6')">6</button>
+            
+            <button class="button" onclick="appendToDisplay('1')">1</button>
+            <button class="button" onclick="appendToDisplay('2')">2</button>
+            <button class="button" onclick="appendToDisplay('3')">3</button>
+            
+            <button class="button wide-button" onclick="appendToDisplay('0')" style="grid-column: span 3;">0</button>
+        </div>
+        
+        <!-- Hex buttons as a separate section -->
+        <div class="hex-buttons" id="hex-buttons">
+            <button class="button hex-button" onclick="appendToDisplay('A')">A</button>
+            <button class="button hex-button" onclick="appendToDisplay('B')">B</button>
+            <button class="button hex-button" onclick="appendToDisplay('C')">C</button>
+            <button class="button hex-button" onclick="appendToDisplay('D')">D</button>
+            <button class="button hex-button" onclick="appendToDisplay('E')">E</button>
+            <button class="button hex-button" onclick="appendToDisplay('F')">F</button>
+        </div>
+    </div>
+    <script>
+        let currentMode = 'DEC'; // Default mode: Decimal
+        let currentDisplay = '0';
+        let firstOperand = null;
+        let operation = null;
+        let hexButtonsSection = document.getElementById('hex-buttons');
+        
+        // Set the calculator mode
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('mode-display').textContent = mode;
+            
+            // Show/hide hex buttons based on mode
+            if (mode === 'HEX') {
+                hexButtonsSection.style.display = 'grid';
+            } else {
+                hexButtonsSection.style.display = 'none';
+            }
+            
+            // Convert displayed value to new mode if it's not default
+            if (currentDisplay !== '0' && currentDisplay !== '') {
+                try {
+                    convertDisplay(mode);
+                } catch (e) {
+                    currentDisplay = '0';
+                    console.error("Conversion error:", e);
+                }
+            }
+            
+            updateDisplay();
+        }
+        
+        // Convert the current display value to the selected mode
+        function convertDisplay(mode) {
+            let value;
+            
+            // First, convert the current display to decimal
+            switch (currentMode) {
+                case 'BIN':
+                    value = parseInt(currentDisplay, 2);
+                    break;
+                case 'DEC':
+                    value = parseInt(currentDisplay, 10);
+                    break;
+                case 'HEX':
+                    value = parseInt(currentDisplay, 16);
+                    break;
+            }
+            
+            if (isNaN(value)) {
+                currentDisplay = '0';
+                return;
+            }
+            
+            // Then convert decimal to the target mode
+            switch (mode) {
+                case 'BIN':
+                    currentDisplay = value.toString(2);
+                    break;
+                case 'DEC':
+                    currentDisplay = value.toString(10);
+                    break;
+                case 'HEX':
+                    currentDisplay = value.toString(16).toUpperCase();
+                    break;
+            }
+        }
+        
+        // Update the display
+        function updateDisplay() {
+            document.getElementById('display').textContent = currentDisplay;
+        }
+        
+        // Clear the display
+        function clearDisplay() {
+            currentDisplay = '0';
+            firstOperand = null;
+            operation = null;
+            updateDisplay();
+        }
+        
+        // Clear only the current entry
+        function clearEntry() {
+            currentDisplay = '0';
+            updateDisplay();
+        }
+        
+        // Backspace function
+        function backspace() {
+            if (currentDisplay.length > 1) {
+                currentDisplay = currentDisplay.slice(0, -1);
+            } else {
+                currentDisplay = '0';
+            }
+            updateDisplay();
+        }
+        
+        // Append a digit to the display
+        function appendToDisplay(digit) {
+            // Validate input based on mode
+            if (currentMode === 'BIN' && !['0', '1'].includes(digit)) {
+                return;
+            }
+            
+            if (currentMode === 'DEC' && !['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(digit)) {
+                return;
+            }
+            
+            if (currentDisplay === '0') {
+                currentDisplay = digit;
+            } else {
+                currentDisplay += digit;
+            }
+            
+            updateDisplay();
+        }
+        
+        // Perform logical operation
+        function performOperation(op) {
+            // If an operation is already in progress, calculate it first
+            if (operation !== null && firstOperand !== null) {
+                calculate();
+            }
+            
+            // Special case for NOT which doesn't need a second operand
+            if (op === 'NOT') {
+                let value;
+                
+                // Convert current display to decimal
+                switch (currentMode) {
+                    case 'BIN':
+                        value = parseInt(currentDisplay, 2);
+                        break;
+                    case 'DEC':
+                        value = parseInt(currentDisplay, 10);
+                        break;
+                    case 'HEX':
+                        value = parseInt(currentDisplay, 16);
+                        break;
+                }
+                
+                // Perform NOT operation
+                let result = ~value;
+                
+                // Convert result back to the current mode
+                switch (currentMode) {
+                    case 'BIN':
+                        currentDisplay = result.toString(2);
+                        if (result < 0) {
+                            // For negative numbers in binary, show two's complement
+                            currentDisplay = (result >>> 0).toString(2);
+                        }
+                        break;
+                    case 'DEC':
+                        currentDisplay = result.toString(10);
+                        break;
+                    case 'HEX':
+                        currentDisplay = result.toString(16).toUpperCase();
+                        if (result < 0) {
+                            // For negative numbers in hex, show two's complement
+                            currentDisplay = (result >>> 0).toString(16).toUpperCase();
+                        }
+                        break;
+                }
+                
+                updateDisplay();
+                return;
+            }
+            
+            // Convert current display to decimal for storage
+            switch (currentMode) {
+                case 'BIN':
+                    firstOperand = parseInt(currentDisplay, 2);
+                    break;
+                case 'DEC':
+                    firstOperand = parseInt(currentDisplay, 10);
+                    break;
+                case 'HEX':
+                    firstOperand = parseInt(currentDisplay, 16);
+                    break;
+            }
+            
+            operation = op;
+            currentDisplay = '0';
+            updateDisplay();
+        }
+        
+        // Calculate the result
+        function calculate() {
+            if (firstOperand === null || operation === null) {
+                return;
+            }
+            
+            let secondOperand;
+            
+            // Convert current display to decimal for calculation
+            switch (currentMode) {
+                case 'BIN':
+                    secondOperand = parseInt(currentDisplay, 2);
+                    break;
+                case 'DEC':
+                    secondOperand = parseInt(currentDisplay, 10);
+                    break;
+                case 'HEX':
+                    secondOperand = parseInt(currentDisplay, 16);
+                    break;
+            }
+            
+            let result;
+            
+            // Perform the selected operation
+            switch (operation) {
+                case 'AND':
+                    result = firstOperand & secondOperand;
+                    break;
+                case 'OR':
+                    result = firstOperand | secondOperand;
+                    break;
+                case 'XOR':
+                    result = firstOperand ^ secondOperand;
+                    break;
+                case 'SHL':
+                    result = firstOperand << secondOperand;
+                    break;
+                case 'SHR':
+                    result = firstOperand >> secondOperand;
+                    break;
+            }
+            
+            // Convert result back to the current mode
+            switch (currentMode) {
+                case 'BIN':
+                    currentDisplay = result.toString(2);
+                    break;
+                case 'DEC':
+                    currentDisplay = result.toString(10);
+                    break;
+                case 'HEX':
+                    currentDisplay = result.toString(16).toUpperCase();
+                    break;
+            }
+            
+            firstOperand = null;
+            operation = null;
+            updateDisplay();
+        }
+        
+        // Initialize the calculator
+        function initCalculator() {
+            setMode('DEC');
+            clearDisplay();
+            // Hide hex buttons initially as we start in DEC mode
+            hexButtonsSection.style.display = 'none';
+        }
+        
+        // Call init function on page load
+        window.onload = initCalculator;
+    </script>
+</body>
+</html>

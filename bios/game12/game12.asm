@@ -19,6 +19,8 @@ _GAME_STATE_   equ _BASE_ + 0x02    ; 1 byte
 _RNG_          equ _BASE_ + 0x03    ; 2 bytes
 _VIEWPORT_X_   equ _BASE_ + 0x05    ; 2 bytes
 _VIEWPORT_Y_   equ _BASE_ + 0x07    ; 2 byte
+_CURSOR_X_     equ _BASE_ + 0x09    ; 2 bytes
+_CURSOR_Y_     equ _BASE_ + 0x0B    ; 2 bytes
 ; 25b free t ouse
 _TILES_        equ _BASE_ + 0x20    ; 40 tiles = 10K = 0x2800
 _MAP_          equ _BASE_ + 0x4820  ; Map data 128*128*1b= 0x4000
@@ -87,6 +89,8 @@ TILE_RESOURCE_RED       equ 38
 SHIFT_RESOURCE_VERTICAL    equ 1
 SHIFT_RESOURCE_HORIZONTAL  equ 2
 
+TILE_CURSOR_NORMAL      equ 42
+
 META_INVISIBLE_WALL     equ 0x20    ; For collision detection
 META_TRANSPORT          equ 0x40    ; For railroads
 META_SPECIAL            equ 0x80
@@ -94,9 +98,9 @@ META_SPECIAL            equ 0x80
 META_EMPTY              equ 0x0
 META_TRAIN              equ 0x1
 META_EMPTY_CART         equ 0x2
-META_FULL_CART          equ 0x4
-META_RESOURCE_BLUE      equ 0x8
-META_RESOURCE_ORANGE    equ 0x10
+EMETA_EMPTY_CART          equ 0x4
+EMETA_RESOURCE_BLUE      equ 0x8
+EMETA_RESOURCE_ORANGE    equ 0x10
 META_RESOURCE_RED       equ 0x20
 
 ; =========================================== MISC SETTINGS ====================
@@ -146,6 +150,8 @@ start:
    mov byte [_GAME_STATE_], STATE_INIT_ENGINE
    mov word [_VIEWPORT_X_], MAP_SIZE/2-VIEWPORT_WIDTH/2
    mov word [_VIEWPORT_Y_], MAP_SIZE/2-VIEWPORT_HEIGHT/2
+   mov word [_CURSOR_X_], MAP_SIZE/2
+   mov word [_CURSOR_Y_], MAP_SIZE/2
 
 ; =========================================== GAME LOOP ========================
 
@@ -205,32 +211,49 @@ check_keyboard:
    je .move_left
    cmp ah, KB_RIGHT
    je .move_right
+   cmp ah, KB_SPACE
+   je .construct_railroad
    jmp .done
 
    .move_up:
-      cmp word [_VIEWPORT_Y_], 0
+      cmp word [_CURSOR_Y_], 0
       je .done
-      dec word [_VIEWPORT_Y_]
+      dec word [_CURSOR_Y_]
       jmp .redraw_terrain
    .move_down:
-      cmp word [_VIEWPORT_Y_], MAP_SIZE-VIEWPORT_HEIGHT
+      cmp word [_CURSOR_Y_], MAP_SIZE-VIEWPORT_HEIGHT
       jae .done
-      inc word [_VIEWPORT_Y_]
+      inc word [_CURSOR_Y_]
       jmp .redraw_terrain
    .move_left:
-      cmp word [_VIEWPORT_X_], 0
+      cmp word [_CURSOR_X_], 0
       je .done
-      dec word [_VIEWPORT_X_]
+      dec word [_CURSOR_X_]
       jmp .redraw_terrain
    .move_right:
-      cmp word [_VIEWPORT_X_], MAP_SIZE-VIEWPORT_WIDTH
+      cmp word [_CURSOR_X_], MAP_SIZE-VIEWPORT_WIDTH
       jae .done
-      inc word [_VIEWPORT_X_]
+      inc word [_CURSOR_X_]
+      jmp .redraw_terrain
+
+   .construct_railroad:
+      mov ax, [_CURSOR_Y_]
+      shl ax, 7   ; Y * 128
+      add ax, [_CURSOR_X_]
+      mov di, _MAP_
+      add di, ax
+      mov al, [di]
+      test al, META_TRANSPORT
+      jnz .done
+      and al, 0x3
+      add al, META_TRANSPORT
+      mov [di], al      
       jmp .redraw_terrain
 
    .redraw_terrain:
       call draw_terrain
       call draw_entities
+      call draw_cursor
 
 .done:
 
@@ -319,6 +342,8 @@ init_engine:
 
    mov word [_VIEWPORT_X_], MAP_SIZE/2-VIEWPORT_WIDTH/2
    mov word [_VIEWPORT_Y_], MAP_SIZE/2-VIEWPORT_HEIGHT/2
+   mov word [_CURSOR_X_], MAP_SIZE/2
+   mov word [_CURSOR_Y_], MAP_SIZE/2
 
    call init_sound
    call decompress_tiles
@@ -414,6 +439,7 @@ init_game:
    call clear_screen
    call draw_terrain
    call draw_entities
+   call draw_cursor
    mov byte [_GAME_STATE_], STATE_GAME
 jmp game_state_satisfied
 
@@ -899,12 +925,12 @@ draw_entities:
 
       .check_if_cart:
          lodsb                ; Load META data
-         test al, META_FULL_CART
+         test al, EMETA_EMPTY_CART
          jz .next_entity
 
-         test al, META_RESOURCE_ORANGE
+         test al, EMETA_RESOURCE_ORANGE
          jnz .draw_orange_cart
-         test al, META_RESOURCE_BLUE
+         test al, EMETA_RESOURCE_BLUE
          jnz .draw_blue_cart
          jmp .next_entity
          
@@ -925,6 +951,19 @@ draw_entities:
    .done:
 ret
 
+draw_cursor:
+   mov bx, [_CURSOR_Y_]    ; Y coordinate
+   sub bx, [_VIEWPORT_Y_]  ; Y - Viewport Y
+   shl bx, 4               ; Y * 16
+   mov ax, [_CURSOR_X_]    ; X coordinate
+   sub ax, [_VIEWPORT_X_]  ; X - Viewport X
+   shl ax, 4               ; X * 16  
+   imul bx, SCREEN_WIDTH   ; Y * 16 * 320
+   add bx, ax              ; Y * 16 * 320 + X * 16
+   mov di, bx              ; Move result to DI
+   mov al, TILE_CURSOR_NORMAL
+   call draw_sprite
+ret
 
 draw_minimap:
 .draw_frame:
@@ -996,7 +1035,8 @@ init_gameplay_elements:
    mov di, _MAP_ + 128*64+64
    mov cx, 8
    .add_meta:
-      mov byte [di], TILE_MUD+META_TRANSPORT
+      and byte [di], 3
+      add byte [di], META_TRANSPORT
       inc di
    loop .add_meta
    mov byte [di-MAP_SIZE-8], TILE_MUD+META_TRANSPORT
@@ -1020,12 +1060,12 @@ init_gameplay_elements:
    add di, 4
    mov word [di], 0x4043 ; 64x64
    mov byte [di+2], TILE_CART_HORIZONTAl
-   mov byte [di+3], META_EMPTY_CART+META_FULL_CART+META_RESOURCE_BLUE
+   mov byte [di+3], META_EMPTY_CART+EMETA_EMPTY_CART+EMETA_RESOURCE_BLUE
 
    add di, 4
    mov word [di], 0x4044 ; 64x64
    mov byte [di+2], TILE_CART_HORIZONTAl
-   mov byte [di+3], META_EMPTY_CART+META_FULL_CART+META_RESOURCE_ORANGE
+   mov byte [di+3], META_EMPTY_CART+EMETA_EMPTY_CART+EMETA_RESOURCE_ORANGE
 
    add di, 4
    mov word [di], 0x4045 ; 64x64
@@ -1148,6 +1188,7 @@ dw House1Sprite, House2Sprite, House3Sprite ; 27
 dw ResourceBlueSprite, ResourceBlueHorizontalSprite, ResourceBlueVerticalSprite ;38
 dw ResourceOrangeSprite, ResourceOrangeHorizontalSprite, ResourceOrangeVerticalSprite ;41
 dw ResourceRedSprite, ResourceRedHorizontalSprite, ResourceRedVerticalSprite ; 44
+dw CursorSprite
 TilesCompressedEnd:
 
 Palettes:
@@ -1981,8 +2022,8 @@ dw 0000000000000000b, 0000000000000000b
 dw 0000000000000000b, 0000000000000000b
 dw 0000000000000000b, 0000000000000000b
 
-EmptySprite:
-db 0x0
+CursorSprite:
+db 0x10
 dw 1111111111111111b, 1111111111111111b
 dw 1100000000000000b, 0000000000000011b
 dw 1100000000000000b, 0000000000000011b
