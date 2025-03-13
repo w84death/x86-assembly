@@ -21,10 +21,11 @@ _VIEWPORT_X_   equ _BASE_ + 0x05    ; 2 bytes
 _VIEWPORT_Y_   equ _BASE_ + 0x07    ; 2 byte
 _CURSOR_X_     equ _BASE_ + 0x09    ; 2 bytes
 _CURSOR_Y_     equ _BASE_ + 0x0B    ; 2 bytes
-; 25b free t ouse
+_INTERACTION_MODE_ equ _BASE_ + 0x0D ; 1 byte
+; 25b free to use
 _TILES_        equ _BASE_ + 0x20    ; 40 tiles = 10K = 0x2800
 _MAP_          equ _BASE_ + 0x4820  ; Map data 128*128*1b= 0x4000
-_ENTITIES_     equ _BASE_ + 0x8820  ; Entities 255 * 3 = 0x2FD
+_ENTITIES_     equ _BASE_ + 0x8820  ; Entities 255 * 3b = 0x2FD
 ; 35.6K
 
 ; =========================================== GAME STATES ======================
@@ -95,13 +96,17 @@ META_INVISIBLE_WALL     equ 0x20    ; For collision detection
 META_TRANSPORT          equ 0x40    ; For railroads
 META_SPECIAL            equ 0x80
 
-META_EMPTY              equ 0x0
-META_TRAIN              equ 0x1
-META_EMPTY_CART         equ 0x2
-EMETA_EMPTY_CART          equ 0x4
-EMETA_RESOURCE_BLUE      equ 0x8
-EMETA_RESOURCE_ORANGE    equ 0x10
-META_RESOURCE_RED       equ 0x20
+META_EMPTY                 equ 0x0
+META_TRAIN                 equ 0x1
+META_EMPTY_CART            equ 0x2
+EMETA_EMPTY_CART           equ 0x4
+EMETA_RESOURCE_BLUE        equ 0x8
+EMETA_RESOURCE_ORANGE      equ 0x10
+META_RESOURCE_RED          equ 0x20
+
+MODE_VIEWPORT_PANNING      equ 0
+MODE_RAILROAD_BUILDING     equ 1
+MODE_BUILDING_CONSTRUCTION equ 2
 
 ; =========================================== MISC SETTINGS ====================
 
@@ -203,38 +208,89 @@ check_keyboard:
    cmp byte [_GAME_STATE_], STATE_GAME
    jne .done
 
-   cmp ah, KB_UP
-   je .move_up
-   cmp ah, KB_DOWN
-   je .move_down
-   cmp ah, KB_LEFT
-   je .move_left
-   cmp ah, KB_RIGHT
-   je .move_right
-   cmp ah, KB_SPACE
-   je .construct_railroad
+   cmp byte [_INTERACTION_MODE_], MODE_VIEWPORT_PANNING
+   je .viewport_panning
+   cmp byte [_INTERACTION_MODE_], MODE_RAILROAD_BUILDING
+   je .railroad_building
    jmp .done
 
-   .move_up:
+   .viewport_panning:
+      cmp ah, KB_UP
+      je .move_viewport_up
+      cmp ah, KB_DOWN
+      je .move_viewport_down
+      cmp ah, KB_LEFT
+      je .move_viewport_left
+      cmp ah, KB_RIGHT
+      je .move_viewport_right
+      cmp ah, KB_ENTER
+      je .swap_mode
+   jmp .done
+
+   .move_viewport_up:
+      cmp word [_VIEWPORT_Y_], 0
+      je .done
+      dec word [_VIEWPORT_Y_]
+      dec word [_CURSOR_Y_]
+   jmp .redraw_terrain
+   .move_viewport_down:
+      cmp word [_VIEWPORT_Y_], MAP_SIZE-VIEWPORT_HEIGHT
+      jae .done
+      inc word [_VIEWPORT_Y_]
+      inc word [_CURSOR_Y_]
+   jmp .redraw_terrain
+   .move_viewport_left:
+      cmp word [_VIEWPORT_X_], 0
+      je .done
+      dec word [_VIEWPORT_X_]
+      dec word [_CURSOR_X_]
+   jmp .redraw_terrain
+   .move_viewport_right:
+      cmp word [_VIEWPORT_X_], MAP_SIZE-VIEWPORT_WIDTH
+      jae .done
+      inc word [_VIEWPORT_X_]
+      inc word [_CURSOR_X_]
+   jmp .redraw_terrain
+
+   .railroad_building:
+      cmp ah, KB_UP
+      je .move_cursor_up
+      cmp ah, KB_DOWN
+      je .move_cursor_down
+      cmp ah, KB_LEFT
+      je .move_cursor_left
+      cmp ah, KB_RIGHT
+      je .move_cursor_right
+      cmp ah, KB_SPACE
+      je .construct_railroad
+      cmp ah, KB_ENTER
+      je .swap_mode
+   jmp .done
+
+   .swap_mode:
+      xor byte [_INTERACTION_MODE_], 0x1
+   jmp .done
+   
+   .move_cursor_up:
       cmp word [_CURSOR_Y_], 0
       je .done
       dec word [_CURSOR_Y_]
-      jmp .redraw_terrain
-   .move_down:
-      cmp word [_CURSOR_Y_], MAP_SIZE-VIEWPORT_HEIGHT
+   jmp .redrawn_tile
+   .move_cursor_down:
+      cmp word [_CURSOR_Y_], MAP_SIZE-1
       jae .done
       inc word [_CURSOR_Y_]
-      jmp .redraw_terrain
-   .move_left:
+   jmp .redrawn_tile
+   .move_cursor_left:
       cmp word [_CURSOR_X_], 0
       je .done
       dec word [_CURSOR_X_]
-      jmp .redraw_terrain
-   .move_right:
-      cmp word [_CURSOR_X_], MAP_SIZE-VIEWPORT_WIDTH
+   jmp .redrawn_tile
+   .move_cursor_right:
+      cmp word [_CURSOR_X_], MAP_SIZE-1
       jae .done
       inc word [_CURSOR_X_]
-      jmp .redraw_terrain
+   jmp .redrawn_tile
 
    .construct_railroad:
       mov ax, [_CURSOR_Y_]
@@ -248,12 +304,17 @@ check_keyboard:
       and al, 0x3
       add al, META_TRANSPORT
       mov [di], al      
-      jmp .redraw_terrain
+      jmp .redrawn_tile
 
+   .redrawn_tile:
+      ; to be optimize later
+      ; for now redrawn everything
    .redraw_terrain:
       call draw_terrain
       call draw_entities
       call draw_cursor
+      jmp .done
+
 
 .done:
 
