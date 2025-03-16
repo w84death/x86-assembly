@@ -90,6 +90,8 @@ TILE_RESOURCE_RED       equ 38
 SHIFT_RESOURCE_VERTICAL    equ 1
 SHIFT_RESOURCE_HORIZONTAL  equ 2
 
+TILE_RAILROADS           equ 19
+TILE_RAILROAD_HORIZONTAL  equ 20
 TILE_CURSOR_NORMAL      equ 42
 
 META_INVISIBLE_WALL     equ 0x20    ; For collision detection
@@ -114,28 +116,28 @@ SCREEN_WIDTH         equ 320
 SCREEN_HEIGHT        equ 200
 MAP_SIZE             equ 128      ; Map size in cells DO NOT CHANGE
 VIEWPORT_WIDTH       equ 20      ; Full screen 320
-VIEWPORT_HEIGHT      equ 12      ; by 192 pixels
+VIEWPORT_HEIGHT      equ 10      ; by 192 pixels
 VIEWPORT_GRID_SIZE   equ 16      ; Individual cell size DO NOT CHANGE
 SPRITE_SIZE          equ 16      ; Sprite size 16x16
 
 ; =========================================== COLORS / DB16 ====================
 
-   COLOR_BLACK         equ 0
-   COLOR_DEEP_PURPLE   equ 1
-   COLOR_NAVY_BLUE     equ 2
-   COLOR_DARK_GRAY     equ 3
-   COLOR_BROWN         equ 4
-   COLOR_DARK_GREEN    equ 5
-   COLOR_RED           equ 6
-   COLOR_LIGHT_GRAY    equ 7
-   COLOR_BLUE          equ 8
-   COLOR_ORANGE        equ 9
-   COLOR_STEEL_BLUE    equ 10
-   COLOR_GREEN         equ 11
-   COLOR_PINK          equ 12
-   COLOR_CYAN          equ 13
-   COLOR_YELLOW        equ 14
-   COLOR_WHITE         equ 15
+COLOR_BLACK         equ 0
+COLOR_DEEP_PURPLE   equ 1
+COLOR_NAVY_BLUE     equ 2
+COLOR_DARK_GRAY     equ 3
+COLOR_BROWN         equ 4
+COLOR_DARK_GREEN    equ 5
+COLOR_RED           equ 6
+COLOR_LIGHT_GRAY    equ 7
+COLOR_BLUE          equ 8
+COLOR_ORANGE        equ 9
+COLOR_STEEL_BLUE    equ 10
+COLOR_GREEN         equ 11
+COLOR_PINK          equ 12
+COLOR_CYAN          equ 13
+COLOR_YELLOW        equ 14
+COLOR_WHITE         equ 15
 
 ; =========================================== INITIALIZATION ===================
 
@@ -201,9 +203,7 @@ check_keyboard:
 
    .transitions_done:
 
-   ; ========================================= GAME LOGIC INPUT ================
-
-   ; todo: handle game logic inputs
+; ========================================= GAME LOGIC INPUT ================
 
    cmp byte [_GAME_STATE_], STATE_GAME
    jne .done
@@ -223,7 +223,7 @@ check_keyboard:
       je .move_viewport_left
       cmp ah, KB_RIGHT
       je .move_viewport_right
-      cmp ah, KB_ENTER
+      cmp ah, KB_F2
       je .swap_mode
    jmp .done
 
@@ -263,34 +263,41 @@ check_keyboard:
       je .move_cursor_right
       cmp ah, KB_SPACE
       je .construct_railroad
-      cmp ah, KB_ENTER
+      cmp ah, KB_F2
       je .swap_mode
    jmp .done
 
    .swap_mode:
       xor byte [_INTERACTION_MODE_], 0x1
+      call draw_ui
    jmp .done
-   
+
    .move_cursor_up:
-      cmp word [_CURSOR_Y_], 0
+      mov ax, [_VIEWPORT_Y_]
+      cmp word [_CURSOR_Y_], ax
       je .done
       dec word [_CURSOR_Y_]
-   jmp .redrawn_tile
+   jmp .redraw_tile
    .move_cursor_down:
-      cmp word [_CURSOR_Y_], MAP_SIZE-1
+      mov ax, [_VIEWPORT_Y_]
+      add ax, VIEWPORT_HEIGHT-1
+      cmp word [_CURSOR_Y_], ax
       jae .done
       inc word [_CURSOR_Y_]
-   jmp .redrawn_tile
+   jmp .redraw_tile
    .move_cursor_left:
-      cmp word [_CURSOR_X_], 0
+      mov ax, [_VIEWPORT_X_]
+      cmp word [_CURSOR_X_], ax
       je .done
       dec word [_CURSOR_X_]
-   jmp .redrawn_tile
+   jmp .redraw_tile
    .move_cursor_right:
-      cmp word [_CURSOR_X_], MAP_SIZE-1
+      mov ax, [_VIEWPORT_X_]
+      add ax, VIEWPORT_WIDTH-1
+      cmp word [_CURSOR_X_], ax
       jae .done
       inc word [_CURSOR_X_]
-   jmp .redrawn_tile
+   jmp .redraw_tile
 
    .construct_railroad:
       mov ax, [_CURSOR_Y_]
@@ -304,11 +311,19 @@ check_keyboard:
       and al, 0x3
       add al, META_TRANSPORT
       mov [di], al      
-      jmp .redrawn_tile
+      jmp .redraw_tile
 
-   .redrawn_tile:
+   .redraw_tile:
       ; to be optimize later
       ; for now redrawn everything
+
+      ; mov ax, [_CURSOR_Y_]
+      ; mov bx, [_CURSOR_X_]
+      ; call redraw_terrain_tile
+      ; call draw_entities
+      ; call draw_cursor
+      ; jmp .done
+
    .redraw_terrain:
       call draw_terrain
       call draw_entities
@@ -451,32 +466,24 @@ live_title_screen:
 jmp game_state_satisfied
 
 init_menu:
-   call draw_terrain
+   mov al, COLOR_ORANGE
+   call clear_screen
 
    mov di, SCREEN_WIDTH*48
    mov al, COLOR_DEEP_PURPLE
    call draw_gradient
 
-   call draw_minimap
+   ; call draw_minimap
 
-   mov si, MainMenuText
-   mov dx, 0x060a          ; Y/X position
+   mov si, MainMenuTitleText
+   mov dx, 0x090A          ; Y/X position
    mov bl, COLOR_WHITE
    call draw_text
 
-   mov si, MainMenu
-   mov dx, 0x090d            ; Skip 2 lines
+   mov si, MainMenuText
+   mov dx, 0x0C01
    mov bl, COLOR_YELLOW
-   mov cx, 5            ; Number of menu entries
-   .next_menu_entry:
-      pusha
-      call draw_text
-      popa
-      inc dh
-      inc dh
-      add si, MainMenuEnd-MainMenu
-   loop .next_menu_entry
-   .end_menu:
+   call draw_text
 
    mov byte [_GAME_STATE_], STATE_MENU
 jmp game_state_satisfied
@@ -496,11 +503,10 @@ new_game:
 jmp game_state_satisfied
 
 init_game:
-   mov al, COLOR_NAVY_BLUE
-   call clear_screen
    call draw_terrain
    call draw_entities
    call draw_cursor
+   call draw_ui
    mov byte [_GAME_STATE_], STATE_GAME
 jmp game_state_satisfied
 
@@ -771,32 +777,7 @@ draw_terrain:
 
          test bl, META_TRANSPORT
          jz .skip_draw_transport
-         .draw_transport:
-            xor ax, ax
-            dec si
-            .test_up:
-               test byte [si-MAP_SIZE], META_TRANSPORT
-               jz .test_right
-               add al, 0x8
-            .test_right:
-               test byte [si+1], META_TRANSPORT
-               jz .test_down
-               add al, 0x4
-            .test_down:
-            test byte [si+MAP_SIZE], META_TRANSPORT
-            jz .test_left
-               add al, 0x2
-            .test_left:
-            test byte [si-1], META_TRANSPORT
-            jz .done_calculating
-               add al, 0x1
-            .done_calculating:
-            inc si
-            mov bx, RailroadsList
-            xlatb
-            add al, 19  ; Shift to railroad tiles
-            call draw_sprite
-
+            call draw_transport
          .skip_draw_transport:
 
          add di, SPRITE_SIZE
@@ -808,19 +789,51 @@ draw_terrain:
 ret
 
 ; =========================================== DRAW TERRAIN TILE ===============
-; IN: BX - Y/X
+; IN: AX/BX - Y/X
 ; OUT: Tile drawn on the screen
 redraw_terrain_tile: 
    push si
+   shl ax, 8
+   add ax, bx
    mov si, _MAP_ 
-   movzx ax, bh   ; Y coordinate
-   shl ax, 7      ; Y * 64
-   add al, bl     ; Y * 64 + X
    add si, ax
    lodsb
+   mov bl, al
    and al, META_TILES_MASK ; clear metadata
    call draw_tile
    pop si
+   test bl, META_TRANSPORT
+   jz .skip_draw_transport
+      call draw_transport
+   .skip_draw_transport:
+ret
+
+
+draw_transport:
+   xor ax, ax
+   dec si
+   .test_up:
+      test byte [si-MAP_SIZE], META_TRANSPORT
+      jz .test_right
+      add al, 0x8
+   .test_right:
+      test byte [si+1], META_TRANSPORT
+      jz .test_down
+      add al, 0x4
+   .test_down:
+   test byte [si+MAP_SIZE], META_TRANSPORT
+   jz .test_left
+      add al, 0x2
+   .test_left:
+   test byte [si-1], META_TRANSPORT
+   jz .done_calculating
+      add al, 0x1
+   .done_calculating:
+   inc si
+   mov bx, RailroadsList
+   xlatb
+   add al, TILE_RAILROADS  ; Shift to railroad tiles
+   call draw_sprite
 ret
 
 ; =========================================== DECOMPRESS SPRITE ===============
@@ -1147,6 +1160,56 @@ init_gameplay_elements:
    mov byte [di+3], META_EMPTY
 ret
 
+UI_POSITION equ 320*160
+UI_FIRST_LINE equ 320*164
+UI_LINES equ 40
+
+draw_ui:
+   mov di, UI_POSITION
+   mov cx, 160*UI_LINES
+   mov ax, COLOR_BLACK
+   rep stosw
+
+   mov di, UI_POSITION
+   mov cx, 320
+   mov al, COLOR_NAVY_BLUE
+   rep stosb
+   mov cx, 320
+   mov al, COLOR_WHITE
+   rep stosb
+   mov cx, 320
+   add di, 320*37
+   rep stosb
+
+   mov di, UI_FIRST_LINE+8
+   mov al, TILE_RAILROAD_HORIZONTAL
+   call draw_sprite
+
+   mov si, FakeNumberText
+   mov dx, 0x01504          ; Y/X position
+   mov bl, COLOR_WHITE
+   call draw_text
+
+   mov di, UI_FIRST_LINE+80
+   mov al, TILE_RESOURCE_ORANGE
+   call draw_sprite
+
+   mov si, FakeNumberText
+   mov dx, 0x0150C
+   mov bl, COLOR_WHITE
+   call draw_text
+
+   mov si, UIExploreModeText
+   cmp byte [_INTERACTION_MODE_], MODE_RAILROAD_BUILDING
+   jne .skip_build_mode
+      mov si, UIBuildModeText
+   .skip_build_mode:
+   mov dx, 0x01514
+   mov bl, COLOR_NAVY_BLUE
+   call draw_text
+
+ret
+
 init_sound:
    mov al, 182         ; Binary mode, square wave, 16-bit divisor
    out 43h, al         ; Write to PIT command register[2]
@@ -1201,15 +1264,11 @@ db 0x35, 0x39, 0x3F, 0x47, 0x51, 0x5C, 0x68, 0x74
 WelcomeText db 'P1X ASSEMBLY ENGINE V12.01', 0x0
 PressEnterText db 'PRESS ENTER', 0x0
 QuitText db 'Thanks for playing!',0x0D,0x0A,'Visit http://smol.p1x.in for more games..', 0x0D, 0x0A, 0x0
-MainMenuText db '"Mycelium Overlords"',0x0
-MainMenu:
-   ;----+----+----14
-db 'F1: New Map   ',0x0
-MainMenuEnd:
-db 'ENTER: Play   ',0x0
-db 'TAB: Minimap  ',0x0
-db 'ARR: Pan view ',0x0
-db 'ESC: Quit/Menu',0x0
+MainMenuTitleText db '"Mycelium Overlords"',0x0
+MainMenuText db 'F1: New Map - ENTER: Play - ESC: Quit',0x0
+FakeNumberText db '0000', 0x0
+UIBuildModeText db 'F2: Build Mode', 0x0 
+UIExploreModeText db 'F2: Explore Mode', 0x0
 
 ; =========================================== TERRAIN GEN RULES ================
 
