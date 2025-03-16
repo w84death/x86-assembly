@@ -466,7 +466,7 @@ live_title_screen:
 jmp game_state_satisfied
 
 init_menu:
-   mov al, COLOR_ORANGE
+   mov al, COLOR_DEEP_PURPLE
    call clear_screen
 
    mov di, SCREEN_WIDTH*48
@@ -1208,6 +1208,16 @@ draw_ui:
    mov bl, COLOR_NAVY_BLUE
    call draw_text
 
+   mov si, UIScoreText
+   mov dx, 0x01701
+   mov bl, COLOR_NAVY_BLUE
+   call draw_text
+
+   mov bl, COLOR_WHITE
+   mov si, FakeNumberText
+   mov dx, 0x01708
+   call draw_text
+
 ret
 
 init_sound:
@@ -1265,10 +1275,11 @@ WelcomeText db 'P1X ASSEMBLY ENGINE V12.01', 0x0
 PressEnterText db 'PRESS ENTER', 0x0
 QuitText db 'Thanks for playing!',0x0D,0x0A,'Visit http://smol.p1x.in for more games..', 0x0D, 0x0A, 0x0
 MainMenuTitleText db '"Mycelium Overlords"',0x0
-MainMenuText db 'F1: New Map - ENTER: Play - ESC: Quit',0x0
+MainMenuText db 'F1: New Map * ENTER: Play * ESC: Quit',0x0
 FakeNumberText db '0000', 0x0
 UIBuildModeText db 'F2: Build Mode', 0x0 
 UIExploreModeText db 'F2: Explore Mode', 0x0
+UIScoreText db 'Score:', 0x0
 
 ; =========================================== TERRAIN GEN RULES ================
 
