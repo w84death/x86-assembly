@@ -3,15 +3,47 @@
 ; Fast rendering of big maps with full screen viewport.
 ; Backend for strategic/simulation games. Based on GAME11 ideas.
 ; 
+; Tested on:
+; * DosBox-X (DOS)
+; * Compaq Contura 430C - 486DX4/100MHz (FreeDOS & Boot Floppy)
+; * Modern PCs from a Boot Floppy
+;
 ; http://smol.p1x.in/assembly/#game12
 ; Created by Krzysztof Krystian Jankowski
 ; MIT License
 ; 02/2025
 
+; ===========================================================================|80
+; PROGRAMMER NOTEBOOK
+; ===========================================================================|80
+; # Introduction
+; 
+; # Tech Requirements
+; 
+; # 2025-03-21
+; I got more ideas about railroad management and trains becomes sinular pods.
+; User builds railorads (auto joins)
+; User set railorads switches - direction or flipflop changing automatically 
+; after each read/traversal of pod
+; User spawns pods that moves over tracks
+; User manages switches to get the pods to right places
+; Pods lodads and unloads resources
+; where/how to get resources?
+; where/how to unload them?
+;
+; railroad 14 will have switch to 8 OR 2 
+;      (1)    
+;
+;  =(8)=T=(2)=
+;       |
+;      (4)
+; pod will always go forward (8->2 or 2->8)
+; when pod can not move forward (4) it goes where switch shows (8 pr 2)
+
 org 0x100
 use16
 
-; =========================================== MEMORY ALLOCATION ================
+; =========================================== MEMORY ALLOCATION =============|80
 
 _BASE_         equ 0x2000           ; Start of memory
 _GAME_TICK_    equ _BASE_ + 0x00    ; 2 bytes
@@ -25,10 +57,11 @@ _INTERACTION_MODE_ equ _BASE_ + 0x0D ; 1 byte
 ; 25b free to use
 _TILES_        equ _BASE_ + 0x20    ; 40 tiles = 10K = 0x2800
 _MAP_          equ _BASE_ + 0x4820  ; Map data 128*128*1b= 0x4000
-_ENTITIES_     equ _BASE_ + 0x8820  ; Entities 255 * 3b = 0x2FD
+_METADATA_     equ _BASE_ + 0x8820  ; Map metadata 128*128*1b= 0x4000
+_ENTITIES_     equ _BASE_ + 0xC820  ; Entities data 128*128*1b= 0x4000
 ; 35.6K
 
-; =========================================== GAME STATES ======================
+; =========================================== GAME STATES ===================|80
 
 STATE_INIT_ENGINE       equ 0
 STATE_QUIT              equ 1
@@ -45,7 +78,7 @@ STATE_DEBUG_VIEW_INIT   equ 11
 STATE_DEBUG_VIEW        equ 12
 STATE_GENERATE_MAP      equ 13
 
-; =========================================== KEYBOARD CODES ===================
+; =========================================== KEYBOARD CODES ================|80
 
 KB_ESC      equ 0x01
 KB_UP       equ 0x48
@@ -63,7 +96,7 @@ KB_TAB      equ 0x0F
 KB_F1       equ 0x3B
 KB_F2       equ 0x3C
 
-; =========================================== TILES NAMES ======================
+; =========================================== TILES NAMES ===================|80
 
 TILE_MUD             equ 0x0
 TILE_MUD2            equ 0x1
@@ -89,14 +122,14 @@ TILE_RESOURCE_ORANGE    equ 36
 SHIFT_RESOURCE_VERTICAL    equ 0
 SHIFT_RESOURCE_HORIZONTAL  equ 1
 
-TILE_RAILROADS           equ 19
-TILE_RAILROAD_HORIZONTAL  equ 20
-TILE_CURSOR_NORMAL      equ 39
-TILE_CURSOR_BUILD       equ 8
+TILE_RAILROADS             equ 19
+TILE_RAILROAD_HORIZONTAL   equ 20
+TILE_CURSOR_NORMAL         equ 39
+TILE_CURSOR_BUILD          equ 8
 
-META_INVISIBLE_WALL     equ 0x20    ; For collision detection
-META_TRANSPORT          equ 0x40    ; For railroads
-META_SPECIAL            equ 0x80
+META_INVISIBLE_WALL        equ 0x20    ; For collision detection
+META_TRANSPORT             equ 0x40    ; For railroads
+META_SWITCH                equ 0x80     ; Railroad switch
 
 META_EMPTY                 equ 0x0
 META_TRAIN                 equ 0x1
@@ -110,7 +143,7 @@ MODE_VIEWPORT_PANNING      equ 0
 MODE_RAILROAD_BUILDING     equ 1
 MODE_BUILDING_CONSTRUCTION equ 2
 
-; =========================================== MISC SETTINGS ====================
+; =========================================== MISC SETTINGS =================|80
 
 SCREEN_WIDTH         equ 320
 SCREEN_HEIGHT        equ 200
@@ -120,7 +153,7 @@ VIEWPORT_HEIGHT      equ 10      ; by 192 pixels
 VIEWPORT_GRID_SIZE   equ 16      ; Individual cell size DO NOT CHANGE
 SPRITE_SIZE          equ 16      ; Sprite size 16x16
 
-; =========================================== COLORS / DB16 ====================
+; =========================================== COLORS / DB16 =================|80
 
 COLOR_BLACK         equ 0
 COLOR_DEEP_PURPLE   equ 1
@@ -139,7 +172,7 @@ COLOR_CYAN          equ 13
 COLOR_YELLOW        equ 14
 COLOR_WHITE         equ 15
 
-; =========================================== INITIALIZATION ===================
+; =========================================== INITIALIZATION ================|80
 
 start:
    mov ax, 0x13         ; Init 320x200, 256 colors mode
@@ -160,11 +193,11 @@ start:
    mov word [_CURSOR_X_], MAP_SIZE/2
    mov word [_CURSOR_Y_], MAP_SIZE/2
 
-; =========================================== GAME LOOP ========================
+; =========================================== GAME LOOP =====================|80
 
 main_loop:
 
-; =========================================== GAME STATES ======================
+; =========================================== GAME STATES ===================|80
 
    movzx bx, byte [_GAME_STATE_]    ; Load state into BX
    shl bx, 1                        ; Multiply by 2 (word size)
@@ -172,7 +205,7 @@ main_loop:
 
 game_state_satisfied:
 
-; =========================================== KEYBOARD INPUT ===================
+; =========================================== KEYBOARD INPUT ================|80
 
 check_keyboard:
    mov ah, 01h         ; BIOS keyboard status function
@@ -182,7 +215,7 @@ check_keyboard:
    mov ah, 00h         ; BIOS keyboard read function
    int 16h             ; Call BIOS interrupt
 
-   ; ========================================= STATE TRANSITIONS ===============
+   ; ========================================= STATE TRANSITIONS ============|80
    mov si, StateTransitionTable
    mov cx, StateTransitionTableEnd-StateTransitionTable
    .check_transitions:      
@@ -203,7 +236,7 @@ check_keyboard:
 
    .transitions_done:
 
-; ========================================= GAME LOGIC INPUT ================
+; ========================================= GAME LOGIC INPUT =============|80
 
    cmp byte [_GAME_STATE_], STATE_GAME
    jne .done
@@ -333,7 +366,7 @@ check_keyboard:
 
 .done:
 
-; =========================================== GAME TICK ========================
+; =========================================== GAME TICK =====================|80
 
 wait_for_tick:
    xor ax, ax           ; Function 00h: Read system timer counter
@@ -347,11 +380,11 @@ wait_for_tick:
 call stop_sound
 inc word [_GAME_TICK_]  ; Increment game tick
 
-; =========================================== ESC OR LOOP ======================
+; =========================================== ESC OR LOOP ===================|80
 
 jmp main_loop
 
-; =========================================== EXIT TO DOS ======================
+; =========================================== EXIT TO DOS ===================|80
 
 exit:
    call stop_sound
@@ -381,7 +414,7 @@ exit:
 
 
 
-; =========================================== LOGIC FOR GAME STATES ============
+; =========================================== LOGIC FOR GAME STATES =========|80
 
 StateJumpTable:
    dw init_engine
@@ -577,9 +610,9 @@ jmp game_state_satisfied
 
 
 
-; =========================================== PROCEDURES =======================
+; =========================================== PROCEDURES ====================|80
 
-; =========================================== CUSTOM PALETTE ===================
+; =========================================== CUSTOM PALETTE ================|80
 ; IN: Palette data in RGB format
 ; OUT: VGA palette initialized
 initialize_custom_palette:
@@ -613,7 +646,7 @@ db 27, 48, 50    ; #6DC2CA - Cyan
 db 54, 53, 23    ; #DAD45E - Yellow
 db 55, 59, 53    ; #DEEED6 - White
 
-; =========================================== DRAW TEXT ========================
+; =========================================== DRAW TEXT =====================|80
 ; IN:
 ;  SI - Pointer to text
 ;  DL - X position
@@ -638,7 +671,7 @@ draw_text:
    .done:
 ret
 
-; =========================================== GET RANDOM =======================
+; =========================================== GET RANDOM ====================|80
 ; OUT: AX - Random number
 get_random:
    mov ax, [_RNG_]
@@ -648,7 +681,7 @@ get_random:
    mov [_RNG_], ax
 ret
 
-; =========================================== CLEAR SCREEN =====================
+; =========================================== CLEAR SCREEN ==================|80
 ; IN: AL - Color
 ; OUT: VGA memory cleared (fullscreen)
 clear_screen:
@@ -658,7 +691,7 @@ clear_screen:
    rep stosw            ; Write to the VGA memory
 ret
 
-; =========================================== DRAW GRADIENT ====================
+; =========================================== DRAW GRADIENT =================|80
 ; IN:
 ; DI - Position
 ; AL - Color
@@ -683,7 +716,7 @@ mov ah, al
       jg .draw_gradient       ; Loop until all bars are drawn
 ret
 
-; =========================================== GENERATE MAP =====================
+; =========================================== GENERATE MAP ==================|80
 generate_map:
    mov di, _MAP_
    mov si, TerrainRules
@@ -730,15 +763,12 @@ generate_map:
          dec dx
       jnz .next_cell
    loop .next_row
-   
-   call set_meta_data
-ret
 
-set_meta_data:
+   .set_metata:   
    mov di, _MAP_
    mov si, di
    mov cx, MAP_SIZE*MAP_SIZE
-   .next_cell:
+   .meta_next_cell:
          lodsb
 
          .check_invisible_walls:
@@ -755,10 +785,10 @@ set_meta_data:
          .skip_invisible_walls:
 
          stosb
-   loop .next_cell
+   loop .meta_next_cell
 ret
 
-; =========================================== DRAW TERRAIN =====================
+; =========================================== DRAW TERRAIN ==================|80
 ; OUT: Terrain drawn on the screen
 draw_terrain:
    xor di, di
@@ -799,7 +829,7 @@ draw_terrain:
    rep stosb
 ret
 
-; =========================================== DRAW TERRAIN TILE ===============
+; =========================================== DRAW TERRAIN TILE ============|80
 ; IN: AX/BX - Y/X
 ; OUT: Tile drawn on the screen
 redraw_terrain_tile: 
@@ -847,7 +877,7 @@ draw_transport:
    call draw_sprite
 ret
 
-; =========================================== DECOMPRESS SPRITE ===============
+; =========================================== DECOMPRESS SPRITE ============|80
 ; IN: SI - Compressed sprite data
 ; OUT: Sprite decompressed to _TILES_
 decompress_sprite:
@@ -883,7 +913,7 @@ decompress_sprite:
   popa
 ret
 
-; =========================================== DECOMPRESS TILES ===============
+; =========================================== DECOMPRESS TILES ============|80
 ; OUT: Tiles decompressed to _TILES_
 decompress_tiles:
    xor di, di
@@ -903,7 +933,7 @@ decompress_tiles:
    loop .decompress_next
 ret
 
-; =========================================== DRAW TILE ========================
+; =========================================== DRAW TILE =====================|80
 ; IN: SI - Tile data
 ; AL - Tile ID
 ; DI - Position
@@ -923,7 +953,7 @@ draw_tile:
    popa
 ret
 
-; =========================================== DRAW SPRITE ======================
+; =========================================== DRAW SPRITE ===================|80
 ; IN:
 ; AL - Sprite ID
 ; DI - Position
@@ -950,7 +980,7 @@ draw_sprite:
    popa
 ret
 
-; =========================================== INIT ENTITIES ====================
+; =========================================== INIT ENTITIES =================|80
 init_entities:
    mov di, _ENTITIES_
    mov cx, 0x80
@@ -973,7 +1003,7 @@ init_entities:
    mov word [di], 0x0      ; Terminator
 ret
 
-; =========================================== DRAW ENTITIES ====================
+; =========================================== DRAW ENTITIES =================|80
 ; OUT: Entities drawn on the screen
 draw_entities:
    mov si, _ENTITIES_
@@ -1290,12 +1320,12 @@ db 0x35, 0x39, 0x3F, 0x47, 0x51, 0x5C, 0x68, 0x74
 
 
 
-; =========================================== DATA =============================
+; =========================================== DATA ==========================|80
 
 
 
 
-; =========================================== TEXT DATA ========================
+; =========================================== TEXT DATA =====================|80
 
 WelcomeText db 'P1X ASSEMBLY ENGINE V12.01', 0x0
 PressEnterText db 'PRESS ENTER', 0x0
@@ -1308,7 +1338,7 @@ UIBuildModeText db 'F2: Build Mode', 0x0
 UIExploreModeText db 'F2: Explore Mode', 0x0
 UIScoreText db 'Score:', 0x0
 
-; =========================================== TERRAIN GEN RULES ================
+; =========================================== TERRAIN GEN RULES =============|80
 
 TerrainRules:
 db 0, 1, 1, 1  ; Swamp
@@ -1328,7 +1358,7 @@ db 0x5         ; Bush
 db 0x5         ; Forest
 db 0xA         ; Mountain
 
-; =========================================== TILES ============================
+; =========================================== TILES =========================|80
 
 RailroadsList:
 db 1, 1, 5, 0
@@ -2143,7 +2173,7 @@ dw 1111100000000010b, 1000000000101011b
 dw 0111111000000011b, 1100000010111100b
 
 
-; =========================================== THE END ==========================
+; =========================================== THE END =======================|80
 ; Thanks for reading the source code!
 ; Visit http://smol.p1x.in/assembly/ for more.
 
