@@ -125,7 +125,7 @@ UI_POSITION equ 320*160
 UI_FIRST_LINE equ 320*164
 UI_LINES equ 40
 
-DEFAULT_ECONOMY_TRACKS equ 0x60
+DEFAULT_ECONOMY_TRACKS equ 0x64
 
 ; =========================================== MISC SETTINGS =================|80
 
@@ -444,7 +444,7 @@ init_engine:
    call init_sound
    call decompress_tiles
    call generate_map
-   call init_entities
+   ; call init_entities
    call init_gameplay_elements
 
    mov byte [_GAME_STATE_], STATE_TITLE_SCREEN_INIT
@@ -533,7 +533,7 @@ jmp game_state_satisfied
 
 new_game:
    call generate_map
-   call init_entities
+   ; call init_entities
    call init_gameplay_elements
    call reset_to_default_values
 
@@ -685,10 +685,9 @@ draw_number:
    xor bh, bh     ; Page 0
    int 0x10
    
-   push si        ; Save original value
    mov cx, 10000  ; Divisor starting with 10000 (for 5 digits)
    mov ax, si     ; Copy the number to AX for division
-   
+
    .next_digit:
       xor dx, dx     ; Clear DX for division
       div cx         ; Divide AX by CX, quotient in AX, remainder in DX
@@ -723,7 +722,6 @@ draw_number:
       cmp cx, 0      ; If divisor is 0, we're done
       jne .next_digit
    
-   pop si           ; Restore original value
    ret
 
 ; =========================================== GET RANDOM ====================|80
