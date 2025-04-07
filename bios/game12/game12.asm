@@ -27,6 +27,12 @@ _VIEWPORT_Y_   equ _BASE_ + 0x07    ; 2 byte
 _CURSOR_X_     equ _BASE_ + 0x09    ; 2 bytes
 _CURSOR_Y_     equ _BASE_ + 0x0B    ; 2 bytes
 _INTERACTION_MODE_ equ _BASE_ + 0x0D ; 1 byte
+_ECONOMY_TRACKS_ equ _BASE_ + 0x0E ; 2 bytes
+_ECONOMY_BLUE_RES_ equ _BASE_ + 0x10 ; 2 byte
+_ECONOMY_YELLOW_RES_ equ _BASE_ + 0x12 ; 2 byte
+_ECONOMY_RED_RES_ equ _BASE_ + 0x14 ; 2 byte
+_ECONOMY_SCORE_ equ _BASE_ + 0x16 ; 2 byte
+
 ; 25b free to use
 _TILES_        equ _BASE_ + 0x20    ; 40 tiles = 10K = 0x2800
 _MAP_          equ _BASE_ + 0x4820  ; Map data 128*128*1b= 0x4000
@@ -95,7 +101,6 @@ TILE_RESOURCE_YELLOW    equ 30
 TILE_RESOURCE_RED       equ 31
 
 TILE_RAILROADS             equ 10
-TILE_RAILROAD_HORIZONTAL   equ 1
 CURSOR_NORMAL              equ 22
 CURSOR_BUILD               equ 21
 
@@ -119,6 +124,8 @@ MODE_BUILDING_CONSTRUCTION equ 2
 UI_POSITION equ 320*160
 UI_FIRST_LINE equ 320*164
 UI_LINES equ 40
+
+DEFAULT_ECONOMY_TRACKS equ 0x60
 
 ; =========================================== MISC SETTINGS =================|80
 
@@ -165,11 +172,8 @@ start:
    mov sp, 0xFFFF       ; Set stack pointer to 0xFFFF
 
    call initialize_custom_palette
+   
    mov byte [_GAME_STATE_], STATE_INIT_ENGINE
-   mov word [_VIEWPORT_X_], MAP_SIZE/2-VIEWPORT_WIDTH/2
-   mov word [_VIEWPORT_Y_], MAP_SIZE/2-VIEWPORT_HEIGHT/2
-   mov word [_CURSOR_X_], MAP_SIZE/2
-   mov word [_CURSOR_Y_], MAP_SIZE/2
 
 ; =========================================== GAME LOOP =====================|80
 
@@ -311,17 +315,27 @@ check_keyboard:
    jmp .redraw_tile
 
    .construct_railroad:
-      mov ax, [_CURSOR_Y_]
+
+      cmp word [_ECONOMY_TRACKS_], 0      ; check economy: track count
+      jz .done
+
+      mov ax, [_CURSOR_Y_]                ; calculate map position
       shl ax, 7   ; Y * 128
       add ax, [_CURSOR_X_]
       mov di, _MAP_
       add di, ax
-      mov al, [di]
-      test al, META_TRANSPORT
+
+      mov al, [di]                        ; get tile data at current place
+      test al, META_TRANSPORT             ; check if empty
       jnz .done
+
+      dec word [_ECONOMY_TRACKS_]         ; decrease track count
+
       and al, 0x3
       add al, META_TRANSPORT
-      mov [di], al      
+      mov [di], al               ; set railroad tile
+
+      call draw_ui
       jmp .redraw_tile
 
    .redraw_tile:
@@ -426,14 +440,7 @@ StateTransitionTableEnd:
 ; ======================================= PROCEDURES FOR GAME STATES ========|80
 
 init_engine:
-   mov byte [_GAME_TICK_], 0x0
-   mov word [_RNG_], 0x42
-
-   mov word [_VIEWPORT_X_], MAP_SIZE/2-VIEWPORT_WIDTH/2
-   mov word [_VIEWPORT_Y_], MAP_SIZE/2-VIEWPORT_HEIGHT/2
-   mov word [_CURSOR_X_], MAP_SIZE/2
-   mov word [_CURSOR_Y_], MAP_SIZE/2
-
+   call reset_to_default_values
    call init_sound
    call decompress_tiles
    call generate_map
@@ -443,6 +450,22 @@ init_engine:
    mov byte [_GAME_STATE_], STATE_TITLE_SCREEN_INIT
 
 jmp game_state_satisfied
+
+reset_to_default_values:
+   mov byte [_GAME_TICK_], 0x0
+   mov word [_RNG_], 0x42
+
+   mov word [_VIEWPORT_X_], MAP_SIZE/2-VIEWPORT_WIDTH/2
+   mov word [_VIEWPORT_Y_], MAP_SIZE/2-VIEWPORT_HEIGHT/2
+   mov word [_CURSOR_X_], MAP_SIZE/2
+   mov word [_CURSOR_Y_], MAP_SIZE/2
+
+   mov word [_ECONOMY_BLUE_RES_], 0
+   mov word [_ECONOMY_YELLOW_RES_], 0
+   mov word [_ECONOMY_RED_RES_], 0
+   mov word [_ECONOMY_TRACKS_], DEFAULT_ECONOMY_TRACKS
+   mov word [_ECONOMY_SCORE_], 0
+ret
 
 init_title_screen:
    mov si, start
@@ -512,10 +535,10 @@ new_game:
    call generate_map
    call init_entities
    call init_gameplay_elements
+   call reset_to_default_values
 
-   mov byte [_VIEWPORT_X_], MAP_SIZE/2-VIEWPORT_WIDTH/2
-   mov byte [_VIEWPORT_Y_], MAP_SIZE/2-VIEWPORT_HEIGHT/2
    mov byte [_GAME_STATE_], STATE_MENU_INIT
+
 jmp game_state_satisfied
 
 init_game:
@@ -637,19 +660,56 @@ draw_text:
    xor bh, bh     ; Page 0
    int 0x10
 
-.next_char:
-   lodsb          ; Load next character from SI into AL
-   test al, al    ; Check for string terminator
-   jz .done       ; If terminator, we're done
-   
-   mov ah, 0x0E   ; Teletype output
-   mov bh, 0      ; Page 0
-   int 0x10       ; BIOS video interrupt
-   
-   jmp .next_char ; Process next character
-   
+   .next_char:
+      lodsb          ; Load next character from SI into AL
+      test al, al    ; Check for string terminator
+      jz .done       ; If terminator, we're done
+      
+      mov ah, 0x0E   ; Teletype output
+      mov bh, 0      ; Page 0
+      int 0x10       ; BIOS video interrupt
+      
+      jmp .next_char ; Process next character
+      
    .done:
 ret
+
+; =========================================== DRAW NUMBER ===================|80
+; IN:
+;  SI - Value to display (hexadecimal)
+;  DL - X position
+;  DH - Y position
+;  BX - Color
+draw_number:
+   mov ah, 0x02   ; Set cursor
+   xor bh, bh     ; Page 0
+   int 0x10
+   
+   push si        ; Save original value
+   mov cx, 4      ; We'll process 4 digits (16-bit value)
+   
+   .next_digit:
+      rol si, 4   ; Rotate left by 4 bits to get the next hex digit
+      mov ax, si  ; Copy the current value
+      and al, 0x0F ; Mask to get only the lowest 4 bits (current hex digit)
+      
+      ; Convert digit to ASCII
+      cmp al, 10
+      jl .digit
+      add al, 'A' - 10 - '0' ; Convert A-F
+      
+      .digit:
+      add al, '0'  ; Convert to ASCII
+      
+      ; Print the character
+      mov ah, 0x0E  ; Teletype output
+      mov bh, 0     ; Page 0
+      int 0x10      ; BIOS video interrupt
+      
+      loop .next_digit
+   
+   pop si          ; Restore original value
+   ret
 
 ; =========================================== GET RANDOM ====================|80
 ; OUT: AX - Random number
@@ -1204,40 +1264,40 @@ draw_ui:
    rep stosb
 
    mov di, UI_FIRST_LINE+8
-   mov al, TILE_RAILROAD_HORIZONTAL
+   mov al, TILE_RAILROADS+10  ; Crossing
    call draw_sprite
 
-   mov si, FakeNumberText  ; Rail pieces left
+   mov si, [_ECONOMY_TRACKS_]  ; Railroad tracks count
    mov dx, 0x01504
    mov bl, COLOR_WHITE
-   call draw_text
+   call draw_number
 
    mov di, UI_FIRST_LINE+76   ; Resource blue icon
    mov al, TILE_RESOURCE_BLUE
    call draw_sprite
 
-   mov si, FakeNumberText  ; Resource blue number
+   mov si, [_ECONOMY_BLUE_RES_]  ; Blue resource count
    mov dx, 0x0150C
    mov bl, COLOR_WHITE
-   call draw_text
+   call draw_number
 
    mov di, UI_FIRST_LINE+140
    mov al, TILE_RESOURCE_YELLOW
    call draw_sprite
 
-   mov si, FakeNumberText  ; Resource yellow number
+   mov si, [_ECONOMY_YELLOW_RES_]  ; Yellow resource count
    mov dx, 0x01514
    mov bl, COLOR_WHITE
-   call draw_text
+   call draw_number
 
    mov di, UI_FIRST_LINE+204
    mov al, TILE_RESOURCE_RED
    call draw_sprite
 
-   mov si, FakeNumberText  ; Resource red number
+   mov si, [_ECONOMY_RED_RES_]  ; Red resource count
    mov dx, 0x0151C
    mov bl, COLOR_WHITE
-   call draw_text
+   call draw_number
 
    mov si, UIExploreModeText
    cmp byte [_INTERACTION_MODE_], MODE_RAILROAD_BUILDING
@@ -1253,10 +1313,10 @@ draw_ui:
    mov bl, COLOR_NAVY_BLUE
    call draw_text
 
-   mov bl, COLOR_WHITE
-   mov si, FakeNumberText     ; Score number
+   mov si, [_ECONOMY_SCORE_]  ; Score value
    mov dx, 0x01708
-   call draw_text
+   mov bl, COLOR_WHITE
+   call draw_number
 
 ret
 
@@ -2021,7 +2081,7 @@ dw 0001010100000000b, 0000000001010100b
 
 db 0x0B
 dw 0001010100000000b, 0000000001010100b
-dw 0101110101000000b, 0000000101110101b
+dw 0101110101010000b, 0000000101110101b
 dw 0111111101000000b, 0000000111111101b
 dw 0101100101000000b, 0000000101100101b
 dw 0001100100000000b, 0000000001100100b
