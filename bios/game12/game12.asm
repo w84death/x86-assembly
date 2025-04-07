@@ -676,7 +676,7 @@ ret
 
 ; =========================================== DRAW NUMBER ===================|80
 ; IN:
-;  SI - Value to display (hexadecimal)
+;  SI - Value to display (decimal)
 ;  DL - X position
 ;  DH - Y position
 ;  BX - Color
@@ -686,29 +686,44 @@ draw_number:
    int 0x10
    
    push si        ; Save original value
-   mov cx, 4      ; We'll process 4 digits (16-bit value)
+   mov cx, 10000  ; Divisor starting with 10000 (for 5 digits)
+   mov ax, si     ; Copy the number to AX for division
    
    .next_digit:
-      rol si, 4   ; Rotate left by 4 bits to get the next hex digit
-      mov ax, si  ; Copy the current value
-      and al, 0x0F ; Mask to get only the lowest 4 bits (current hex digit)
+      xor dx, dx     ; Clear DX for division
+      div cx         ; Divide AX by CX, quotient in AX, remainder in DX
       
       ; Convert digit to ASCII
-      cmp al, 10
-      jl .digit
-      add al, 'A' - 10 - '0' ; Convert A-F
-      
-      .digit:
-      add al, '0'  ; Convert to ASCII
+      add al, '0'    ; Convert to ASCII
       
       ; Print the character
-      mov ah, 0x0E  ; Teletype output
-      mov bh, 0     ; Page 0
-      int 0x10      ; BIOS video interrupt
+      mov ah, 0x0E   ; Teletype output
+      push dx        ; Save remainder
+      push cx        ; Save divisor
+      mov bh, 0      ; Page 0
+      int 0x10       ; BIOS video interrupt
+      pop cx         ; Restore divisor
+      pop dx         ; Restore remainder
       
-      loop .next_digit
+      ; Move remainder to AX for next iteration
+      mov ax, dx
+      
+      ; Update divisor
+      push ax        ; Save current remainder
+      mov ax, cx     ; Get current divisor in AX
+      xor dx, dx     ; Clear DX for division
+      push bx
+      mov bx, 10     ; Divide by 10
+      div bx         ; AX = AX/10
+      pop bx
+      mov cx, ax     ; Set new divisor
+      pop ax         ; Restore current remainder
+      
+      ; Check if we're done
+      cmp cx, 0      ; If divisor is 0, we're done
+      jne .next_digit
    
-   pop si          ; Restore original value
+   pop si           ; Restore original value
    ret
 
 ; =========================================== GET RANDOM ====================|80
@@ -1270,6 +1285,10 @@ draw_ui:
    mov si, [_ECONOMY_TRACKS_]  ; Railroad tracks count
    mov dx, 0x01504
    mov bl, COLOR_WHITE
+   cmp si, 0x0A
+   jg .skip_red
+      mov bl, COLOR_RED
+   .skip_red:   
    call draw_number
 
    mov di, UI_FIRST_LINE+76   ; Resource blue icon
@@ -1711,7 +1730,7 @@ dw 0101010101010110b, 1110010101010101b
 dw 1010101010101001b, 0101101010101010b
 dw 1111111111111101b, 1101111111111111b
 dw 1010101010101001b, 0101101010101010b
-dw 0101010101010110b, 1110010101010101b
+dw 0101010101010101b, 0101010101010101b
 dw 0000000000000110b, 1110010000000000b
 dw 0000000000000110b, 1110010000000000b
 dw 0000000000000110b, 1110010000000000b
