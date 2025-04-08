@@ -77,55 +77,55 @@ KB_F2       equ 0x3C
 
 ; =========================================== TILES NAMES ===================|80
 
-TILE_MUD             equ 0x0
-TILE_MUD2            equ 0x1
-TILE_MUD_GRASS       equ 0x2
-TILE_GRASS           equ 0x3
-TILE_BUSH            equ 0x4
-TILE_TREE            equ 0x5
-TILE_MOUNTAIN        equ 0x6
-TILE_FOUNDATION        equ 0x7
-TILE_FOUNDATION_STATION equ 0x8
-TILE_FOUNDATION_EXTRACTION equ 0x9
-META_TILES_MASK         equ 0x1F
+TILE_MUD                      equ 0x0
+TILE_MUD2                     equ 0x1
+TILE_MUD_GRASS                equ 0x2
+TILE_GRASS                    equ 0x3
+TILE_BUSH                     equ 0x4
+TILE_TREE                     equ 0x5
+TILE_MOUNTAIN                 equ 0x6
+TILE_FOUNDATION               equ 0x7
+TILE_FOUNDATION_STATION       equ 0x8
+TILE_FOUNDATION_EXTRACTION    equ 0x9
+META_TILES_MASK               equ 0x1F
 
-TILE_CART_VERTICAL      equ 16
-TILE_CART_HORIZONTAl    equ 17
-TILE_BUILDING_1         equ 16
-TILE_BUILDING_2         equ 17
-TILE_BUILDING_3         equ 18
-TILE_BUILDING_EXTRACTOR equ 19
+TILE_CART_VERTICAL            equ 16
+TILE_CART_HORIZONTAl          equ 17
+TILE_BUILDING_1               equ 16
+TILE_BUILDING_2               equ 17
+TILE_BUILDING_3               equ 18
+TILE_BUILDING_EXTRACTOR       equ 19
 
-TILE_RESOURCE_BLUE      equ 29
-TILE_RESOURCE_YELLOW    equ 30
-TILE_RESOURCE_RED       equ 31
+TILE_RESOURCE_BLUE            equ 29
+TILE_RESOURCE_YELLOW          equ 30
+TILE_RESOURCE_RED             equ 31
 
-TILE_RAILROADS             equ 10
-CURSOR_NORMAL              equ 22
-CURSOR_BUILD               equ 21
+TILE_RAILROADS                equ 10
+CURSOR_NORMAL                 equ 22
+CURSOR_BUILD                  equ 21
 
-META_INVISIBLE_WALL        equ 0x20    ; For collision detection
-META_TRANSPORT             equ 0x40    ; For railroads
-META_SWITCH                equ 0x80     ; Railroad switch
+META_INVISIBLE_WALL           equ 0x20    ; For collision detection
+META_TRANSPORT                equ 0x40    ; For railroads
+META_SWITCH                   equ 0x80     ; Railroad switch
 
-META_EMPTY                 equ 0x0
-META_TRAIN                 equ 0x1
-META_EMPTY_CART            equ 0x2
-EMETA_EMPTY_CART           equ 0x4
-EMETA_RESOURCE_BLUE        equ 0x8
-EMETA_RESOURCE_ORANGE      equ 0x10
-META_RESOURCE_RED          equ 0x20
+META_EMPTY                    equ 0x0
+META_TRAIN                    equ 0x1
+META_EMPTY_CART               equ 0x2
+ENTITY_META_CART              equ 0x4
+ENTITY_META_RESOURCE_BLUE     equ 0x8
+ENTITY_META_RESOURCE_YELLOW   equ 0x10
+ENTITY_META_RESOURCE_RED      equ 0x20
 
-MODE_VIEWPORT_PANNING      equ 0
-MODE_RAILROAD_BUILDING     equ 1
-MODE_BUILDING_CONSTRUCTION equ 2
+MODE_VIEWPORT_PANNING         equ 0
+MODE_TRACKS_PLACING           equ 1
+MODE_FOUNDATION_PLACING       equ 2
+MODE_BUILDING_CONSTRUCTION    equ 3
 
+UI_POSITION                   Equ 320*160
+UI_FIRST_LINE                 equ 320*164
+UI_LINES                      equ 40
 
-UI_POSITION equ 320*160
-UI_FIRST_LINE equ 320*164
-UI_LINES equ 40
-
-DEFAULT_ECONOMY_TRACKS equ 0x64
+DEFAULT_ECONOMY_TRACKS        equ 0x64
 
 ; =========================================== MISC SETTINGS =================|80
 
@@ -225,8 +225,8 @@ check_keyboard:
 
    cmp byte [_INTERACTION_MODE_], MODE_VIEWPORT_PANNING
    je .viewport_panning
-   cmp byte [_INTERACTION_MODE_], MODE_RAILROAD_BUILDING
-   je .railroad_building
+   cmp byte [_INTERACTION_MODE_], MODE_TRACKS_PLACING
+   je .tracks_building
    jmp .done
 
    .viewport_panning:
@@ -267,7 +267,7 @@ check_keyboard:
       inc word [_CURSOR_X_]
    jmp .redraw_terrain
 
-   .railroad_building:
+   .tracks_building:
       cmp ah, KB_UP
       je .move_cursor_up
       cmp ah, KB_DOWN
@@ -285,7 +285,7 @@ check_keyboard:
    .swap_mode:
       xor byte [_INTERACTION_MODE_], 0x1
       call draw_ui
-      jmp .redraw_terrain
+      jmp .redraw_tile
 
    .move_cursor_up:
       mov ax, [_VIEWPORT_Y_]
@@ -354,7 +354,6 @@ check_keyboard:
       call draw_entities
       call draw_cursor
       jmp .done
-
 
 .done:
 
@@ -1092,22 +1091,29 @@ draw_entities:
 
       .check_if_cart:
          lodsb                ; Load META data
-         test al, EMETA_EMPTY_CART
+         test al, ENTITY_META_CART
          jz .next_entity
 
-         test al, EMETA_RESOURCE_ORANGE
-         jnz .draw_orange_cart
-         test al, EMETA_RESOURCE_BLUE
+         test al, ENTITY_META_RESOURCE_BLUE
          jnz .draw_blue_cart
+         test al, ENTITY_META_RESOURCE_YELLOW
+         jnz .draw_yellow_cart
+         test al, ENTITY_META_RESOURCE_RED
+         jnz .draw_red_cart
          jmp .next_entity
          
-         .draw_orange_cart:
+         .draw_yellow_cart:
             mov al, TILE_RESOURCE_YELLOW
             call draw_sprite
             jmp .next_entity
 
          .draw_blue_cart:
             mov al, TILE_RESOURCE_BLUE
+            call draw_sprite
+            jmp .next_entity
+
+         .draw_red_cart:
+            mov al, TILE_RESOURCE_RED
             call draw_sprite
             jmp .next_entity
 
@@ -1130,7 +1136,7 @@ draw_cursor:
    mov di, bx              ; Move result to DI
 
    mov al, CURSOR_NORMAL
-   cmp byte [_INTERACTION_MODE_], MODE_RAILROAD_BUILDING
+   cmp byte [_INTERACTION_MODE_], MODE_TRACKS_PLACING
    jne .skip_build_cursor
       mov al, CURSOR_BUILD
    .skip_build_cursor:
@@ -1219,12 +1225,22 @@ init_gameplay_elements:
    mov byte [di+MAP_SIZE*2-2], TILE_MUD+META_TRANSPORT
 
 
-   mov di, _MAP_ + 128*63+68
-   mov cx, 4
+   mov di, _MAP_ + 128*63+66
+   mov cx, 6
    .add_meta2:
       mov byte [di], TILE_FOUNDATION
       inc di
    loop .add_meta2
+
+   mov di, _MAP_ + 128*64+66
+   mov cx, 4
+   .add_meta3:
+      mov byte [di], TILE_FOUNDATION_STATION+META_TRANSPORT
+      inc di
+   loop .add_meta3
+
+   mov di, _MAP_ + 128*64+65
+   mov byte [di], TILE_FOUNDATION_EXTRACTION+META_TRANSPORT
 
    mov di, _ENTITIES_
    mov word [di], 0x4042 ; 64x64
@@ -1232,14 +1248,19 @@ init_gameplay_elements:
    mov byte [di+3], META_EMPTY_CART
    
    add di, 4
-   mov word [di], 0x4043 ; 64x64
+   mov word [di], 0x4043
    mov byte [di+2], TILE_CART_HORIZONTAl
-   mov byte [di+3], META_EMPTY_CART+EMETA_EMPTY_CART+EMETA_RESOURCE_BLUE
+   mov byte [di+3], META_EMPTY_CART+ENTITY_META_CART+ENTITY_META_RESOURCE_BLUE
 
    add di, 4
-   mov word [di], 0x4044 ; 64x64
+   mov word [di], 0x4044
    mov byte [di+2], TILE_CART_HORIZONTAl
-   mov byte [di+3], META_EMPTY_CART+EMETA_EMPTY_CART+EMETA_RESOURCE_ORANGE
+   mov byte [di+3], META_EMPTY_CART+ENTITY_META_CART+ENTITY_META_RESOURCE_YELLOW
+
+   add di, 4
+   mov word [di], 0x4045
+   mov byte [di+2], TILE_CART_HORIZONTAl
+   mov byte [di+3], META_EMPTY_CART+ENTITY_META_CART+ENTITY_META_RESOURCE_RED
 
 
    ; add di, 4
@@ -1317,7 +1338,7 @@ draw_ui:
    call draw_number
 
    mov si, UIExploreModeText
-   cmp byte [_INTERACTION_MODE_], MODE_RAILROAD_BUILDING
+   cmp byte [_INTERACTION_MODE_], MODE_TRACKS_PLACING
    jne .skip_build_mode
       mov si, UIBuildModeText
    .skip_build_mode:
@@ -1603,7 +1624,7 @@ dw 1111111111111111b, 1111111111111101b
 dw 1011111111111111b, 1111111111111001b
 dw 0001010101010101b, 0101010101010100b
 
-FoundationExtractionTile:
+FoundationStationTile:
 db 0x03
 dw 0001010101011010b, 1010010101010100b
 dw 0101101010011001b, 0110011010100101b
@@ -1622,7 +1643,7 @@ dw 0110101010011010b, 1010011010101001b
 dw 0101101010011001b, 0110011010100101b
 dw 0001010101011010b, 1010010101010100b
 
-FoundationStationTile:
+FoundationExtractionTile:
 db 0x03
 dw 0001010101011010b, 1010010101010100b
 dw 0101111111011001b, 0110011111110101b
